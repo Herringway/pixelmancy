@@ -1,0 +1,9 @@
+{
+	"name": "colourstuff",
+	"authors": [
+		"Cameron"
+	],
+	"description": "Library for misc colour-related functions",
+	"copyright": "Copyright © 2016, Cameron",
+	"license": "BSL-1.0"
+}

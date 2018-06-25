@@ -1,0 +1,14 @@
+.dub
+docs.json
+__dummy.html
+docs/
+pixelatrix.so
+pixelatrix.dylib
+pixelatrix.dll
+pixelatrix.a
+pixelatrix.lib
+pixelatrix-test-*
+*.exe
+*.o
+*.obj
+*.lst

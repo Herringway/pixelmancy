@@ -1,0 +1,10 @@
+{
+	"name": "pixelatrix",
+	"authors": [
+		"Cameron"
+	],
+	"description": "Small library for handling old hardware graphic formats",
+	"copyright": "Copyright © 2018, Cameron",
+	"license": "BSL-1.0",
+	"stringImportPaths": ["testdata"]
+}

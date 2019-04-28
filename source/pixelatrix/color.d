@@ -107,3 +107,126 @@ ubyte[] colorToBytes(RGB888 data, string format, ulong size) pure @safe {
 @safe pure unittest {
 	assert(colorToBytes(rgb(72, 232, 248), "BGR555", 2) == [0xA9, 0x7F]);
 }
+
+ulong maxValueForBits(ulong n) @safe {
+	return (1 << n) - 1;
+}
+
+struct HSV {
+    double hue;
+    double saturation;
+    double value;
+}
+
+auto toHSV(T)(T input)
+{
+	import std.algorithm.comparison : max, min;
+	import std.math : approxEqual;
+    HSV result;
+    const red = cast(double)input.red / cast(double)maxValueForBits(T.redSize);
+    const green = cast(double)input.green / cast(double)maxValueForBits(T.greenSize);
+    const blue = cast(double)input.blue / cast(double)maxValueForBits(T.blueSize);
+    const minimum = min(red, green, blue);
+    const maximum = max(red, green, blue);
+    const delta = maximum - minimum;
+
+    result.value = maximum;
+    if (delta < 0.00001)
+    {
+        result.saturation = 0;
+        result.hue = 0;
+        return result;
+    }
+    if (maximum > 0.0) {
+        result.saturation = delta / maximum;
+    }
+
+    if (approxEqual(red, maximum)) {
+        result.hue = (green - blue) / delta; //yellow, magenta
+    } else if (approxEqual(green, maximum)) {
+        result.hue = 2.0 + (blue - red) / delta; //cyan,  yellow
+    } else {
+        result.hue = 4.0 + (red - green) / delta; //magenta, cyan
+    }
+
+    result.hue /= 6.0;
+
+    return result;
+}
+
+@safe unittest {
+	import std.math : approxEqual;
+	with(RGB888(0, 0, 0).toHSV) {
+		assert(hue == 0);
+		assert(saturation == 0);
+		assert(value == 0);
+	}
+	with(RGB888(0, 128, 192).toHSV) {
+		assert(approxEqual(hue, 0.5555555));
+		assert(approxEqual(saturation, 1.0));
+		assert(approxEqual(value, 0.752941));
+	}
+}
+
+
+auto toRGB(T)(HSV input)
+{
+    T convertColour(double r, double g, double b) @safe {
+		T output;
+		output.red = cast(typeof(T.red))(r * cast(double)maxValueForBits(T.redSize));
+		output.green = cast(typeof(T.green))(g * cast(double)maxValueForBits(T.greenSize));
+		output.blue = cast(typeof(T.blue))(b * cast(double)maxValueForBits(T.blueSize));
+		return output;
+    }
+
+    if(input.saturation <= 0.0) {
+        return convertColour(input.value, input.value, input.value);
+    }
+    double hh = input.hue * 6.0;
+    if(hh > 6.0) {
+		hh	 = 0.0;
+    }
+    auto i = cast(long)hh;
+    double ff = hh - i;
+    double p = input.value * (1.0 - input.saturation);
+    double q = input.value * (1.0 - (input.saturation * ff));
+    double t = input.value * (1.0 - (input.saturation * (1.0 - ff)));
+
+    assert(p < 1.0);
+    assert(q < 1.0);
+    assert(t < 1.0);
+
+    switch(i) {
+		case 0:
+			return convertColour(input.value, t, p);
+		case 1:
+			return convertColour(q, input.value, p);
+		case 2:
+			return convertColour(p, input.value, t);
+		case 3:
+			return convertColour(p, q, input.value);
+		case 4:
+			return convertColour(t, p, input.value);
+		case 5:
+		default:
+			return convertColour(input.value, p, q);
+    }
+}
+
+@safe unittest {
+	with(HSV(0, 0, 0).toRGB!RGB888) {
+		assert(red == 0);
+		assert(green == 0);
+		assert(blue == 0);
+	}
+	with(HSV(0, 0, 0.5).toRGB!RGB888) {
+		assert(red == 127);
+		assert(green == 127);
+		assert(blue == 127);
+	}
+	with(HSV(0.5555555, 1.0, 0.752941).toRGB!RGB888) {
+		assert(red == 0);
+		assert(green == 128);
+		assert(blue == 191);
+	}
+}

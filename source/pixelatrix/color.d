@@ -7,6 +7,14 @@ auto rgb(ubyte red, ubyte green, ubyte blue) pure {
 	return RGB888(red, green, blue);
 }
 
+enum Format {
+	Invalid,
+	BGR555,
+	BGR565,
+	RGB888,
+	RGBA8888
+}
+
 mixin template colourConstructors() {
 	this(double r, double g, double b) @safe pure {
 		red = cast(typeof(red))(r * cast(double)maxValueForBits(redSize));
@@ -109,20 +117,33 @@ auto bytesToColor(ubyte[] data, SupportedFormat format) {
 	assert(bytesToColor([0xA9, 0xFF], SupportedFormat.bgr555) == rgb(72, 232, 248));
 	assert(bytesToColor([0xA9, 0xFF], SupportedFormat.bgr565) == rgb(72, 244, 248));
 }
-ubyte[] colorToBytes(RGB888 data, string format, ulong size) pure @safe {
+ubyte[] colorToBytes(T)(T colour, Format format, ulong size) pure @safe {
 	ubyte[] output = new ubyte[](cast(size_t)size);
-	switch (format) {
-		case "BGR555":
-			output[0] = cast(ubyte)((data.red>>3) | ((data.green>>3)<<5));
-			output[1] = cast(ubyte)((data.green>>6) | ((data.blue>>3)<<2));
+	final switch (format) {
+		case Format.Invalid:
+			assert(0, "Invalid format");
+		case Format.BGR555:
+			assert(size == BGR555.sizeof, "Invalid size specified");
+			output[] = colorToBytes(convertColour!BGR555(colour));
 			break;
-		default: throw new Exception("Unknown format");
+		case Format.BGR565:
+			assert(size == BGR565.sizeof, "Invalid size specified");
+			output[] = colorToBytes(convertColour!BGR565(colour));
+			break;
+		case Format.RGB888:
+			assert(size == RGB888.sizeof, "Invalid size specified");
+			output[] = colorToBytes(convertColour!RGB888(colour));
+			break;
+		case Format.RGBA8888:
+			assert(size == RGBA8888.sizeof, "Invalid size specified");
+			output[] = colorToBytes(convertColour!RGBA8888(colour));
+			break;
 	}
 	return output;
 }
 ///
 @safe pure unittest {
-	assert(colorToBytes(rgb(72, 232, 248), "BGR555", 2) == [0xA9, 0x7F]);
+	assert(colorToBytes(rgb(72, 232, 248), Format.BGR555, 2) == [0xA9, 0x7F]);
 }
 auto colorToBytes(T)(T data) pure @safe {
 	union Raw {

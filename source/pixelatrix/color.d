@@ -7,6 +7,19 @@ auto rgb(ubyte red, ubyte green, ubyte blue) pure {
 	return RGB888(red, green, blue);
 }
 
+mixin template colourConstructors() {
+	this(double r, double g, double b) @safe pure {
+		red = cast(typeof(red))(r * cast(double)maxValueForBits(redSize));
+		green = cast(typeof(green))(g * cast(double)maxValueForBits(greenSize));
+		blue = cast(typeof(blue))(b * cast(double)maxValueForBits(blueSize));
+	}
+	this(ubyte r, ubyte g, ubyte b) @safe pure {
+		red = r;
+		green = g;
+		blue = b;
+	}
+}
+
 align(1)
 struct BGR555 { //XBBBBBGG GGGRRRRR
 	enum redSize = 5;
@@ -17,6 +30,7 @@ struct BGR555 { //XBBBBBGG GGGRRRRR
 		uint, "green", greenSize,
 		uint, "blue", blueSize,
 		bool, "padding", 1));
+	mixin colourConstructors;
 }
 
 align(1)
@@ -28,6 +42,7 @@ struct BGR565 { //BBBBBGGG GGGRRRRR
 		uint, "red", redSize,
 		uint, "green", greenSize,
 		uint, "blue", blueSize));
+	mixin colourConstructors;
 }
 
 align(1)
@@ -39,6 +54,7 @@ struct RGB888 { //RRRRRRRR GGGGGGGG BBBBBBBB
 	ubyte red;
 	ubyte green;
 	ubyte blue;
+	mixin colourConstructors;
 }
 align(1)
 struct RGBA8888 { //RRRRRRRR GGGGGGGG BBBBBBBB AAAAAAAA
@@ -51,6 +67,7 @@ struct RGBA8888 { //RRRRRRRR GGGGGGGG BBBBBBBB AAAAAAAA
 	ubyte green;
 	ubyte blue;
 	ubyte alpha;
+	mixin colourConstructors;
 }
 /++
 + Reads and converts a colour from a raw byte array to an RGB888 colour.

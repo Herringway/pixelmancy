@@ -225,6 +225,10 @@ auto toHSV(T)(T input)
     }
 
     result.hue /= 6.0;
+    if (result.hue < 0.0) {
+		result.hue += 1.0;
+    }
+    assert(result.hue >= 0.0);
 
     return result;
 }

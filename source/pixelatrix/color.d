@@ -125,7 +125,31 @@ ubyte[] colorToBytes(RGB888 data, string format, ulong size) pure @safe {
 	assert(colorToBytes(rgb(72, 232, 248), "BGR555", 2) == [0xA9, 0x7F]);
 }
 
-ulong maxValueForBits(ulong n) @safe {
+T convertColour(T, U)(U input) {
+	T output;
+	static if (T.redSize > U.redSize) {
+		output.red = input.red << (T.redSize - U.redSize);
+	} else {
+		output.red = input.red >> (U.redSize - T.redSize);
+	}
+	static if (T.greenSize > U.greenSize) {
+		output.green = input.green << (T.greenSize - U.greenSize);
+	} else {
+		output.green = input.green >> (U.greenSize - T.greenSize);
+	}
+	static if (T.blueSize > U.blueSize) {
+		output.blue = input.blue << (T.blueSize - U.blueSize);
+	} else {
+		output.blue = input.blue >> (U.blueSize - T.blueSize);
+	}
+	return output;
+}
+
+@safe unittest {
+	assert(convertColour!BGR565(BGR555(31,31,31)) == BGR565(31,62,31));
+}
+
+ulong maxValueForBits(ulong n) @safe pure {
 	return (1 << n) - 1;
 }
 

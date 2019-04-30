@@ -267,10 +267,11 @@ auto toRGB(T)(HSV input)
     double q = input.value * (1.0 - (input.saturation * ff));
     double t = input.value * (1.0 - (input.saturation * (1.0 - ff)));
 
-    assert(p < 1.0);
-    assert(q < 1.0);
-    assert(t < 1.0);
-
+    import std.stdio;
+    debug(verbosergb) writeln("p", p, ";q", q, ";t", t, ";ff", ff, ";hh", hh, ";i", i, ";iv", input.value, ";is", input.saturation);
+    assert(p <= 1.0);
+    assert(q <= 1.0);
+    assert(t <= 1.0);
     switch(i) {
 		case 0:
 			return convertColour(input.value, t, p);

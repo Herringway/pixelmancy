@@ -124,6 +124,19 @@ ubyte[] colorToBytes(RGB888 data, string format, ulong size) pure @safe {
 @safe pure unittest {
 	assert(colorToBytes(rgb(72, 232, 248), "BGR555", 2) == [0xA9, 0x7F]);
 }
+auto colorToBytes(T)(T data) pure @safe {
+	union Raw {
+		T colour;
+		ubyte[T.sizeof] raw;
+	}
+	//Raw raw;
+	//raw.colour = data;
+	return Raw(data).raw;
+}
+///
+@safe pure unittest {
+	assert(colorToBytes(BGR555(9, 29, 31)) == [0xA9, 0x7F]);
+}
 
 T convertColour(T, U)(U input) {
 	T output;

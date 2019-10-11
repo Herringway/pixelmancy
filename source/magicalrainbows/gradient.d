@@ -27,7 +27,7 @@ struct Gradient {
 		end = to.convert!RGB888;
 	}
 }
-
+///
 @safe pure unittest {
 	import std.algorithm;
 	import std.range;

@@ -216,7 +216,7 @@ struct ColourPair(FG, BG) if (isColourFormat!FG && isColourFormat!BG) {
 auto colourPair(FG, BG)(FG foreground, BG background) if (isColourFormat!FG && isColourFormat!BG) {
 	return ColourPair!(FG, BG)(foreground, background);
 }
-
+///
 @safe pure unittest {
 	import std.math : approxEqual;
 	with(colourPair(RGB888(0, 0, 0), RGB888(255, 255, 255))) {
@@ -261,7 +261,7 @@ auto convert(To, From)(From from) if (isColourFormat!From && isColourFormat!To) 
 		return output;
 	}
 }
-
+///
 @safe pure unittest {
 	assert(BGR555(31,31,31).convert!RGB888 == RGB888(248, 248, 248));
 	assert(BGR555(0, 0, 0).convert!RGB888 == RGB888(0, 0, 0));
@@ -301,7 +301,7 @@ Format fromHex(Format = RGB888)(const string colour) @safe pure if (isColourForm
 	}
 	return output;
 }
-
+///
 @safe pure unittest {
 	assert("#000000".fromHex == RGB888(0, 0, 0));
 	assert("#FFFFFF".fromHex == RGB888(255, 255, 255));

@@ -7,7 +7,7 @@ real relativeLuminosity(Colour)(const Colour colour) if(isColourFormat!Colour) {
 		0.7152 * colour.greenFP.toLinearRGB +
 		0.0722 * colour.blueFP.toLinearRGB;
 }
-
+///
 @safe pure unittest {
 	import magicalrainbows.formats : BGR555, RGB888;
 	import std.math : approxEqual;
@@ -23,7 +23,7 @@ real contrast(Colour1, Colour2)(const Colour1 colour1, const Colour2 colour2) if
 	const L2 = colour2.relativeLuminosity;
 	return (max(L1, L2) + 0.05) / (min(L1, L2) + 0.05);
 }
-
+///
 @safe pure unittest {
 	import magicalrainbows.formats : RGB888;
 	import std.math : approxEqual;

@@ -28,7 +28,7 @@ auto bytesToColor(ColourFormat = RGB888)(ubyte[] data, SupportedFormat format) i
 			return data.to!(ubyte[RGB888.sizeof]).read!RGB888().convert!ColourFormat();
 	}
 }
-
+///
 @safe pure unittest {
 	assert(bytesToColor([0xA9, 0xFF], SupportedFormat.bgr555) == RGB888(72, 232, 248));
 	assert(bytesToColor([0xA9, 0xFF], SupportedFormat.bgr565) == RGB888(72, 244, 248));
@@ -38,7 +38,7 @@ auto bytesToColor(ColourFormat = RGB888)(ubyte[] data, SupportedFormat format) i
 ubyte[Format.sizeof] colourToBytes(Format)(Format data) if (isColourFormat!Format) {
 	return data.asBytes();
 }
-
+///
 @safe pure unittest {
 	assert(colourToBytes(BGR555(9, 29, 31)) == [0xA9, 0x7F]);
 	assert(colourToBytes(BGR565(9, 58, 31)) == [0x49, 0xFF]);
@@ -60,7 +60,7 @@ ubyte[] colourToBytes(T)(T data, SupportedFormat format) if (isColourFormat!T) {
 	}
 	return output;
 }
-
+///
 @safe pure unittest {
 	assert(colourToBytes(RGB888(72, 232, 248), SupportedFormat.bgr555) == [0xA9, 0x7F]);
 	assert(colourToBytes(RGB888(72, 232, 248), SupportedFormat.bgr565) == [0x49, 0xFF]);

@@ -29,7 +29,7 @@ mixin template colourConstructors() {
 		this.green = cast(typeof(this.green))(green * maxGreen!(typeof(this)));
 		this.blue = cast(typeof(this.blue))(blue * maxBlue!(typeof(this)));
 	}
-	static if (alphaSize > 0) {
+	static if (hasAlpha!(typeof(this))) {
 		this(uint red, uint green, uint blue, uint alpha) pure @safe
 			in(red < (1<<redSize), "Red value out of range")
 			in(green < (1<<greenSize), "Green value out of range")
@@ -129,7 +129,7 @@ struct RGBA8888 { //RRRRRRRR GGGGGGGG BBBBBBBB AAAAAAAA
 	}
 }
 
-struct ColourPair(FG, BG) {
+struct ColourPair(FG, BG) if (isColourFormat!FG && isColourFormat!BG) {
 	FG foreground;
 	BG background;
 	auto contrast() const @safe pure {
@@ -144,7 +144,7 @@ struct ColourPair(FG, BG) {
 	}
 }
 
-auto colourPair(FG, BG)(FG foreground, BG background) {
+auto colourPair(FG, BG)(FG foreground, BG background) if (isColourFormat!FG && isColourFormat!BG) {
 	return ColourPair!(FG, BG)(foreground, background);
 }
 
@@ -172,21 +172,21 @@ auto colourPair(FG, BG)(FG foreground, BG background) {
 	}
 }
 
-auto convert(To, From)(From from) {
+auto convert(To, From)(From from) if (isColourFormat!From && isColourFormat!To) {
 	static if (is(To == From)) {
 		return from;
 	} else {
 		To output;
-		static if ((From.redSize > 0) && (To.redSize > 0)) {
+		static if (hasRed!From && hasRed!To) {
 			output.red = colourConvert!(typeof(output.red), To.redSize, From.redSize)(from.red);
 		}
-		static if ((From.greenSize > 0) && (To.greenSize > 0)) {
+		static if (hasGreen!From && hasGreen!To) {
 			output.green = colourConvert!(typeof(output.green), To.greenSize, From.greenSize)(from.green);
 		}
-		static if ((From.blueSize > 0) && (To.blueSize > 0)) {
+		static if (hasBlue!From && hasBlue!To) {
 			output.blue = colourConvert!(typeof(output.blue), To.blueSize, From.blueSize)(from.blue);
 		}
-		static if ((From.alphaSize > 0) && (To.alphaSize > 0)) {
+		static if (hasAlpha!From && hasAlpha!To) {
 			output.alpha = colourConvert!(typeof(output.alpha), To.alphaSize, From.alphaSize)(from.alpha);
 		}
 		return output;

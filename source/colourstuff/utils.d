@@ -26,6 +26,13 @@ ubyte[T.sizeof] asBytes(T)(T input) if (isMutable!T) {
 	return result.raw;
 }
 
+enum isColourFormat(T) = hasRed!T && hasGreen!T && hasBlue!T;
+
+enum hasRed(T) = T.redSize > 0;
+enum hasGreen(T) = T.greenSize > 0;
+enum hasBlue(T) = T.blueSize > 0;
+enum hasAlpha(T) = T.alphaSize > 0;
+
 enum maxValue(ulong Bits) = (1<<Bits) - 1;
 
 enum maxRed(T) = maxValue!(T.redSize);

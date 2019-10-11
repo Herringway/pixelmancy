@@ -2,7 +2,7 @@ module colourstuff.properties;
 
 import colourstuff.utils;
 
-real relativeLuminosity(Colour)(const Colour colour) {
+real relativeLuminosity(Colour)(const Colour colour) if(isColourFormat!Colour) {
 	return 0.2126 * colour.redFP.toLinearRGB +
 		0.7152 * colour.greenFP.toLinearRGB +
 		0.0722 * colour.blueFP.toLinearRGB;
@@ -17,7 +17,7 @@ real relativeLuminosity(Colour)(const Colour colour) {
 	assert(BGR555(0, 16, 31).relativeLuminosity.approxEqual(0.23618));
 }
 
-real contrast(Colour1, Colour2)(const Colour1 colour1, const Colour2 colour2) {
+real contrast(Colour1, Colour2)(const Colour1 colour1, const Colour2 colour2) if (isColourFormat!Colour1 && isColourFormat!Colour2) {
 	import std.algorithm.comparison : max, min;
 	const L1 = colour1.relativeLuminosity;
 	const L2 = colour2.relativeLuminosity;

@@ -1,6 +1,7 @@
 module colourstuff.gradient;
 
 import colourstuff.formats;
+import colourstuff.utils;
 
 struct Gradient {
 	ulong index;
@@ -20,7 +21,7 @@ struct Gradient {
 	bool empty() @safe pure {
 		return index >= count;
 	}
-	this(T)(T from, T to, ulong steps) {
+	this(T)(T from, T to, ulong steps) if(isColourFormat!T){
 		count = steps;
 		start = front = from.convert!RGB888;
 		end = to.convert!RGB888;

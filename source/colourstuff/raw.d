@@ -7,7 +7,7 @@ import colourstuff.utils;
 
 enum SupportedFormat { bgr555, bgr565, rgb888 }
 
-auto bytesToColor(ColourFormat = RGB888)(ubyte[] data, SupportedFormat format) {
+auto bytesToColor(ColourFormat = RGB888)(ubyte[] data, SupportedFormat format) if (isColourFormat!ColourFormat) {
 	final switch (format) {
 		case SupportedFormat.bgr555:
 			assert(data.length == BGR555.sizeof, "Bad length for BGR555");
@@ -27,7 +27,7 @@ auto bytesToColor(ColourFormat = RGB888)(ubyte[] data, SupportedFormat format) {
 	assert(bytesToColor([72, 244, 248], SupportedFormat.rgb888) == RGB888(72, 244, 248));
 }
 
-ubyte[Format.sizeof] colourToBytes(Format)(Format data) {
+ubyte[Format.sizeof] colourToBytes(Format)(Format data) if (isColourFormat!Format) {
 	return data.asBytes();
 }
 
@@ -37,7 +37,7 @@ ubyte[Format.sizeof] colourToBytes(Format)(Format data) {
 	assert(colourToBytes(RGB888(72, 232, 248)) == [72, 232, 248]);
 }
 
-ubyte[] colourToBytes(T)(T data, SupportedFormat format) {
+ubyte[] colourToBytes(T)(T data, SupportedFormat format) if (isColourFormat!T) {
 	ubyte[] output;
 	final switch (format) {
 		case SupportedFormat.bgr555:

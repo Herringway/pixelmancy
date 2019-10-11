@@ -8,7 +8,7 @@ struct Gradient {
 	RGB888 start;
 	RGB888 end;
 	RGB888 front;
-	void popFront() {
+	void popFront() @safe pure {
 		index++;
 		double redInc = ((cast(double)end.red - cast(double)start.red) / cast(double)(count-1));
 		double greenInc = ((cast(double)end.green - cast(double)start.green) / cast(double)(count-1));
@@ -17,27 +17,21 @@ struct Gradient {
 		front.green = cast(ubyte)(start.green + greenInc * index);
 		front.blue = cast(ubyte)(start.blue + blueInc * index);
 	}
-	bool empty() {
+	bool empty() @safe pure {
 		return index >= count;
 	}
 	this(T)(T from, T to, ulong steps) {
 		count = steps;
-		start = front = from.toRGB888;
-		end = to.toRGB888;
+		start = front = from.convert!RGB888;
+		end = to.convert!RGB888;
 	}
 }
 
-unittest {
+@safe pure unittest {
 	import std.algorithm;
-	import std.stdio;
-	import std.format;
 	import std.range;
-	auto str = "This is a test of my gradient script.";
-	foreach (colour, character; zip(Gradient(RGB888(255,0,0), RGB888(0,0,255), str.length), str)) {
-		//writef("\x04%02X%02X%02X%s", colour.red, colour.green, colour.blue, character);
-	}
 	assert(Gradient(RGB888(255,0,0), RGB888(0,0,255), 20).equal(
-		[
+		only(
 			RGB888(255, 0, 0),
 			RGB888(241, 0, 13),
 			RGB888(228, 0, 26),
@@ -58,6 +52,6 @@ unittest {
 			RGB888(26, 0, 228),
 			RGB888(13, 0, 241),
 			RGB888(0, 0, 254)
-		]
+		)
 	));
 }

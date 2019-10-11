@@ -5,62 +5,78 @@ import std.traits;
 
 import colourstuff.formats;
 
-auto rgb(ubyte red, ubyte green, ubyte blue) pure {
-	return RGB888(red, green, blue);
-}
-RGB888 bytesToRGB888(Format)(ubyte[Format.sizeof] data) {
-	//auto output = RGB888();
-	return data.read!Format.toRGB888;
-	//output.red = cast(ubyte)(readColor.red<<(8-Format.redSize));
-	//output.green = cast(ubyte)(readColor.green<<(8-Format.greenSize));
-	//output.blue = cast(ubyte)(readColor.blue<<(8-Format.blueSize));
-	//return output;
-}
 enum SupportedFormat { bgr555, bgr565, rgb888 }
-auto bytesToColor(ubyte[] data, SupportedFormat format) pure {
+
+auto bytesToColor(ColourFormat = RGB888)(ubyte[] data, SupportedFormat format) {
 	final switch (format) {
 		case SupportedFormat.bgr555:
 			assert(data.length == BGR555.sizeof, "Bad length for BGR555");
-			return bytesToRGB888!BGR555(data.to!(ubyte[BGR555.sizeof]));
+			return data.to!(ubyte[BGR555.sizeof]).read!BGR555().convert!ColourFormat();
 		case SupportedFormat.bgr565:
 			assert(data.length == BGR565.sizeof, "Bad length for BGR565");
-			return bytesToRGB888!BGR565(data.to!(ubyte[BGR565.sizeof]));
+			return data.to!(ubyte[BGR565.sizeof]).read!BGR565().convert!ColourFormat();
 		case SupportedFormat.rgb888:
 			assert(data.length == RGB888.sizeof, "Bad length for RGB888");
-			return bytesToRGB888!RGB888(data.to!(ubyte[RGB888.sizeof]));
+			return data.to!(ubyte[RGB888.sizeof]).read!RGB888().convert!ColourFormat();
 	}
 }
-unittest {
-	assert(bytesToColor([0xA9, 0xFF], SupportedFormat.bgr555) == rgb(72, 232, 248));
-	assert(bytesToColor([0xA9, 0xFF], SupportedFormat.bgr565) == rgb(72, 244, 248));
+
+@safe pure unittest {
+	assert(bytesToColor([0xA9, 0xFF], SupportedFormat.bgr555) == RGB888(72, 232, 248));
+	assert(bytesToColor([0xA9, 0xFF], SupportedFormat.bgr565) == RGB888(72, 244, 248));
+	assert(bytesToColor([72, 244, 248], SupportedFormat.rgb888) == RGB888(72, 244, 248));
 }
-ubyte[Format.sizeof] colorToBytes(Format)(uint data) {
-	return [];
+
+ubyte[Format.sizeof] colourToBytes(Format)(Format data) {
+	return data.asBytes();
 }
-ubyte[] colorToBytes(RGB888 data, string format, ulong size) pure {
-	ubyte[] output = new ubyte[](cast(size_t)size);
-	switch (format) {
-		case "BGR555":
-			output[0] = cast(ubyte)((data.red>>3) | ((data.green>>3)<<5));
-			output[1] = cast(ubyte)((data.green>>6) | ((data.blue>>3)<<2));
+
+@safe pure unittest {
+	assert(colourToBytes(BGR555(9, 29, 31)) == [0xA9, 0x7F]);
+	assert(colourToBytes(BGR565(9, 58, 31)) == [0x49, 0xFF]);
+	assert(colourToBytes(RGB888(72, 232, 248)) == [72, 232, 248]);
+}
+
+ubyte[] colourToBytes(T)(T data, SupportedFormat format) {
+	ubyte[] output;
+	final switch (format) {
+		case SupportedFormat.bgr555:
+			output = colourToBytes(data.convert!BGR555)[].dup;
 			break;
-		default: throw new Exception("Unknown format");
+		case SupportedFormat.bgr565:
+			output = colourToBytes(data.convert!BGR565)[].dup;
+			break;
+		case SupportedFormat.rgb888:
+			output = colourToBytes(data.convert!RGB888)[].dup;
+			break;
 	}
 	return output;
 }
-unittest {
-	assert(colorToBytes(rgb(72, 232, 248), "BGR555", 2) == [0xA9, 0x7F]);
+
+@safe pure unittest {
+	assert(colourToBytes(RGB888(72, 232, 248), SupportedFormat.bgr555) == [0xA9, 0x7F]);
+	assert(colourToBytes(RGB888(72, 232, 248), SupportedFormat.bgr565) == [0x49, 0xFF]);
+	assert(colourToBytes(RGB888(72, 232, 248), SupportedFormat.rgb888) == [72, 232, 248]);
 }
 
-private T read(T)(ubyte[] input, T val) @nogc if (isMutable!T) in {
+private T read(T)(ubyte[] input) if (isMutable!T) in {
 	assert(input.length == T.sizeof, "Mismatch between input buffer size and expected value size");
 } body {
-	auto mVal = (cast(void*)&val)[0..val.sizeof];
-	foreach (i, byteValue; input)
-		(cast(ubyte[])mVal)[i] = byteValue;
-	return val;
+	union Result {
+		ubyte[T.sizeof] raw;
+		T val;
+	}
+	Result result;
+	result.raw = input;
+	return result.val;
 }
-private T read(T)(ubyte[T.sizeof] input) @nogc if (isMutable!T) {
-	T val;
-	return read(input[], val);
+
+private ubyte[T.sizeof] asBytes(T)(T input) if (isMutable!T) {
+	union Result {
+		ubyte[T.sizeof] raw;
+		T val;
+	}
+	Result result;
+	result.val = input;
+	return result.raw;
 }

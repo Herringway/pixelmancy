@@ -80,9 +80,9 @@ struct RGBA8888 { //RRRRRRRR GGGGGGGG BBBBBBBB AAAAAAAA
 
 
 struct HSV {
-    double hue;
-    double saturation;
-    double value;
+    real hue;
+    real saturation;
+    real value;
     invariant() {
     	assert(hue >= 0);
     	assert(saturation >= 0);

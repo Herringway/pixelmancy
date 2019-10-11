@@ -1,6 +1,6 @@
-module colourstuff.properties;
+module magicalrainbows.properties;
 
-import colourstuff.utils;
+import magicalrainbows.utils;
 
 real relativeLuminosity(Colour)(const Colour colour) if(isColourFormat!Colour) {
 	return 0.2126 * colour.redFP.toLinearRGB +
@@ -9,7 +9,7 @@ real relativeLuminosity(Colour)(const Colour colour) if(isColourFormat!Colour) {
 }
 
 @safe pure unittest {
-	import colourstuff.formats : BGR555, RGB888;
+	import magicalrainbows.formats : BGR555, RGB888;
 	import std.math : approxEqual;
 	assert(RGB888(0, 0, 0).relativeLuminosity.approxEqual(0.0));
 	assert(RGB888(255, 255, 255).relativeLuminosity.approxEqual(1.0));
@@ -25,7 +25,7 @@ real contrast(Colour1, Colour2)(const Colour1 colour1, const Colour2 colour2) if
 }
 
 @safe pure unittest {
-	import colourstuff.formats : RGB888;
+	import magicalrainbows.formats : RGB888;
 	import std.math : approxEqual;
 	assert(contrast(RGB888(0, 0, 0), RGB888(0, 0, 0)).approxEqual(1.0));
 	assert(contrast(RGB888(0, 0, 0), RGB888(255, 255, 255)).approxEqual(21.0));

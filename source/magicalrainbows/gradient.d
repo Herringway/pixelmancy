@@ -1,7 +1,7 @@
-module colourstuff.gradient;
+module magicalrainbows.gradient;
 
-import colourstuff.formats;
-import colourstuff.utils;
+import magicalrainbows.formats;
+import magicalrainbows.utils;
 
 struct Gradient {
 	ulong index;

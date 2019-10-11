@@ -1,12 +1,20 @@
-module colourstuff.raw;
+module magicalrainbows.raw;
 
 import std.conv;
 
-import colourstuff.formats;
-import colourstuff.utils;
+import magicalrainbows.formats;
+import magicalrainbows.utils;
 
 enum SupportedFormat { bgr555, bgr565, rgb888 }
 
+/++
++ Reads and converts a colour from a raw byte array to a specified colour format.
++
++ Params: format = data format to read
++		  data = raw data to read from
++		  ColourFormat = colour format to convert to
++ Returns: a colour in the specified format
++/
 auto bytesToColor(ColourFormat = RGB888)(ubyte[] data, SupportedFormat format) if (isColourFormat!ColourFormat) {
 	final switch (format) {
 		case SupportedFormat.bgr555:

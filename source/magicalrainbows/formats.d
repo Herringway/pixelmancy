@@ -1,63 +1,12 @@
-module colourstuff.formats;
+module magicalrainbows.formats;
 
-import colourstuff.utils;
+import magicalrainbows.utils;
 
 import std.algorithm;
 import std.bitmanip;
 import std.conv;
 import std.range;
 
-mixin template colourConstructors() {
-	this(uint red, uint green, uint blue) pure @safe
-		in(red < (1<<redSize), "Red value out of range")
-		in(green < (1<<greenSize), "Green value out of range")
-		in(blue < (1<<blueSize), "Blue value out of range")
-	{
-		this.red = cast(typeof(this.red))red;
-		this.green = cast(typeof(this.green))green;
-		this.blue = cast(typeof(this.blue))blue;
-	}
-	this(real red, real green, real blue) pure @safe
-		in(red <= 1.0, "Red value out of range")
-		in(red >= 0.0, "Red value out of range")
-		in(green <= 1.0, "Green value out of range")
-		in(green >= 0.0, "Green value out of range")
-		in(blue <= 1.0, "Blue value out of range")
-		in(blue >= 0.0, "Blue value out of range")
-	{
-		this.red = cast(typeof(this.red))(red * maxRed!(typeof(this)));
-		this.green = cast(typeof(this.green))(green * maxGreen!(typeof(this)));
-		this.blue = cast(typeof(this.blue))(blue * maxBlue!(typeof(this)));
-	}
-	static if (hasAlpha!(typeof(this))) {
-		this(uint red, uint green, uint blue, uint alpha) pure @safe
-			in(red < (1<<redSize), "Red value out of range")
-			in(green < (1<<greenSize), "Green value out of range")
-			in(blue < (1<<blueSize), "Blue value out of range")
-			in(alpha < (1<<alphaSize), "Alpha value out of range")
-		{
-			this.red = cast(typeof(this.red))red;
-			this.green = cast(typeof(this.green))green;
-			this.blue = cast(typeof(this.blue))blue;
-			this.alpha = cast(typeof(this.alpha))alpha;
-		}
-		this(real red, real green, real blue, real alpha) pure @safe
-			in(red <= 1.0, "Red value out of range")
-			in(red >= 0.0, "Red value out of range")
-			in(green <= 1.0, "Green value out of range")
-			in(green >= 0.0, "Green value out of range")
-			in(blue <= 1.0, "Blue value out of range")
-			in(blue >= 0.0, "Blue value out of range")
-			in(alpha <= 1.0, "Blue value out of range")
-			in(alpha >= 0.0, "Blue value out of range")
-		{
-			this.red = cast(typeof(this.red))(red * maxRed!(typeof(this)));
-			this.green = cast(typeof(this.green))(green * maxGreen!(typeof(this)));
-			this.blue = cast(typeof(this.blue))(blue * maxBlue!(typeof(this)));
-			this.alpha = cast(typeof(this.alpha))(alpha * maxAlpha!(typeof(this)));
-		}
-	}
-}
 
 struct BGR555 { //XBBBBBGG GGGRRRRR
 	enum redSize = 5;
@@ -129,11 +78,131 @@ struct RGBA8888 { //RRRRRRRR GGGGGGGG BBBBBBBB AAAAAAAA
 	}
 }
 
+
+struct HSV {
+    double hue;
+    double saturation;
+    double value;
+    invariant() {
+    	assert(hue >= 0);
+    	assert(saturation >= 0);
+    	assert(value >= 0);
+    	assert(hue <= 1.0);
+    	assert(saturation <= 1.0);
+    	assert(value <= 1.0);
+    }
+}
+
+auto toHSV(Format)(Format input) if (isColourFormat!Format) {
+	import std.algorithm.comparison : max, min;
+	import std.math : approxEqual;
+    HSV result;
+    const red = input.redFP;
+    const green = input.greenFP;
+    const blue = input.blueFP;
+    const minimum = min(red, green, blue);
+    const maximum = max(red, green, blue);
+    const delta = maximum - minimum;
+
+    result.value = maximum;
+    if (delta < 0.00001)
+    {
+        result.saturation = 0;
+        result.hue = 0;
+        return result;
+    }
+    if (maximum > 0.0) {
+        result.saturation = delta / maximum;
+    }
+
+    if (approxEqual(red, maximum)) {
+        result.hue = (green - blue) / delta; //yellow, magenta
+    } else if (approxEqual(green, maximum)) {
+        result.hue = 2.0 + (blue - red) / delta; //cyan,  yellow
+    } else {
+        result.hue = 4.0 + (red - green) / delta; //magenta, cyan
+    }
+
+    result.hue /= 6.0;
+    if (result.hue < 0.0) {
+		result.hue += 1.0;
+    }
+    assert(result.hue >= 0.0);
+
+    return result;
+}
+///
+@safe unittest {
+	import std.math : approxEqual;
+	with(RGB888(0, 0, 0).toHSV) {
+		assert(hue == 0);
+		assert(saturation == 0);
+		assert(value == 0);
+	}
+	with(RGB888(0, 128, 192).toHSV) {
+		assert(approxEqual(hue, 0.5555555));
+		assert(approxEqual(saturation, 1.0));
+		assert(approxEqual(value, 0.752941));
+	}
+}
+
+auto toRGB(Format = RGB888)(HSV input) if (isColourFormat!Format) {
+    if(input.saturation <= 0.0) {
+        return Format(input.value, input.value, input.value);
+    }
+    real hh = input.hue * 6.0;
+    if(hh > 6.0) {
+		hh	 = 0.0;
+    }
+    auto i = cast(long)hh;
+    real ff = hh - i;
+    real p = input.value * (1.0 - input.saturation);
+    real q = input.value * (1.0 - (input.saturation * ff));
+    real t = input.value * (1.0 - (input.saturation * (1.0 - ff)));
+
+    assert(p <= 1.0);
+    assert(q <= 1.0);
+    assert(t <= 1.0);
+    switch(i) {
+		case 0:
+			return Format(input.value, t, p);
+		case 1:
+			return Format(q, input.value, p);
+		case 2:
+			return Format(p, input.value, t);
+		case 3:
+			return Format(p, q, input.value);
+		case 4:
+			return Format(t, p, input.value);
+		case 5:
+		default:
+			return Format(input.value, p, q);
+    }
+}
+///
+@safe unittest {
+	with(HSV(0, 0, 0).toRGB!RGB888) {
+		assert(red == 0);
+		assert(green == 0);
+		assert(blue == 0);
+	}
+	with(HSV(0, 0, 0.5).toRGB!RGB888) {
+		assert(red == 127);
+		assert(green == 127);
+		assert(blue == 127);
+	}
+	with(HSV(0.5555555, 1.0, 0.752941).toRGB!RGB888) {
+		assert(red == 0);
+		assert(green == 128);
+		assert(blue == 191);
+	}
+}
+
 struct ColourPair(FG, BG) if (isColourFormat!FG && isColourFormat!BG) {
 	FG foreground;
 	BG background;
 	auto contrast() const @safe pure {
-		import colourstuff.properties : contrast;
+		import magicalrainbows.properties : contrast;
 		return contrast(foreground, background);
 	}
 	bool meetsWCAGAACriteria() const @safe pure {

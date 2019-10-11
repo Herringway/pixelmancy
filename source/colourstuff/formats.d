@@ -1,5 +1,7 @@
 module colourstuff.formats;
 
+import colourstuff.utils;
+
 import std.algorithm;
 import std.bitmanip;
 import std.conv;
@@ -15,6 +17,18 @@ mixin template colourConstructors() {
 		this.green = cast(typeof(this.green))green;
 		this.blue = cast(typeof(this.blue))blue;
 	}
+	this(real red, real green, real blue) pure @safe
+		in(red <= 1.0, "Red value out of range")
+		in(red >= 0.0, "Red value out of range")
+		in(green <= 1.0, "Green value out of range")
+		in(green >= 0.0, "Green value out of range")
+		in(blue <= 1.0, "Blue value out of range")
+		in(blue >= 0.0, "Blue value out of range")
+	{
+		this.red = cast(typeof(this.red))(red * maxRed!(typeof(this)));
+		this.green = cast(typeof(this.green))(green * maxGreen!(typeof(this)));
+		this.blue = cast(typeof(this.blue))(blue * maxBlue!(typeof(this)));
+	}
 	static if (alphaSize > 0) {
 		this(uint red, uint green, uint blue, uint alpha) pure @safe
 			in(red < (1<<redSize), "Red value out of range")
@@ -26,6 +40,21 @@ mixin template colourConstructors() {
 			this.green = cast(typeof(this.green))green;
 			this.blue = cast(typeof(this.blue))blue;
 			this.alpha = cast(typeof(this.alpha))alpha;
+		}
+		this(real red, real green, real blue, real alpha) pure @safe
+			in(red <= 1.0, "Red value out of range")
+			in(red >= 0.0, "Red value out of range")
+			in(green <= 1.0, "Green value out of range")
+			in(green >= 0.0, "Green value out of range")
+			in(blue <= 1.0, "Blue value out of range")
+			in(blue >= 0.0, "Blue value out of range")
+			in(alpha <= 1.0, "Blue value out of range")
+			in(alpha >= 0.0, "Blue value out of range")
+		{
+			this.red = cast(typeof(this.red))(red * maxRed!(typeof(this)));
+			this.green = cast(typeof(this.green))(green * maxGreen!(typeof(this)));
+			this.blue = cast(typeof(this.blue))(blue * maxBlue!(typeof(this)));
+			this.alpha = cast(typeof(this.alpha))(alpha * maxAlpha!(typeof(this)));
 		}
 	}
 }
@@ -41,6 +70,14 @@ struct BGR555 { //XBBBBBGG GGGRRRRR
 		uint, "green", greenSize,
 		uint, "blue", blueSize,
 		bool, "padding", 1));
+}
+
+@safe pure unittest {
+	with(BGR555(1.0, 0.5, 0.0)) {
+		assert(red == 31);
+		assert(green == 15);
+		assert(blue == 0);
+	}
 }
 
 struct BGR565 { //BBBBBGGG GGGRRRRR
@@ -77,14 +114,61 @@ struct RGBA8888 { //RRRRRRRR GGGGGGGG BBBBBBBB AAAAAAAA
 	ubyte blue;
 	ubyte alpha;
 }
+@safe pure unittest {
+	with(RGBA8888(1.0, 0.5, 0.0, 0.0)) {
+		assert(red == 255);
+		assert(green == 127);
+		assert(blue == 0);
+		assert(alpha == 0);
+	}
+	with(RGBA8888(255, 128, 0, 0)) {
+		assert(red == 255);
+		assert(green == 128);
+		assert(blue == 0);
+		assert(alpha == 0);
+	}
+}
 
-private T colourConvert(T, size_t Size1, size_t Size2, Source)(Source val ) {
-	static if (Size1 > Size2) {
-		return cast(T)(val << (Size1 - Size2));
-	} else static if (Size1 < Size2) {
-		return cast(T)(val >> (Size2 - Size1));
-	} else {
-		return cast(T)val;
+struct ColourPair(FG, BG) {
+	FG foreground;
+	BG background;
+	auto contrast() const @safe pure {
+		import colourstuff.properties : contrast;
+		return contrast(foreground, background);
+	}
+	bool meetsWCAGAACriteria() const @safe pure {
+		return contrast >= 4.5;
+	}
+	bool meetsWCAGAAACriteria() const @safe pure {
+		return contrast >= 7.0;
+	}
+}
+
+auto colourPair(FG, BG)(FG foreground, BG background) {
+	return ColourPair!(FG, BG)(foreground, background);
+}
+
+@safe pure unittest {
+	import std.math : approxEqual;
+	with(colourPair(RGB888(0, 0, 0), RGB888(255, 255, 255))) {
+		assert(contrast.approxEqual(21.0));
+		assert(meetsWCAGAACriteria);
+		assert(meetsWCAGAAACriteria);
+	}
+	with(colourPair(RGB888(255, 255, 255), RGB888(255, 255, 255))) {
+		assert(contrast.approxEqual(1.0));
+		assert(!meetsWCAGAACriteria);
+		assert(!meetsWCAGAAACriteria);
+	}
+	with(colourPair(RGB888(0, 128, 255), RGB888(0, 0, 0))) {
+		assert(contrast.approxEqual(5.5316));
+		assert(meetsWCAGAACriteria);
+		assert(!meetsWCAGAAACriteria);
+	}
+	with(colourPair(BGR555(0, 16, 31), RGB888(0, 0, 0))) {
+		assert(contrast.approxEqual(5.7236));
+		assert(meetsWCAGAACriteria);
+		assert(!meetsWCAGAAACriteria);
 	}
 }
 

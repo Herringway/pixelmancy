@@ -1,9 +1,9 @@
 module colourstuff.raw;
 
 import std.conv;
-import std.traits;
 
 import colourstuff.formats;
+import colourstuff.utils;
 
 enum SupportedFormat { bgr555, bgr565, rgb888 }
 
@@ -59,24 +59,3 @@ ubyte[] colourToBytes(T)(T data, SupportedFormat format) {
 	assert(colourToBytes(RGB888(72, 232, 248), SupportedFormat.rgb888) == [72, 232, 248]);
 }
 
-private T read(T)(ubyte[] input) if (isMutable!T) in {
-	assert(input.length == T.sizeof, "Mismatch between input buffer size and expected value size");
-} body {
-	union Result {
-		ubyte[T.sizeof] raw;
-		T val;
-	}
-	Result result;
-	result.raw = input;
-	return result.val;
-}
-
-private ubyte[T.sizeof] asBytes(T)(T input) if (isMutable!T) {
-	union Result {
-		ubyte[T.sizeof] raw;
-		T val;
-	}
-	Result result;
-	result.val = input;
-	return result.raw;
-}

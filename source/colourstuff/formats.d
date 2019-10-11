@@ -200,26 +200,35 @@ auto convert(To, From)(From from) if (isColourFormat!From && isColourFormat!To) 
 	assert(RGB888(0, 0, 0).convert!BGR555 == BGR555(0, 0, 0));
 }
 
-RGB888 fromHex(const string colour) @safe pure {
-	RGB888 output;
+Format fromHex(Format = RGB888)(const string colour) @safe pure if (isColourFormat!Format) {
+	Format output;
 	string tmpStr = colour[];
 	if (tmpStr.front == '#') {
 		tmpStr.popFront();
 	}
-	if (tmpStr.length == 3) {
+	enum alphaAdjustment = hasAlpha!Format ? 1 : 0;
+	if (tmpStr.length == 3 + alphaAdjustment) {
 		auto tmp = tmpStr[0].repeat(2);
 		output.red = tmp.parse!ubyte(16);
 		tmp = tmpStr[1].repeat(2);
 		output.green = tmp.parse!ubyte(16);
 		tmp = tmpStr[2].repeat(2);
 		output.blue = tmp.parse!ubyte(16);
-	} else if (tmpStr.length == 6) {
+		static if (hasAlpha!Format) {
+			tmp = tmpStr[3].repeat(2);
+			output.alpha = tmp.parse!ubyte(16);
+		}
+	} else if (tmpStr.length == (3 + alphaAdjustment) * 2) {
 		auto tmp = tmpStr[0..2];
 		output.red = tmp.parse!ubyte(16);
 		tmp = tmpStr[2..4];
 		output.green = tmp.parse!ubyte(16);
 		tmp = tmpStr[4..6];
 		output.blue = tmp.parse!ubyte(16);
+		static if (hasAlpha!Format) {
+			tmp = tmpStr[6..8];
+			output.alpha = tmp.parse!ubyte(16);
+		}
 	}
 	return output;
 }
@@ -231,4 +240,6 @@ RGB888 fromHex(const string colour) @safe pure {
 	assert("#FFF".fromHex == RGB888(255, 255, 255));
 	assert("#888".fromHex == RGB888(0x88, 0x88, 0x88));
 	assert("888".fromHex == RGB888(0x88, 0x88, 0x88));
+	assert("#FFFFFFFF".fromHex!RGBA8888 == RGBA8888(255, 255, 255, 255));
+	assert("#FFFF".fromHex!RGBA8888 == RGBA8888(255, 255, 255, 255));
 }

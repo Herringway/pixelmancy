@@ -32,3 +32,25 @@ real contrast(Colour1, Colour2)(const Colour1 colour1, const Colour2 colour2) if
 	assert(contrast(RGB888(255, 255, 255), RGB888(0, 0, 0)).approxEqual(21.0));
 	assert(contrast(RGB888(255, 255, 255), RGB888(250, 112, 20)).approxEqual(2.8407));
 }
+
+auto complementary(Colour)(const Colour colour) if (isColourFormat!Colour) {
+	Colour result;
+	static if (hasRed!Colour) {
+		result.red = colour.red^maxRed!Colour;
+	}
+	static if (hasGreen!Colour) {
+		result.green = colour.green^maxGreen!Colour;
+	}
+	static if (hasBlue!Colour) {
+		result.blue = colour.blue^maxBlue!Colour;
+	}
+	return result;
+}
+///
+@safe pure unittest {
+	import magicalrainbows.formats : RGB888;
+	assert(RGB888(0, 0, 0).complementary == RGB888(255, 255, 255));
+	assert(RGB888(255, 255, 255).complementary == RGB888(0, 0, 0));
+	assert(RGB888(0, 255, 255).complementary == RGB888(255, 0, 0));
+	assert(RGB888(0, 128, 0).complementary == RGB888(255, 127, 255));
+}

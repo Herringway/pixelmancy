@@ -140,9 +140,34 @@ auto toHSV(Format)(Format input) if (isColourFormat!Format) {
 		assert(value == 0);
 	}
 	with(RGB888(0, 128, 192).toHSV) {
-		assert(approxEqual(hue, 0.5555555));
-		assert(approxEqual(saturation, 1.0));
-		assert(approxEqual(value, 0.752941));
+		assert(hue.approxEqual(0.5555555));
+		assert(saturation.approxEqual(1.0));
+		assert(value.approxEqual(0.752941));
+	}
+	with(RGB888(255, 255, 0).toHSV) {
+		assert(hue.approxEqual(0.166667));
+		assert(saturation.approxEqual(1.0));
+		assert(value.approxEqual(1.0));
+	}
+	with(RGB888(255, 0, 0).toHSV) {
+		assert(hue.approxEqual(0.0));
+		assert(saturation.approxEqual(1.0));
+		assert(value.approxEqual(1.0));
+	}
+	with(RGB888(255, 0, 255).toHSV) {
+		assert(hue.approxEqual(0.833333));
+		assert(saturation.approxEqual(1.0));
+		assert(value.approxEqual(1.0));
+	}
+	with(RGB888(0, 255, 0).toHSV) {
+		assert(hue.approxEqual(0.333333));
+		assert(saturation.approxEqual(1.0));
+		assert(value.approxEqual(1.0));
+	}
+	with(RGB888(0, 0, 255).toHSV) {
+		assert(hue.approxEqual(0.666667));
+		assert(saturation.approxEqual(1.0));
+		assert(value.approxEqual(1.0));
 	}
 }
 
@@ -195,6 +220,41 @@ auto toRGB(Format = RGB888)(HSV input) if (isColourFormat!Format) {
 		assert(red == 0);
 		assert(green == 128);
 		assert(blue == 191);
+	}
+	with(HSV(0.166666667, 1.0, 1.0).toRGB!RGB888) {
+		assert(red == 254);
+		assert(green == 255);
+		assert(blue == 0);
+	}
+	with(HSV(0.0, 1.0, 1.0).toRGB!RGB888) {
+		assert(red == 255);
+		assert(green == 0);
+		assert(blue == 0);
+	}
+	with(HSV(0.83333333, 1.0, 1.0).toRGB!RGB888) {
+		assert(red == 254);
+		assert(green == 0);
+		assert(blue == 255);
+	}
+	with(HSV(0.33333333, 1.0, 1.0).toRGB!RGB888) {
+		assert(red == 0);
+		assert(green == 255);
+		assert(blue == 0);
+	}
+	with(HSV(0.66666667, 1.0, 1.0).toRGB!RGB888) {
+		assert(red == 0);
+		assert(green == 0);
+		assert(blue == 255);
+	}
+	with(HSV(0.41666667, 1.0, 1.0).toRGB!RGB888) {
+		assert(red == 0);
+		assert(green == 255);
+		assert(blue == 127);
+	}
+	with(HSV(0.91666667, 1.0, 1.0).toRGB!RGB888) {
+		assert(red == 255);
+		assert(green == 0);
+		assert(blue == 127);
 	}
 }
 

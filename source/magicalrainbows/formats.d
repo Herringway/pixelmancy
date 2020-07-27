@@ -22,7 +22,7 @@ struct BGR555 { //XBBBBBGG GGGRRRRR
 }
 
 @safe pure unittest {
-	with(BGR555(1.0, 0.5, 0.0)) {
+	with(BGR555(AnalogRGB(1.0, 0.5, 0.0))) {
 		assert(red == 31);
 		assert(green == 15);
 		assert(blue == 0);
@@ -39,6 +39,34 @@ struct BGR565 { //BBBBBGGG GGGRRRRR
 		uint, "red", redSize,
 		uint, "green", greenSize,
 		uint, "blue", blueSize));
+}
+
+struct BGR222 { //00BBGGRR
+	enum redSize = 2;
+	enum greenSize = 2;
+	enum blueSize = 2;
+	enum alphaSize = 0;
+	mixin colourConstructors;
+	mixin(bitfields!(
+		uint, "red", redSize,
+		uint, "green", greenSize,
+		uint, "blue", blueSize,
+		ubyte, "padding", 2));
+}
+struct BGR333MD { //0000BBB0 GGG0RRR0
+	enum redSize = 3;
+	enum greenSize = 3;
+	enum blueSize = 3;
+	enum alphaSize = 0;
+	mixin colourConstructors;
+	mixin(bitfields!(
+		ubyte, "padding0", 1,
+		uint, "red", redSize,
+		ubyte, "padding1", 1,
+		uint, "green", greenSize,
+		ubyte, "padding2", 1,
+		uint, "blue", blueSize,
+		ubyte, "padding3", 4));
 }
 
 struct RGB888 { //RRRRRRRR GGGGGGGG BBBBBBBB
@@ -64,7 +92,7 @@ struct RGBA8888 { //RRRRRRRR GGGGGGGG BBBBBBBB AAAAAAAA
 	ubyte alpha;
 }
 @safe pure unittest {
-	with(RGBA8888(1.0, 0.5, 0.0, 0.0)) {
+	with(RGBA8888(AnalogRGBA(1.0, 0.5, 0.0, 0.0))) {
 		assert(red == 255);
 		assert(green == 127);
 		assert(blue == 0);
@@ -78,12 +106,24 @@ struct RGBA8888 { //RRRRRRRR GGGGGGGG BBBBBBBB AAAAAAAA
 	}
 }
 
+struct AnalogRGB {
+	real red;
+	real green;
+	real blue;
+}
+
+struct AnalogRGBA {
+	real red;
+	real green;
+	real blue;
+	real alpha;
+}
 
 struct HSV {
     real hue;
     real saturation;
     real value;
-    invariant() {
+    @safe invariant {
     	assert(hue >= 0);
     	assert(saturation >= 0);
     	assert(value >= 0);
@@ -171,9 +211,9 @@ auto toHSV(Format)(Format input) if (isColourFormat!Format) {
 	}
 }
 
-auto toRGB(Format = RGB888)(HSV input) if (isColourFormat!Format) {
+auto toRGB(Format = RGB888)(HSV input) @safe if (isColourFormat!Format) {
     if(input.saturation <= 0.0) {
-        return Format(input.value, input.value, input.value);
+        return Format(AnalogRGB(input.value, input.value, input.value));
     }
     real hh = input.hue * 6.0;
     if(hh > 6.0) {
@@ -188,21 +228,29 @@ auto toRGB(Format = RGB888)(HSV input) if (isColourFormat!Format) {
     assert(p <= 1.0);
     assert(q <= 1.0);
     assert(t <= 1.0);
+    AnalogRGB rgb;
     switch(i) {
 		case 0:
-			return Format(input.value, t, p);
+			rgb = AnalogRGB(input.value, t, p);
+			break;
 		case 1:
-			return Format(q, input.value, p);
+			rgb = AnalogRGB(q, input.value, p);
+			break;
 		case 2:
-			return Format(p, input.value, t);
+			rgb = AnalogRGB(p, input.value, t);
+			break;
 		case 3:
-			return Format(p, q, input.value);
+			rgb = AnalogRGB(p, q, input.value);
+			break;
 		case 4:
-			return Format(t, p, input.value);
+			rgb = AnalogRGB(t, p, input.value);
+			break;
 		case 5:
 		default:
-			return Format(input.value, p, q);
+			rgb = AnalogRGB(input.value, p, q);
+			break;
     }
+    return Format(rgb);
 }
 ///
 @safe unittest {
@@ -317,6 +365,8 @@ auto convert(To, From)(From from) if (isColourFormat!From && isColourFormat!To) 
 		}
 		static if (hasAlpha!From && hasAlpha!To) {
 			output.alpha = colourConvert!(typeof(output.alpha), To.alphaSize, From.alphaSize)(from.alpha);
+		} else static if (hasAlpha!To) {
+			output.alpha = output.alpha.max;
 		}
 		return output;
 	}
@@ -371,4 +421,139 @@ Format fromHex(Format = RGB888)(const string colour) @safe pure if (isColourForm
 	assert("888".fromHex == RGB888(0x88, 0x88, 0x88));
 	assert("#FFFFFFFF".fromHex!RGBA8888 == RGBA8888(255, 255, 255, 255));
 	assert("#FFFF".fromHex!RGBA8888 == RGBA8888(255, 255, 255, 255));
+}
+
+//TODO: can we express these with fractions instead?
+
+//Assumptions:
+// R,G,B,Y [0, 255]
+// Pb,Pr [-127.5, 127.5]
+enum YPbPrSDTVToRGBMatrix = [
+	[1.0, 0.0, 1.402],
+	[1.0, -0.344, -0.714],
+	[1.0, 1.772, 0.0],
+];
+//Assumptions:
+// R,G,B,Y [0, 255]
+// Pb,Pr [-127.5, 127.5]
+enum YPbPrHDTVToRGBMatrix = [
+	[1.0, 0.0, 1.575],
+	[1.0, -0.187, -0.468],
+	[1.0, 1.856, 0.0],
+];
+
+//Assumptions:
+// R,G,B,Y [0, 255]
+// Pb,Pr [-127.5, 127.5]
+enum RGBToYPbPrSDTVMatrix = [
+	[0.299, 0.587, 0.114],
+	[-0.169, -0.331, 0.5],
+	[0.5, -0.419, -0.081],
+];
+
+//Assumptions:
+// R,G,B,Y [0, 255]
+// Pb,Pr [-127.5, 127.5]
+enum RGBToYPbPrHDTVMatrix = [
+	[0.213, 0.715, 0.072],
+	[-0.115, -0.385, 0.5],
+	[0.5, -0.454, -0.046],
+];
+
+struct YPbPr {
+	double Y;
+	double Pb;
+	double Pr;
+}
+
+//Assumptions:
+// R,G,B,Y [0, 1]
+// U [-0.436, 0.436]
+// V [-0.615, 0.615]
+enum RGBToYUVMatrix = [
+	[0.299, 0.587, 0.114],
+	[-0.147, -0.289, 0.436],
+	[0.615, -0.515, -0.100]
+];
+
+//Assumptions:
+// R,G,B,Y [0, 1]
+// U [-0.436, 0.436]
+// V [-0.615, 0.615]
+enum YUVToRGBMatrix = [
+	[1.0, 0.0, 1.140],
+	[1.0, -0.395, -0.581],
+	[1.0, 2.032, 0.0],
+];
+
+struct YUV {
+	double Y;
+	double Cb;
+	double Cr;
+}
+
+enum YCbCrSDTVVector = [[16], [128], [128]];
+alias YCbCrHDTVVector = YCbCrSDTVVector;
+enum YCbCrFullRangeVector = [[0], [128], [128]];
+
+//Assumptions:
+// R,G,B [0, 255]
+// Y [16, 235]
+// Cb,Cr [16, 240]
+enum YCbCrSDTVToRGBMatrix = [
+	[1.164, 0.0, 1.596],
+	[1.164, -0.392, -0.813],
+	[1.164, 2.017, 0.0],
+];
+
+//Assumptions:
+// R,G,B [0, 255]
+// Y [16, 235]
+// Cb,Cr [16, 240]
+enum YCbCrHDTVToRGBMatrix = [
+	[1.164, 0.0, 1.793],
+	[1.164, -0.213, -0.533],
+	[1.164, 2.112, 0.0],
+];
+
+//Assumptions:
+// R,G,B,Y,Cb,Cr [0, 255]
+enum YCbCrFullRangeToRGBMatrix = [
+	[1.0, 0.0, 1.4],
+	[1.0, -0.343, -0.711],
+	[1.0, 1.765, 0.0],
+];
+
+//Assumptions:
+// R,G,B [0, 255]
+// Y [16, 235]
+// Cb,Cr [16, 240]
+enum RGBToYCbCrSDTVMatrix = [
+	[0.257, 0.504, 0.098],
+	[-0.148, -0.291, 0.439],
+	[0.439, -0.368, -0.071],
+];
+
+//Assumptions:
+// R,G,B [0, 255]
+// Y [16, 235]
+// Cb,Cr [16, 240]
+enum RGBToYCbCrHDTVMatrix = [
+	[0.183, 0.614, 0.062],
+	[-0.101, -0.339, 0.439],
+	[0.439, -0.399, -0.040],
+];
+
+//Assumptions:
+// R,G,B,Y,Cb,Cr [0, 255]
+enum RGBToYCbCrFullRangeMatrix = [
+	[0.299, 0.587, 0.114],
+	[-0.169, -0.331, 0.500],
+	[0.500, -0.419, -0.081],
+];
+
+struct YCbCr {
+	double Y;
+	double Cb;
+	double Cr;
 }

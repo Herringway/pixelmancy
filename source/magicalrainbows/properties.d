@@ -3,9 +3,10 @@ module magicalrainbows.properties;
 import magicalrainbows.utils;
 
 real relativeLuminosity(Colour)(const Colour colour) if(isColourFormat!Colour) {
-	return 0.2126 * colour.redFP.toLinearRGB +
-		0.7152 * colour.greenFP.toLinearRGB +
-		0.0722 * colour.blueFP.toLinearRGB;
+	const linear = colour.asLinearRGB;
+	return 0.2126 * linear.red +
+		0.7152 * linear.green +
+		0.0722 * linear.blue;
 }
 ///
 @safe pure unittest {

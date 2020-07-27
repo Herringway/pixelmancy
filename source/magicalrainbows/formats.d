@@ -382,6 +382,9 @@ auto convert(To, From)(From from) if (isColourFormat!From && isColourFormat!To) 
 Format fromHex(Format = RGB888)(const string colour) @safe pure if (isColourFormat!Format) {
 	Format output;
 	string tmpStr = colour[];
+	if (colour.empty) {
+		throw new Exception("Cannot parse an empty string");
+	}
 	if (tmpStr.front == '#') {
 		tmpStr.popFront();
 	}

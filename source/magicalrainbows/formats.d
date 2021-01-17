@@ -20,6 +20,7 @@ struct BGR555 { //XBBBBBGG GGGRRRRR
 		uint, "blue", blueSize,
 		bool, "padding", 1));
 }
+static assert(BGR555.sizeof == 2);
 
 @safe pure unittest {
 	with(BGR555(AnalogRGBD(1.0, 0.5, 0.0))) {
@@ -41,6 +42,7 @@ struct RGB555 { //XRRRRRGG GGGBBBBB
 		uint, "red", redSize,
 		bool, "padding", 1));
 }
+static assert(RGB555.sizeof == 2);
 
 struct BGR565 { //BBBBBGGG GGGRRRRR
 	enum redSize = 5;
@@ -53,6 +55,7 @@ struct BGR565 { //BBBBBGGG GGGRRRRR
 		uint, "green", greenSize,
 		uint, "blue", blueSize));
 }
+static assert(BGR565.sizeof == 2);
 
 struct BGR222 { //00BBGGRR
 	enum redSize = 2;
@@ -66,6 +69,7 @@ struct BGR222 { //00BBGGRR
 		uint, "blue", blueSize,
 		ubyte, "padding", 2));
 }
+static assert(BGR222.sizeof == 1);
 struct BGR333MD { //0000BBB0 GGG0RRR0
 	enum redSize = 3;
 	enum greenSize = 3;
@@ -81,6 +85,7 @@ struct BGR333MD { //0000BBB0 GGG0RRR0
 		uint, "blue", blueSize,
 		ubyte, "padding3", 4));
 }
+static assert(BGR333MD.sizeof == 2);
 
 struct RGB888 { //RRRRRRRR GGGGGGGG BBBBBBBB
 	enum redSize = 8;
@@ -92,6 +97,7 @@ struct RGB888 { //RRRRRRRR GGGGGGGG BBBBBBBB
 	ubyte green;
 	ubyte blue;
 }
+static assert(RGB888.sizeof == 3);
 
 struct BGR888 { //BBBBBBBB GGGGGGGG RRRRRRRR
 	enum redSize = 8;
@@ -103,6 +109,7 @@ struct BGR888 { //BBBBBBBB GGGGGGGG RRRRRRRR
 	ubyte green;
 	ubyte red;
 }
+static assert(BGR888.sizeof == 3);
 
 struct RGBA8888 { //RRRRRRRR GGGGGGGG BBBBBBBB AAAAAAAA
 	enum redSize = 8;
@@ -115,6 +122,7 @@ struct RGBA8888 { //RRRRRRRR GGGGGGGG BBBBBBBB AAAAAAAA
 	ubyte blue;
 	ubyte alpha;
 }
+static assert(RGBA8888.sizeof == 4);
 @safe pure unittest {
 	with(RGBA8888(AnalogRGBAD(1.0, 0.5, 0.0, 0.0))) {
 		assert(red == 255);
@@ -129,18 +137,19 @@ struct RGBA8888 { //RRRRRRRR GGGGGGGG BBBBBBBB AAAAAAAA
 		assert(alpha == 0);
 	}
 }
-align(1) struct BGRA8888 { // BBBBBBBB GGGGGGGG RRRRRRRR AAAAAAAA
+struct BGRA8888 { // BBBBBBBB GGGGGGGG RRRRRRRR AAAAAAAA
 	enum redSize = 8;
 	enum greenSize = 8;
 	enum blueSize = 8;
 	enum alphaSize = 8;
 	mixin colourConstructors;
-	align(1):
 	ubyte blue;
 	ubyte green;
 	ubyte red;
 	ubyte alpha;
 }
+
+static assert(BGRA8888.sizeof == 4);
 
 alias AnalogRGBF = AnalogRGB!float;
 alias AnalogRGBD = AnalogRGB!double;

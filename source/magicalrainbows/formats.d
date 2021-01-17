@@ -188,10 +188,10 @@ struct HSV(Precision) {
     }
 }
 
-auto toHSV(Format, Precision = double)(Format input) if (isColourFormat!Format) {
+HSV!Precision toHSV(Format, Precision = double)(Format input) if (isColourFormat!Format) {
 	import std.algorithm.comparison : max, min;
 	import std.math : approxEqual;
-    HSV!double result;
+    HSV!Precision result;
     const red = input.redFP;
     const green = input.greenFP;
     const blue = input.blueFP;
@@ -266,7 +266,7 @@ auto toHSV(Format, Precision = double)(Format input) if (isColourFormat!Format) 
 	}
 }
 
-auto toRGB(Format = RGB888, Precision = double)(HSV!Precision input) @safe if (isColourFormat!Format) {
+Format toRGB(Format = RGB888, Precision = double)(HSV!Precision input) @safe if (isColourFormat!Format) {
     if(input.saturation <= 0.0) {
         return Format(AnalogRGB!Precision(input.value, input.value, input.value));
     }
@@ -274,7 +274,7 @@ auto toRGB(Format = RGB888, Precision = double)(HSV!Precision input) @safe if (i
     if(hh > 6.0) {
 		hh	 = 0.0;
     }
-    auto i = cast(long)hh;
+    long i = cast(long)hh;
     Precision ff = hh - i;
     Precision p = input.value * (1.0 - input.saturation);
     Precision q = input.value * (1.0 - (input.saturation * ff));
@@ -361,12 +361,12 @@ auto toRGB(Format = RGB888, Precision = double)(HSV!Precision input) @safe if (i
 	}
 }
 
-struct ColourPair(FG, BG) if (isColourFormat!FG && isColourFormat!BG) {
-	FG foreground;
-	BG background;
-	auto contrast() const @safe pure {
+struct ColourPair(Foreground, Background) if (isColourFormat!Foreground && isColourFormat!Background) {
+	Foreground foreground;
+	Background background;
+	Precision contrast(Precision = double)() const @safe pure {
 		import magicalrainbows.properties : contrast;
-		return contrast(foreground, background);
+		return contrast!Precision(foreground, background);
 	}
 	bool meetsWCAGAACriteria() const @safe pure {
 		return contrast >= 4.5;
@@ -376,8 +376,8 @@ struct ColourPair(FG, BG) if (isColourFormat!FG && isColourFormat!BG) {
 	}
 }
 
-auto colourPair(FG, BG)(FG foreground, BG background) if (isColourFormat!FG && isColourFormat!BG) {
-	return ColourPair!(FG, BG)(foreground, background);
+ColourPair!(Foreground, Background) colourPair(Foreground, Background)(Foreground foreground, Background background) if (isColourFormat!Foreground && isColourFormat!Background) {
+	return ColourPair!(Foreground, Background)(foreground, background);
 }
 ///
 @safe pure unittest {
@@ -404,23 +404,23 @@ auto colourPair(FG, BG)(FG foreground, BG background) if (isColourFormat!FG && i
 	}
 }
 
-auto convert(To, From)(From from) if (isColourFormat!From && isColourFormat!To) {
-	static if (is(To == From)) {
+Target convert(Target, Source)(Source from) if (isColourFormat!Source && isColourFormat!Target) {
+	static if (is(Target == Source)) {
 		return from;
 	} else {
-		To output;
-		static if (hasRed!From && hasRed!To) {
-			output.red = colourConvert!(typeof(output.red), To.redSize, From.redSize)(from.red);
+		Target output;
+		static if (hasRed!Source && hasRed!Target) {
+			output.red = colourConvert!(typeof(output.red), Target.redSize, Source.redSize)(from.red);
 		}
-		static if (hasGreen!From && hasGreen!To) {
-			output.green = colourConvert!(typeof(output.green), To.greenSize, From.greenSize)(from.green);
+		static if (hasGreen!Source && hasGreen!Target) {
+			output.green = colourConvert!(typeof(output.green), Target.greenSize, Source.greenSize)(from.green);
 		}
-		static if (hasBlue!From && hasBlue!To) {
-			output.blue = colourConvert!(typeof(output.blue), To.blueSize, From.blueSize)(from.blue);
+		static if (hasBlue!Source && hasBlue!Target) {
+			output.blue = colourConvert!(typeof(output.blue), Target.blueSize, Source.blueSize)(from.blue);
 		}
-		static if (hasAlpha!From && hasAlpha!To) {
-			output.alpha = colourConvert!(typeof(output.alpha), To.alphaSize, From.alphaSize)(from.alpha);
-		} else static if (hasAlpha!To) {
+		static if (hasAlpha!Source && hasAlpha!Target) {
+			output.alpha = colourConvert!(typeof(output.alpha), Target.alphaSize, Source.alphaSize)(from.alpha);
+		} else static if (hasAlpha!Target) {
 			output.alpha = output.alpha.max;
 		}
 		return output;

@@ -34,7 +34,7 @@ Precision contrast(Precision = double, Colour1, Colour2)(const Colour1 colour1, 
 	assert(contrast(RGB888(255, 255, 255), RGB888(250, 112, 20)).approxEqual(2.8407));
 }
 
-auto complementary(Colour)(const Colour colour) if (isColourFormat!Colour) {
+Colour complementary(Colour)(const Colour colour) if (isColourFormat!Colour) {
 	Colour result;
 	static if (hasRed!Colour) {
 		result.red = colour.red^maxRed!Colour;

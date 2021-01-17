@@ -15,7 +15,7 @@ enum SupportedFormat { bgr555, bgr565, rgb888, rgba8888, bgr222, bgr333md }
 +		  ColourFormat = colour format to convert to
 + Returns: a colour in the specified format
 +/
-auto bytesToColor(ColourFormat = RGB888)(const ubyte[] data, SupportedFormat format) if (isColourFormat!ColourFormat) {
+ColourFormat bytesToColor(ColourFormat = RGB888)(const ubyte[] data, SupportedFormat format) if (isColourFormat!ColourFormat) {
 	static ColourFormat getColour(T)(const ubyte[] data) {
 		assert(data.length == T.sizeof, "Data length does not match colour size");
 		return data.to!(ubyte[T.sizeof]).read!T().convert!ColourFormat();
@@ -41,7 +41,7 @@ auto bytesToColor(ColourFormat = RGB888)(const ubyte[] data, SupportedFormat for
 	assert(bytesToColor([0xA9, 0xFF], SupportedFormat.bgr565) == RGB888(72, 244, 248));
 	assert(bytesToColor([72, 244, 248], SupportedFormat.rgb888) == RGB888(72, 244, 248));
 }
-auto bytesToColors(ColourFormat = RGB888)(const ubyte[] data, SupportedFormat format) if (isColourFormat!ColourFormat) {
+ColourFormat[] bytesToColors(ColourFormat = RGB888)(const ubyte[] data, SupportedFormat format) if (isColourFormat!ColourFormat) {
 	import std.algorithm.iteration : map;
 	import std.array: array;
 	import std.range : chunks;

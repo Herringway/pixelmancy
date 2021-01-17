@@ -68,7 +68,17 @@ Precision alphaFP(Precision = double, Colour)(const Colour colour) if (hasAlpha!
 	assert(RGB888(128, 0, 255).blueFP() == 1.0);
 }
 
-auto asLinearRGB(Precision = double, Format)(const Format colour) {
+template LinearFormatOf(ColourFormat, Precision) {
+	static if (hasAlpha!ColourFormat) {
+		import magicalrainbows.formats : AnalogRGBA;
+		alias LinearFormatOf = AnalogRGBA!Precision;
+	} else {
+		import magicalrainbows.formats : AnalogRGB;
+		alias LinearFormatOf = AnalogRGB!Precision;
+	}
+}
+
+LinearFormatOf!(Format, Precision) asLinearRGB(Precision = double, Format)(const Format colour) {
 	static if (isDigital!Format) {
 		const red = colour.redFP!Precision.toLinearRGB;
 		const green = colour.greenFP!Precision.toLinearRGB;
@@ -85,11 +95,9 @@ auto asLinearRGB(Precision = double, Format)(const Format colour) {
 		}
 	}
 	static if (hasAlpha!Format) {
-		import magicalrainbows.formats : AnalogRGBA;
-		return AnalogRGBA!Precision(red, green, blue, alpha);
+		return LinearFormatOf!(Format, Precision)(red, green, blue, alpha);
 	} else {
-		import magicalrainbows.formats : AnalogRGB;
-		return AnalogRGB!Precision(red, green, blue);
+		return LinearFormatOf!(Format, Precision)(red, green, blue);
 	}
 }
 
@@ -135,7 +143,7 @@ mixin template colourConstructors() {
 		this.green = cast(typeof(this.green))(analog.green * maxGreen!(typeof(this)));
 		this.blue = cast(typeof(this.blue))(analog.blue * maxBlue!(typeof(this)));
 	}
-	auto opCast(T: AnalogRGB!Precision, Precision)() const {
+	T opCast(T: AnalogRGB!Precision, Precision)() const {
 		return AnalogRGB(this.redFP, this.greenFP, this.blueFP);
 	}
 	static if (hasAlpha!(typeof(this))) {
@@ -165,12 +173,12 @@ mixin template colourConstructors() {
 			this.blue = cast(typeof(this.blue))(analog.blue * maxBlue!(typeof(this)));
 			this.alpha = cast(typeof(this.alpha))(analog.alpha * maxAlpha!(typeof(this)));
 		}
-		auto opCast(T: AnalogRGBA!Precision, Precision)() const {
+		T opCast(T: AnalogRGBA!Precision, Precision)() const {
 			return AnalogRGBA(this.redFP, this.greenFP, this.blueFP, this.alphaFP);
 		}
 	} else {
 		// Missing alpha channel is the equivalent of 100% opacity
-		auto opCast(T: AnalogRGBA!Precision, Precision)() const {
+		T opCast(T: AnalogRGBA!Precision, Precision)() const {
 			return AnalogRGBA(this.redFP, this.greenFP, this.blueFP, 1.0);
 		}
 	}

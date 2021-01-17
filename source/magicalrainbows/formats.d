@@ -105,6 +105,18 @@ struct RGBA8888 { //RRRRRRRR GGGGGGGG BBBBBBBB AAAAAAAA
 		assert(alpha == 0);
 	}
 }
+align(1) struct BGRA8888 { // BBBBBBBB GGGGGGGG RRRRRRRR AAAAAAAA
+	enum redSize = 8;
+	enum greenSize = 8;
+	enum blueSize = 8;
+	enum alphaSize = 8;
+	mixin colourConstructors;
+	align(1):
+	ubyte blue;
+	ubyte green;
+	ubyte red;
+	ubyte alpha;
+}
 
 struct AnalogRGB {
 	real red;

@@ -2,8 +2,8 @@ module magicalrainbows.properties;
 
 import magicalrainbows.utils;
 
-real relativeLuminosity(Colour)(const Colour colour) if(isColourFormat!Colour) {
-	const linear = colour.asLinearRGB;
+Precision relativeLuminosity(Precision = double, Colour)(const Colour colour) if(isColourFormat!Colour) {
+	const linear = colour.asLinearRGB!Precision;
 	return 0.2126 * linear.red +
 		0.7152 * linear.green +
 		0.0722 * linear.blue;
@@ -18,10 +18,10 @@ real relativeLuminosity(Colour)(const Colour colour) if(isColourFormat!Colour) {
 	assert(BGR555(0, 16, 31).relativeLuminosity.approxEqual(0.23618));
 }
 
-real contrast(Colour1, Colour2)(const Colour1 colour1, const Colour2 colour2) if (isColourFormat!Colour1 && isColourFormat!Colour2) {
+Precision contrast(Precision = double, Colour1, Colour2)(const Colour1 colour1, const Colour2 colour2) if (isColourFormat!Colour1 && isColourFormat!Colour2) {
 	import std.algorithm.comparison : max, min;
-	const L1 = colour1.relativeLuminosity;
-	const L2 = colour2.relativeLuminosity;
+	const L1 = colour1.relativeLuminosity!Precision;
+	const L2 = colour2.relativeLuminosity!Precision;
 	return (max(L1, L2) + 0.05) / (min(L1, L2) + 0.05);
 }
 ///

@@ -40,19 +40,19 @@ enum maxAlpha(T) = maxValue!(T.alphaSize);
 
 enum isDigital(T) = hasRed!T && hasGreen!T && hasBlue!T;
 
-real redFP(Colour)(const Colour colour) if (hasRed!Colour) {
-	return (cast(real)colour.red / maxRed!Colour);
+Precision redFP(Precision = double, Colour)(const Colour colour) if (hasRed!Colour) {
+	return (cast(Precision)colour.red / maxRed!Colour);
 }
 
-real greenFP(Colour)(const Colour colour) if (hasGreen!Colour) {
-	return (cast(real)colour.green / maxGreen!Colour);
+Precision greenFP(Precision = double, Colour)(const Colour colour) if (hasGreen!Colour) {
+	return (cast(Precision)colour.green / maxGreen!Colour);
 }
 
-real blueFP(Colour)(const Colour colour) if (hasBlue!Colour) {
-	return (cast(real)colour.blue / maxBlue!Colour);
+Precision blueFP(Precision = double, Colour)(const Colour colour) if (hasBlue!Colour) {
+	return (cast(Precision)colour.blue / maxBlue!Colour);
 }
-real alphaFP(Colour)(const Colour colour) if (hasAlpha!Colour) {
-	return (cast(real)colour.alpha / maxAlpha!Colour);
+Precision alphaFP(Precision = double, Colour)(const Colour colour) if (hasAlpha!Colour) {
+	return (cast(Precision)colour.alpha / maxAlpha!Colour);
 }
 @safe pure unittest {
 	import magicalrainbows.formats : RGB888;
@@ -68,13 +68,13 @@ real alphaFP(Colour)(const Colour colour) if (hasAlpha!Colour) {
 	assert(RGB888(128, 0, 255).blueFP() == 1.0);
 }
 
-auto asLinearRGB(Format, Precision = double)(const Format colour) {
+auto asLinearRGB(Precision = double, Format)(const Format colour) {
 	static if (isDigital!Format) {
-		const red = colour.redFP.toLinearRGB;
-		const green = colour.greenFP.toLinearRGB;
-		const blue = colour.blueFP.toLinearRGB;
+		const red = colour.redFP!Precision.toLinearRGB;
+		const green = colour.greenFP!Precision.toLinearRGB;
+		const blue = colour.blueFP!Precision.toLinearRGB;
 		static if (hasAlpha!Format) {
-			const alpha = colour.alphaFP.toLinearRGB;
+			const alpha = colour.alphaFP!Precision.toLinearRGB;
 		}
 	} else {
 		const red = colour.red.toLinearRGB;
@@ -93,13 +93,13 @@ auto asLinearRGB(Format, Precision = double)(const Format colour) {
 	}
 }
 
-private real toLinearRGB(const real input) @safe pure @nogc nothrow {
+private Precision toLinearRGB(Precision)(const Precision input) @safe pure @nogc nothrow {
 	return input > 0.03928 ?
 		((input + 0.055) / 1.055) ^^ 2.4 :
 		input / 12.92 ;
 }
 
-private real gammaCorrect(const real input, const real factor = 2.2) @safe pure @nogc nothrow {
+private Precision gammaCorrect(Precision)(const Precision input, const Precision factor = 2.2) @safe pure @nogc nothrow {
 	return input ^^ (1.0 / factor);
 }
 

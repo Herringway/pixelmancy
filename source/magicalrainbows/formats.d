@@ -22,7 +22,7 @@ struct BGR555 { //XBBBBBGG GGGRRRRR
 }
 
 @safe pure unittest {
-	with(BGR555(AnalogRGB(1.0, 0.5, 0.0))) {
+	with(BGR555(AnalogRGBD(1.0, 0.5, 0.0))) {
 		assert(red == 31);
 		assert(green == 15);
 		assert(blue == 0);
@@ -116,7 +116,7 @@ struct RGBA8888 { //RRRRRRRR GGGGGGGG BBBBBBBB AAAAAAAA
 	ubyte alpha;
 }
 @safe pure unittest {
-	with(RGBA8888(AnalogRGBA(1.0, 0.5, 0.0, 0.0))) {
+	with(RGBA8888(AnalogRGBAD(1.0, 0.5, 0.0, 0.0))) {
 		assert(red == 255);
 		assert(green == 127);
 		assert(blue == 0);
@@ -142,23 +142,33 @@ align(1) struct BGRA8888 { // BBBBBBBB GGGGGGGG RRRRRRRR AAAAAAAA
 	ubyte alpha;
 }
 
-struct AnalogRGB {
-	real red;
-	real green;
-	real blue;
+alias AnalogRGBF = AnalogRGB!float;
+alias AnalogRGBD = AnalogRGB!double;
+alias AnalogRGBR = AnalogRGB!real;
+
+struct AnalogRGB(Precision) {
+	Precision red;
+	Precision green;
+	Precision blue;
 }
 
-struct AnalogRGBA {
-	real red;
-	real green;
-	real blue;
-	real alpha;
+alias AnalogRGBAF = AnalogRGBA!float;
+alias AnalogRGBAD = AnalogRGBA!double;
+alias AnalogRGBAR = AnalogRGBA!real;
+struct AnalogRGBA(Precision) {
+	Precision red;
+	Precision green;
+	Precision blue;
+	Precision alpha;
 }
 
-struct HSV {
-    real hue;
-    real saturation;
-    real value;
+alias HSVF = HSV!float;
+alias HSVD = HSV!double;
+alias HSVR = HSV!real;
+struct HSV(Precision) {
+    Precision hue;
+    Precision saturation;
+    Precision value;
     @safe invariant {
     	assert(hue >= 0);
     	assert(saturation >= 0);
@@ -169,10 +179,10 @@ struct HSV {
     }
 }
 
-auto toHSV(Format)(Format input) if (isColourFormat!Format) {
+auto toHSV(Format, Precision = double)(Format input) if (isColourFormat!Format) {
 	import std.algorithm.comparison : max, min;
 	import std.math : approxEqual;
-    HSV result;
+    HSV!double result;
     const red = input.redFP;
     const green = input.greenFP;
     const blue = input.blueFP;
@@ -247,95 +257,95 @@ auto toHSV(Format)(Format input) if (isColourFormat!Format) {
 	}
 }
 
-auto toRGB(Format = RGB888)(HSV input) @safe if (isColourFormat!Format) {
+auto toRGB(Format = RGB888, Precision = double)(HSV!Precision input) @safe if (isColourFormat!Format) {
     if(input.saturation <= 0.0) {
-        return Format(AnalogRGB(input.value, input.value, input.value));
+        return Format(AnalogRGB!Precision(input.value, input.value, input.value));
     }
-    real hh = input.hue * 6.0;
+    Precision hh = input.hue * 6.0;
     if(hh > 6.0) {
 		hh	 = 0.0;
     }
     auto i = cast(long)hh;
-    real ff = hh - i;
-    real p = input.value * (1.0 - input.saturation);
-    real q = input.value * (1.0 - (input.saturation * ff));
-    real t = input.value * (1.0 - (input.saturation * (1.0 - ff)));
+    Precision ff = hh - i;
+    Precision p = input.value * (1.0 - input.saturation);
+    Precision q = input.value * (1.0 - (input.saturation * ff));
+    Precision t = input.value * (1.0 - (input.saturation * (1.0 - ff)));
 
     assert(p <= 1.0);
     assert(q <= 1.0);
     assert(t <= 1.0);
-    AnalogRGB rgb;
+    AnalogRGB!Precision rgb;
     switch(i) {
 		case 0:
-			rgb = AnalogRGB(input.value, t, p);
+			rgb = AnalogRGB!Precision(input.value, t, p);
 			break;
 		case 1:
-			rgb = AnalogRGB(q, input.value, p);
+			rgb = AnalogRGB!Precision(q, input.value, p);
 			break;
 		case 2:
-			rgb = AnalogRGB(p, input.value, t);
+			rgb = AnalogRGB!Precision(p, input.value, t);
 			break;
 		case 3:
-			rgb = AnalogRGB(p, q, input.value);
+			rgb = AnalogRGB!Precision(p, q, input.value);
 			break;
 		case 4:
-			rgb = AnalogRGB(t, p, input.value);
+			rgb = AnalogRGB!Precision(t, p, input.value);
 			break;
 		case 5:
 		default:
-			rgb = AnalogRGB(input.value, p, q);
+			rgb = AnalogRGB!Precision(input.value, p, q);
 			break;
     }
     return Format(rgb);
 }
 ///
 @safe unittest {
-	with(HSV(0, 0, 0).toRGB!RGB888) {
+	with(HSVD(0, 0, 0).toRGB!RGB888) {
 		assert(red == 0);
 		assert(green == 0);
 		assert(blue == 0);
 	}
-	with(HSV(0, 0, 0.5).toRGB!RGB888) {
+	with(HSVD(0, 0, 0.5).toRGB!RGB888) {
 		assert(red == 127);
 		assert(green == 127);
 		assert(blue == 127);
 	}
-	with(HSV(0.5555555, 1.0, 0.752941).toRGB!RGB888) {
+	with(HSVD(0.5555555, 1.0, 0.752941).toRGB!RGB888) {
 		assert(red == 0);
 		assert(green == 128);
 		assert(blue == 191);
 	}
-	with(HSV(0.166666667, 1.0, 1.0).toRGB!RGB888) {
+	with(HSVD(0.166666667, 1.0, 1.0).toRGB!RGB888) {
 		assert(red == 254);
 		assert(green == 255);
 		assert(blue == 0);
 	}
-	with(HSV(0.0, 1.0, 1.0).toRGB!RGB888) {
+	with(HSVD(0.0, 1.0, 1.0).toRGB!RGB888) {
 		assert(red == 255);
 		assert(green == 0);
 		assert(blue == 0);
 	}
-	with(HSV(0.83333333, 1.0, 1.0).toRGB!RGB888) {
+	with(HSVD(0.83333333, 1.0, 1.0).toRGB!RGB888) {
 		assert(red == 254);
 		assert(green == 0);
 		assert(blue == 255);
 	}
-	with(HSV(0.33333333, 1.0, 1.0).toRGB!RGB888) {
+	with(HSVD(0.33333333, 1.0, 1.0).toRGB!RGB888) {
 		assert(red == 0);
 		assert(green == 255);
 		assert(blue == 0);
 	}
-	with(HSV(0.66666667, 1.0, 1.0).toRGB!RGB888) {
+	with(HSVD(0.66666667, 1.0, 1.0).toRGB!RGB888) {
 		assert(red == 0);
 		assert(green == 0);
 		assert(blue == 255);
 	}
-	with(HSV(0.41666667, 1.0, 1.0).toRGB!RGB888) {
+	with(HSVD(0.41666667, 1.0, 1.0).toRGB!RGB888) {
 		assert(red == 0);
 		assert(green == 255);
 		assert(blue == 127);
 	}
-	with(HSV(0.91666667, 1.0, 1.0).toRGB!RGB888) {
+	with(HSVD(0.91666667, 1.0, 1.0).toRGB!RGB888) {
 		assert(red == 255);
 		assert(green == 0);
 		assert(blue == 127);

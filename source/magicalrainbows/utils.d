@@ -68,7 +68,7 @@ real alphaFP(Colour)(const Colour colour) if (hasAlpha!Colour) {
 	assert(RGB888(128, 0, 255).blueFP() == 1.0);
 }
 
-auto asLinearRGB(Format)(const Format colour) {
+auto asLinearRGB(Format, Precision = double)(const Format colour) {
 	static if (isDigital!Format) {
 		const red = colour.redFP.toLinearRGB;
 		const green = colour.greenFP.toLinearRGB;
@@ -86,10 +86,10 @@ auto asLinearRGB(Format)(const Format colour) {
 	}
 	static if (hasAlpha!Format) {
 		import magicalrainbows.formats : AnalogRGBA;
-		return AnalogRGBA(red, green, blue, alpha);
+		return AnalogRGBA!Precision(red, green, blue, alpha);
 	} else {
 		import magicalrainbows.formats : AnalogRGB;
-		return AnalogRGB(red, green, blue);
+		return AnalogRGB!Precision(red, green, blue);
 	}
 }
 
@@ -123,7 +123,7 @@ mixin template colourConstructors() {
 		this.green = cast(typeof(this.green))green;
 		this.blue = cast(typeof(this.blue))blue;
 	}
-	this(const AnalogRGB analog) pure @safe
+	this(Precision)(const AnalogRGB!Precision analog) pure @safe
 		in(analog.red <= 1.0, "Red value out of range")
 		in(analog.red >= 0.0, "Red value out of range")
 		in(analog.green <= 1.0, "Green value out of range")
@@ -135,7 +135,7 @@ mixin template colourConstructors() {
 		this.green = cast(typeof(this.green))(analog.green * maxGreen!(typeof(this)));
 		this.blue = cast(typeof(this.blue))(analog.blue * maxBlue!(typeof(this)));
 	}
-	auto opCast(T: AnalogRGB)() const {
+	auto opCast(T: AnalogRGB!Precision, Precision)() const {
 		return AnalogRGB(this.redFP, this.greenFP, this.blueFP);
 	}
 	static if (hasAlpha!(typeof(this))) {
@@ -150,7 +150,7 @@ mixin template colourConstructors() {
 			this.blue = cast(typeof(this.blue))blue;
 			this.alpha = cast(typeof(this.alpha))alpha;
 		}
-		this(AnalogRGBA analog) pure @safe
+		this(Precision)(AnalogRGBA!Precision analog) pure @safe
 			in(analog.red <= 1.0, "Red value out of range")
 			in(analog.red >= 0.0, "Red value out of range")
 			in(analog.green <= 1.0, "Green value out of range")
@@ -165,12 +165,12 @@ mixin template colourConstructors() {
 			this.blue = cast(typeof(this.blue))(analog.blue * maxBlue!(typeof(this)));
 			this.alpha = cast(typeof(this.alpha))(analog.alpha * maxAlpha!(typeof(this)));
 		}
-		auto opCast(T: AnalogRGBA)() const {
+		auto opCast(T: AnalogRGBA!Precision, Precision)() const {
 			return AnalogRGBA(this.redFP, this.greenFP, this.blueFP, this.alphaFP);
 		}
 	} else {
 		// Missing alpha channel is the equivalent of 100% opacity
-		auto opCast(T: AnalogRGBA)() const {
+		auto opCast(T: AnalogRGBA!Precision, Precision)() const {
 			return AnalogRGBA(this.redFP, this.greenFP, this.blueFP, 1.0);
 		}
 	}

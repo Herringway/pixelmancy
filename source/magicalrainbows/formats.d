@@ -29,6 +29,19 @@ struct BGR555 { //XBBBBBGG GGGRRRRR
 	}
 }
 
+struct RGB555 { //XRRRRRGG GGGBBBBB
+	enum redSize = 5;
+	enum greenSize = 5;
+	enum blueSize = 5;
+	enum alphaSize = 0;
+	mixin colourConstructors;
+	mixin(bitfields!(
+		uint, "blue", blueSize,
+		uint, "green", greenSize,
+		uint, "red", redSize,
+		bool, "padding", 1));
+}
+
 struct BGR565 { //BBBBBGGG GGGRRRRR
 	enum redSize = 5;
 	enum greenSize = 6;
@@ -78,6 +91,17 @@ struct RGB888 { //RRRRRRRR GGGGGGGG BBBBBBBB
 	ubyte red;
 	ubyte green;
 	ubyte blue;
+}
+
+struct BGR888 { //BBBBBBBB GGGGGGGG RRRRRRRR
+	enum redSize = 8;
+	enum greenSize = 8;
+	enum blueSize = 8;
+	enum alphaSize = 0;
+	mixin colourConstructors;
+	ubyte blue;
+	ubyte green;
+	ubyte red;
 }
 
 struct RGBA8888 { //RRRRRRRR GGGGGGGG BBBBBBBB AAAAAAAA

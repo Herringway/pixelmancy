@@ -4,9 +4,9 @@ import std.traits;
 
 package:
 
-T read(T)(const ubyte[] input) if (isMutable!T) in {
-	assert(input.length == T.sizeof, "Mismatch between input buffer size and expected value size");
-} body {
+T read(T)(const ubyte[] input) if (isMutable!T)
+	in(input.length == T.sizeof, "Mismatch between input buffer size and expected value size")
+{
 	union Result {
 		ubyte[T.sizeof] raw;
 		T val;
@@ -56,14 +56,14 @@ Precision alphaFP(Precision = double, Colour)(const Colour colour) if (hasAlpha!
 }
 @safe pure unittest {
 	import magicalrainbows.formats : RGB888;
-	import std.math : approxEqual;
+	import std.math : isClose;
 	assert(RGB888(255, 128, 0).redFP() == 1.0);
-	assert(RGB888(255, 128, 0).greenFP().approxEqual(0.502));
+	assert(RGB888(255, 128, 0).greenFP().isClose(0.5019607843137254));
 	assert(RGB888(255, 128, 0).blueFP() == 0.0);
 	assert(RGB888(0, 255, 128).redFP() == 0.0);
 	assert(RGB888(0, 255, 128).greenFP() == 1.0);
-	assert(RGB888(0, 255, 128).blueFP().approxEqual(0.502));
-	assert(RGB888(128, 0, 255).redFP().approxEqual(0.502));
+	assert(RGB888(0, 255, 128).blueFP().isClose(0.5019607843137254));
+	assert(RGB888(128, 0, 255).redFP().isClose(0.5019607843137254));
 	assert(RGB888(128, 0, 255).greenFP() == 0.0);
 	assert(RGB888(128, 0, 255).blueFP() == 1.0);
 }

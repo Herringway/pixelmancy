@@ -11,11 +11,11 @@ Precision relativeLuminosity(Precision = double, Colour)(const Colour colour) if
 ///
 @safe pure unittest {
 	import magicalrainbows.formats : BGR555, RGB888;
-	import std.math : approxEqual;
-	assert(RGB888(0, 0, 0).relativeLuminosity.approxEqual(0.0));
-	assert(RGB888(255, 255, 255).relativeLuminosity.approxEqual(1.0));
-	assert(RGB888(250, 112, 20).relativeLuminosity.approxEqual(0.3196));
-	assert(BGR555(0, 16, 31).relativeLuminosity.approxEqual(0.23618));
+	import std.math : isClose;
+	assert(RGB888(0, 0, 0).relativeLuminosity.isClose(0.0));
+	assert(RGB888(255, 255, 255).relativeLuminosity.isClose(1.0));
+	assert(RGB888(250, 112, 20).relativeLuminosity.isClose(0.3196284130));
+	assert(BGR555(0, 16, 31).relativeLuminosity.isClose(0.2361773154));
 }
 
 Precision contrast(Precision = double, Colour1, Colour2)(const Colour1 colour1, const Colour2 colour2) if (isColourFormat!Colour1 && isColourFormat!Colour2) {
@@ -27,11 +27,11 @@ Precision contrast(Precision = double, Colour1, Colour2)(const Colour1 colour1, 
 ///
 @safe pure unittest {
 	import magicalrainbows.formats : RGB888;
-	import std.math : approxEqual;
-	assert(contrast(RGB888(0, 0, 0), RGB888(0, 0, 0)).approxEqual(1.0));
-	assert(contrast(RGB888(0, 0, 0), RGB888(255, 255, 255)).approxEqual(21.0));
-	assert(contrast(RGB888(255, 255, 255), RGB888(0, 0, 0)).approxEqual(21.0));
-	assert(contrast(RGB888(255, 255, 255), RGB888(250, 112, 20)).approxEqual(2.8407));
+	import std.math : isClose;
+	assert(contrast(RGB888(0, 0, 0), RGB888(0, 0, 0)).isClose(1.0));
+	assert(contrast(RGB888(0, 0, 0), RGB888(255, 255, 255)).isClose(21.0));
+	assert(contrast(RGB888(255, 255, 255), RGB888(0, 0, 0)).isClose(21.0));
+	assert(contrast(RGB888(255, 255, 255), RGB888(250, 112, 20)).isClose(2.8406907130));
 }
 
 Colour complementary(Colour)(const Colour colour) if (isColourFormat!Colour) {

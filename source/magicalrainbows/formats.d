@@ -190,7 +190,7 @@ struct HSV(Precision) {
 
 HSV!Precision toHSV(Format, Precision = double)(Format input) if (isColourFormat!Format) {
 	import std.algorithm.comparison : max, min;
-	import std.math : approxEqual;
+	import std.math : isClose;
     HSV!Precision result;
     const red = input.redFP;
     const green = input.greenFP;
@@ -210,9 +210,9 @@ HSV!Precision toHSV(Format, Precision = double)(Format input) if (isColourFormat
         result.saturation = delta / maximum;
     }
 
-    if (approxEqual(red, maximum)) {
+    if (isClose(red, maximum)) {
         result.hue = (green - blue) / delta; //yellow, magenta
-    } else if (approxEqual(green, maximum)) {
+    } else if (isClose(green, maximum)) {
         result.hue = 2.0 + (blue - red) / delta; //cyan,  yellow
     } else {
         result.hue = 4.0 + (red - green) / delta; //magenta, cyan
@@ -228,41 +228,41 @@ HSV!Precision toHSV(Format, Precision = double)(Format input) if (isColourFormat
 }
 ///
 @safe unittest {
-	import std.math : approxEqual;
+	import std.math : isClose;
 	with(RGB888(0, 0, 0).toHSV) {
 		assert(hue == 0);
 		assert(saturation == 0);
 		assert(value == 0);
 	}
 	with(RGB888(0, 128, 192).toHSV) {
-		assert(hue.approxEqual(0.5555555));
-		assert(saturation.approxEqual(1.0));
-		assert(value.approxEqual(0.752941));
+		assert(hue.isClose(0.5555555555));
+		assert(saturation.isClose(1.0));
+		assert(value.isClose(0.7529411765));
 	}
 	with(RGB888(255, 255, 0).toHSV) {
-		assert(hue.approxEqual(0.166667));
-		assert(saturation.approxEqual(1.0));
-		assert(value.approxEqual(1.0));
+		assert(hue.isClose(0.1666666667));
+		assert(saturation.isClose(1.0));
+		assert(value.isClose(1.0));
 	}
 	with(RGB888(255, 0, 0).toHSV) {
-		assert(hue.approxEqual(0.0));
-		assert(saturation.approxEqual(1.0));
-		assert(value.approxEqual(1.0));
+		assert(hue.isClose(0.0));
+		assert(saturation.isClose(1.0));
+		assert(value.isClose(1.0));
 	}
 	with(RGB888(255, 0, 255).toHSV) {
-		assert(hue.approxEqual(0.833333));
-		assert(saturation.approxEqual(1.0));
-		assert(value.approxEqual(1.0));
+		assert(hue.isClose(0.8333333333));
+		assert(saturation.isClose(1.0));
+		assert(value.isClose(1.0));
 	}
 	with(RGB888(0, 255, 0).toHSV) {
-		assert(hue.approxEqual(0.333333));
-		assert(saturation.approxEqual(1.0));
-		assert(value.approxEqual(1.0));
+		assert(hue.isClose(0.3333333333));
+		assert(saturation.isClose(1.0));
+		assert(value.isClose(1.0));
 	}
 	with(RGB888(0, 0, 255).toHSV) {
-		assert(hue.approxEqual(0.666667));
-		assert(saturation.approxEqual(1.0));
-		assert(value.approxEqual(1.0));
+		assert(hue.isClose(0.6666666667));
+		assert(saturation.isClose(1.0));
+		assert(value.isClose(1.0));
 	}
 }
 
@@ -381,24 +381,24 @@ ColourPair!(Foreground, Background) colourPair(Foreground, Background)(Foregroun
 }
 ///
 @safe pure unittest {
-	import std.math : approxEqual;
+	import std.math : isClose;
 	with(colourPair(RGB888(0, 0, 0), RGB888(255, 255, 255))) {
-		assert(contrast.approxEqual(21.0));
+		assert(contrast.isClose(21.0));
 		assert(meetsWCAGAACriteria);
 		assert(meetsWCAGAAACriteria);
 	}
 	with(colourPair(RGB888(255, 255, 255), RGB888(255, 255, 255))) {
-		assert(contrast.approxEqual(1.0));
+		assert(contrast.isClose(1.0));
 		assert(!meetsWCAGAACriteria);
 		assert(!meetsWCAGAAACriteria);
 	}
 	with(colourPair(RGB888(0, 128, 255), RGB888(0, 0, 0))) {
-		assert(contrast.approxEqual(5.5316));
+		assert(contrast.isClose(5.5316685936));
 		assert(meetsWCAGAACriteria);
 		assert(!meetsWCAGAAACriteria);
 	}
 	with(colourPair(BGR555(0, 16, 31), RGB888(0, 0, 0))) {
-		assert(contrast.approxEqual(5.7236));
+		assert(contrast.isClose(5.7235463090));
 		assert(meetsWCAGAACriteria);
 		assert(!meetsWCAGAAACriteria);
 	}

@@ -31,7 +31,18 @@ struct Gradient {
 @safe pure unittest {
 	import std.algorithm;
 	import std.range;
-	assert(Gradient(RGB888(255,0,0), RGB888(0,0,255), 20).equal(
+	bool closeEnough(Range1, Range2)(Range1 a, Range2 b) {
+		bool similar(uint v, uint v2) {
+			return !!v.among(v2 - 1, v2, v2 + 1);
+		}
+		foreach (pair; zip(a,b)) {
+			if (!similar(pair[0].red, pair[1].red) || !similar(pair[0].green, pair[1].green) || !similar(pair[0].blue, pair[1].blue)) {
+				return false;
+			}
+		}
+		return true;
+	}
+	assert(closeEnough(Gradient(RGB888(255,0,0), RGB888(0,0,255), 20),
 		only(
 			RGB888(255, 0, 0),
 			RGB888(241, 0, 13),

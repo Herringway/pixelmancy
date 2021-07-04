@@ -188,7 +188,7 @@ struct HSV(Precision) {
     }
 }
 
-HSV!Precision toHSV(Format, Precision = double)(Format input) if (isColourFormat!Format) {
+HSV!Precision toHSV(Precision = double, Format)(Format input) if (isColourFormat!Format) {
 	import std.algorithm.comparison : max, min;
 	import std.math : isClose;
     HSV!Precision result;

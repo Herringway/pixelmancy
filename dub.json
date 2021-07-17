@@ -8,6 +8,7 @@
 	"license": "BSL-1.0",
 	"stringImportPaths": ["testdata"],
 	"dependencies": {
-		"magicalrainbows": "*"
+		"magicalrainbows": "*",
+		"siryul": "*"
 	}
 }

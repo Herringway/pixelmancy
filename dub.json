@@ -1,0 +1,17 @@
+{
+	"authors": [
+		"Herringway"
+	],
+	"copyright": "Copyright © 2020, Herringway",
+	"description": " ",
+	"license": "BSL-1.0",
+	"name": "tiledump",
+	"dependencies": {
+		"reversineer": "*",
+		"pixelatrix": "*",
+		"magicalrainbows": "*"
+	},
+	"subPackages": [
+		"dumper"
+	]
+}

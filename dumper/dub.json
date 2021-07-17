@@ -1,0 +1,7 @@
+{
+	"name": "dumper",
+	"dependencies": {
+		"tiledump": "*",
+		"imagefmt": "~>2.0.3"
+	}
+}

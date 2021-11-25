@@ -428,7 +428,9 @@ Format toRGB(Format = RGB888, Precision = double)(HSV!Precision input) @safe if 
 ///
 Format toRGB(Format = RGB888, Precision = double)(HSVA!Precision input) @safe if (isColourFormat!Format) {
 	Format result = HSV!Precision(input.hue, input.saturation, input.value).toRGB!Format();
-	result.alphaFP = input.alpha;
+	static if (hasAlpha!Format) {
+		result.alphaFP = input.alpha;
+	}
 	return result;
 }
 ///
@@ -444,6 +446,11 @@ Format toRGB(Format = RGB888, Precision = double)(HSVA!Precision input) @safe if
 		assert(green == 127);
 		assert(blue == 127);
 		assert(alpha == 255);
+	}
+	with(HSVA!double(0, 0, 0.5, 1.0).toRGB!RGB888) {
+		assert(red == 127);
+		assert(green == 127);
+		assert(blue == 127);
 	}
 }
 

@@ -43,17 +43,31 @@ enum isDigital(T) = hasRed!T && hasGreen!T && hasBlue!T;
 Precision redFP(Precision = double, Colour)(const Colour colour) if (hasRed!Colour) {
 	return (cast(Precision)colour.red / maxRed!Colour);
 }
+void redFP(Precision, Colour)(ref Colour colour, Precision value) if (hasRed!Colour) {
+	colour.red = cast(typeof(colour.red))(value * maxRed!Colour);
+}
 
 Precision greenFP(Precision = double, Colour)(const Colour colour) if (hasGreen!Colour) {
 	return (cast(Precision)colour.green / maxGreen!Colour);
+}
+void greenFP(Precision, Colour)(ref Colour colour, Precision value) if (hasGreen!Colour) {
+	colour.green = cast(typeof(colour.green))(value * maxGreen!Colour);
 }
 
 Precision blueFP(Precision = double, Colour)(const Colour colour) if (hasBlue!Colour) {
 	return (cast(Precision)colour.blue / maxBlue!Colour);
 }
+void blueFP(Precision, Colour)(ref Colour colour, Precision value) if (hasBlue!Colour) {
+	colour.blue = cast(typeof(colour.blue))(value * maxBlue!Colour);
+}
+
 Precision alphaFP(Precision = double, Colour)(const Colour colour) if (hasAlpha!Colour) {
 	return (cast(Precision)colour.alpha / maxAlpha!Colour);
 }
+void alphaFP(Precision, Colour)(ref Colour colour, Precision value) if (hasAlpha!Colour) {
+	colour.alpha = cast(typeof(colour.alpha))(value * maxAlpha!Colour);
+}
+
 @safe pure unittest {
 	import magicalrainbows.formats : RGB888;
 	import std.math : isClose;
@@ -142,6 +156,9 @@ mixin template colourConstructors() {
 		this.red = cast(typeof(this.red))(analog.red * maxRed!(typeof(this)));
 		this.green = cast(typeof(this.green))(analog.green * maxGreen!(typeof(this)));
 		this.blue = cast(typeof(this.blue))(analog.blue * maxBlue!(typeof(this)));
+		static if(hasAlpha!(typeof(this))) {
+			this.alpha = maxAlpha!(typeof(this));
+		}
 	}
 	T opCast(T: AnalogRGB!Precision, Precision)() const {
 		return AnalogRGB(this.redFP, this.greenFP, this.blueFP);

@@ -187,7 +187,24 @@ struct HSV(Precision) {
     	assert(value <= 1.0);
     }
 }
+struct HSVA(Precision) {
+	Precision hue;
+	Precision saturation;
+	Precision value;
+	Precision alpha;
+	@safe invariant {
+		assert(hue >= 0);
+		assert(saturation >= 0);
+		assert(value >= 0);
+		assert(alpha >= 0);
+		assert(hue <= 1.0);
+		assert(saturation <= 1.0);
+		assert(value <= 1.0);
+		assert(alpha <= 1.0);
+	}
+}
 
+///
 HSV!Precision toHSV(Precision = double, Format)(Format input) if (isColourFormat!Format) {
 	import std.algorithm.comparison : max, min;
 	import std.math : isClose;
@@ -226,6 +243,7 @@ HSV!Precision toHSV(Precision = double, Format)(Format input) if (isColourFormat
 
     return result;
 }
+
 ///
 @safe unittest {
 	import std.math : isClose;
@@ -266,9 +284,53 @@ HSV!Precision toHSV(Precision = double, Format)(Format input) if (isColourFormat
 	}
 }
 
+///
+HSVA!Precision toHSVA(Precision = double, Format)(Format input) if (isColourFormat!Format) {
+	const result = input.toHSV();
+	static if (hasAlpha!Format) {
+		return HSVA!Precision(result.hue, result.saturation, result.value, input.alphaFP);
+	} else {
+		return HSVA!Precision(result.hue, result.saturation, result.value, 1.0);
+	}
+}
+
+///
+@safe unittest {
+	import std.math : isClose;
+	with(RGB888(255, 0, 0).toHSVA) {
+		assert(hue.isClose(0.0));
+		assert(saturation.isClose(1.0));
+		assert(value.isClose(1.0));
+		assert(alpha.isClose(1.0));
+	}
+	with(RGBA8888(255, 0, 0, 255).toHSVA) {
+		assert(hue.isClose(0.0));
+		assert(saturation.isClose(1.0));
+		assert(value.isClose(1.0));
+		assert(alpha.isClose(1.0));
+	}
+	with(RGBA8888(255, 0, 0, 0).toHSVA) {
+		assert(hue.isClose(0.0));
+		assert(saturation.isClose(1.0));
+		assert(value.isClose(1.0));
+		assert(alpha.isClose(0.0));
+	}
+}
+
+///
 Format toRGB(Format = RGB888, Precision = double)(HSV!Precision input) @safe if (isColourFormat!Format) {
+	static if (hasAlpha!Format) {
+		alias AnalogRGBT = AnalogRGBA!Precision;
+	} else {
+		alias AnalogRGBT = AnalogRGB!Precision;
+	}
+
     if(input.saturation <= 0.0) {
-        return Format(AnalogRGB!Precision(input.value, input.value, input.value));
+		static if (hasAlpha!Format) {
+			return Format(AnalogRGBT(input.value, input.value, input.value, 1.0));
+		} else {
+			return Format(AnalogRGBT(input.value, input.value, input.value));
+		}
     }
     Precision hh = input.hue * 6.0;
     if(hh > 6.0) {
@@ -283,28 +345,31 @@ Format toRGB(Format = RGB888, Precision = double)(HSV!Precision input) @safe if 
     assert(p <= 1.0);
     assert(q <= 1.0);
     assert(t <= 1.0);
-    AnalogRGB!Precision rgb;
+    AnalogRGBT rgb;
     switch(i) {
 		case 0:
-			rgb = AnalogRGB!Precision(input.value, t, p);
+			rgb = AnalogRGBT(input.value, t, p);
 			break;
 		case 1:
-			rgb = AnalogRGB!Precision(q, input.value, p);
+			rgb = AnalogRGBT(q, input.value, p);
 			break;
 		case 2:
-			rgb = AnalogRGB!Precision(p, input.value, t);
+			rgb = AnalogRGBT(p, input.value, t);
 			break;
 		case 3:
-			rgb = AnalogRGB!Precision(p, q, input.value);
+			rgb = AnalogRGBT(p, q, input.value);
 			break;
 		case 4:
-			rgb = AnalogRGB!Precision(t, p, input.value);
+			rgb = AnalogRGBT(t, p, input.value);
 			break;
 		case 5:
 		default:
-			rgb = AnalogRGB!Precision(input.value, p, q);
+			rgb = AnalogRGBT(input.value, p, q);
 			break;
-    }
+	}
+	static if (hasAlpha!Format) {
+		rgb.alpha = 1.0;
+	}
     return Format(rgb);
 }
 ///
@@ -358,6 +423,27 @@ Format toRGB(Format = RGB888, Precision = double)(HSV!Precision input) @safe if 
 		assert(red == 255);
 		assert(green == 0);
 		assert(blue == 127);
+	}
+}
+///
+Format toRGB(Format = RGB888, Precision = double)(HSVA!Precision input) @safe if (isColourFormat!Format) {
+	Format result = HSV!Precision(input.hue, input.saturation, input.value).toRGB!Format();
+	result.alphaFP = input.alpha;
+	return result;
+}
+///
+@safe unittest {
+	with(HSVA!double(0, 0, 0.5, 0.0).toRGB!RGBA8888) {
+		assert(red == 127);
+		assert(green == 127);
+		assert(blue == 127);
+		assert(alpha == 0);
+	}
+	with(HSVA!double(0, 0, 0.5, 1.0).toRGB!RGBA8888) {
+		assert(red == 127);
+		assert(green == 127);
+		assert(blue == 127);
+		assert(alpha == 255);
 	}
 }
 

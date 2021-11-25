@@ -175,17 +175,17 @@ alias HSVF = HSV!float;
 alias HSVD = HSV!double;
 alias HSVR = HSV!real;
 struct HSV(Precision) {
-    Precision hue;
-    Precision saturation;
-    Precision value;
-    @safe invariant {
-    	assert(hue >= 0);
-    	assert(saturation >= 0);
-    	assert(value >= 0);
-    	assert(hue <= 1.0);
-    	assert(saturation <= 1.0);
-    	assert(value <= 1.0);
-    }
+	Precision hue;
+	Precision saturation;
+	Precision value;
+	@safe invariant {
+		assert(hue >= 0);
+		assert(saturation >= 0);
+		assert(value >= 0);
+		assert(hue <= 1.0);
+		assert(saturation <= 1.0);
+		assert(value <= 1.0);
+	}
 }
 struct HSVA(Precision) {
 	Precision hue;
@@ -208,40 +208,40 @@ struct HSVA(Precision) {
 HSV!Precision toHSV(Precision = double, Format)(Format input) if (isColourFormat!Format) {
 	import std.algorithm.comparison : max, min;
 	import std.math : isClose;
-    HSV!Precision result;
-    const red = input.redFP;
-    const green = input.greenFP;
-    const blue = input.blueFP;
-    const minimum = min(red, green, blue);
-    const maximum = max(red, green, blue);
-    const delta = maximum - minimum;
+	HSV!Precision result;
+	const red = input.redFP;
+	const green = input.greenFP;
+	const blue = input.blueFP;
+	const minimum = min(red, green, blue);
+	const maximum = max(red, green, blue);
+	const delta = maximum - minimum;
 
-    result.value = maximum;
-    if (delta < 0.00001)
-    {
-        result.saturation = 0;
-        result.hue = 0;
-        return result;
-    }
-    if (maximum > 0.0) {
-        result.saturation = delta / maximum;
-    }
+	result.value = maximum;
+	if (delta < 0.00001)
+	{
+		result.saturation = 0;
+		result.hue = 0;
+		return result;
+	}
+	if (maximum > 0.0) {
+		result.saturation = delta / maximum;
+	}
 
-    if (isClose(red, maximum)) {
-        result.hue = (green - blue) / delta; //yellow, magenta
-    } else if (isClose(green, maximum)) {
-        result.hue = 2.0 + (blue - red) / delta; //cyan,  yellow
-    } else {
-        result.hue = 4.0 + (red - green) / delta; //magenta, cyan
-    }
+	if (isClose(red, maximum)) {
+		result.hue = (green - blue) / delta; //yellow, magenta
+	} else if (isClose(green, maximum)) {
+		result.hue = 2.0 + (blue - red) / delta; //cyan, yellow
+	} else {
+		result.hue = 4.0 + (red - green) / delta; //magenta, cyan
+	}
 
-    result.hue /= 6.0;
-    if (result.hue < 0.0) {
+	result.hue /= 6.0;
+	if (result.hue < 0.0) {
 		result.hue += 1.0;
-    }
-    assert(result.hue >= 0.0);
+	}
+	assert(result.hue >= 0.0);
 
-    return result;
+	return result;
 }
 
 ///
@@ -325,28 +325,28 @@ Format toRGB(Format = RGB888, Precision = double)(HSV!Precision input) @safe if 
 		alias AnalogRGBT = AnalogRGB!Precision;
 	}
 
-    if(input.saturation <= 0.0) {
+	if(input.saturation <= 0.0) {
 		static if (hasAlpha!Format) {
 			return Format(AnalogRGBT(input.value, input.value, input.value, 1.0));
 		} else {
 			return Format(AnalogRGBT(input.value, input.value, input.value));
 		}
-    }
-    Precision hh = input.hue * 6.0;
-    if(hh > 6.0) {
+	}
+	Precision hh = input.hue * 6.0;
+	if(hh > 6.0) {
 		hh	 = 0.0;
-    }
-    long i = cast(long)hh;
-    Precision ff = hh - i;
-    Precision p = input.value * (1.0 - input.saturation);
-    Precision q = input.value * (1.0 - (input.saturation * ff));
-    Precision t = input.value * (1.0 - (input.saturation * (1.0 - ff)));
+	}
+	long i = cast(long)hh;
+	Precision ff = hh - i;
+	Precision p = input.value * (1.0 - input.saturation);
+	Precision q = input.value * (1.0 - (input.saturation * ff));
+	Precision t = input.value * (1.0 - (input.saturation * (1.0 - ff)));
 
-    assert(p <= 1.0);
-    assert(q <= 1.0);
-    assert(t <= 1.0);
-    AnalogRGBT rgb;
-    switch(i) {
+	assert(p <= 1.0);
+	assert(q <= 1.0);
+	assert(t <= 1.0);
+	AnalogRGBT rgb;
+	switch(i) {
 		case 0:
 			rgb = AnalogRGBT(input.value, t, p);
 			break;
@@ -370,7 +370,7 @@ Format toRGB(Format = RGB888, Precision = double)(HSV!Precision input) @safe if 
 	static if (hasAlpha!Format) {
 		rgb.alpha = 1.0;
 	}
-    return Format(rgb);
+	return Format(rgb);
 }
 ///
 @safe unittest {

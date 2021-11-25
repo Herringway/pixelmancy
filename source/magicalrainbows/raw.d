@@ -11,8 +11,8 @@ enum SupportedFormat { bgr555, bgr565, rgb888, rgba8888, bgr222, bgr333md }
 + Reads and converts a colour from a raw byte array to a specified colour format.
 +
 + Params: format = data format to read
-+		  data = raw data to read from
-+		  ColourFormat = colour format to convert to
++		data = raw data to read from
++		ColourFormat = colour format to convert to
 + Returns: a colour in the specified format
 +/
 ColourFormat bytesToColor(ColourFormat = RGB888)(const ubyte[] data, SupportedFormat format) if (isColourFormat!ColourFormat) {

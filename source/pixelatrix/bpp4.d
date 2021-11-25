@@ -11,7 +11,7 @@ deprecated ubyte[8][8] toPixelMatrix(ubyte[] data) @safe pure in {
 			assert(pixel < 16, "Pixel colour out of range");
 		}
 	}
-} body {
+} do {
 	return Intertwined4BPP(data[0 .. 8 * 4]).pixelMatrix;
 }
 /++

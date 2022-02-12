@@ -67,60 +67,32 @@ void saveImage(T, P)(string path, const T[] tiles, const P[][] palettes, size_t 
 	saveImage(path, tiles.map!(x => x.pixelMatrix).array, Arrangement.generate(style, tiles.length, width), convertPalettes(palettes, firstColourTransparent));
 }
 
-auto unflatten(T)(T[] arr, size_t width) {
-    static struct Result {
-        T[] arr;
-        size_t width;
-        int opApply(int delegate(size_t, size_t, ref T) dg) {
-            int result = 0;
-
-            for (int i = 0; i < arr.length; i++) {
-                result = dg(i % width, i / width, arr[i]);
-                if (result) {
-                    break;
-                }
-            }
-            return result;
-        }
-    }
-    return Result(arr, width);
-}
-
-//void red(ref uint rgba8888, ubyte val) {
-//	rgba8888 |= val;
-//}
-//void green(ref uint rgba8888, ubyte val) {
-//	rgba8888 |= (val<<8);
-//}
-//void blue(ref uint rgba8888, ubyte val) {
-//	rgba8888 |= (val<<16);
-//}
-//void alpha(ref uint rgba8888, ubyte val) {
-//	rgba8888 |= (val<<24);
-//}
-
 void saveImage(size_t TileHeight, size_t TileWidth)(string path, const ubyte[TileHeight][TileWidth][] tiles, const Arrangement tilemap, const RGBA8888[][] palettes) @system
 	in(tilemap.width > 0)
 	in(palettes.length > 0)
 {
-	import imagefmt;
+	import arsd.png;
 	const width = tilemap.width;
 	const imageWidth = TileWidth * width;
 	const imageHeight = TileHeight * ((tilemap.tiles.length / width) + ((tilemap.tiles.length % width) == 0 ? 0 : 1));
-	RGBA8888[] buffer = new RGBA8888[](imageWidth * imageHeight);
+	auto img = new IndexedImage(cast(uint)imageWidth, cast(uint)imageHeight);
+	foreach (palette; palettes) {
+		foreach (colour; palette) {
+			img.addColor(Color(colour.red, colour.green, colour.blue, colour.alpha));
+		}
+	}
 	foreach (tileidx, tileattrs; tilemap.tiles) {
-		const palette = palettes[tileattrs.palette % palettes.length];
+		const paletteID = tileattrs.palette % palettes.length;
 		const pixels = tiles[tileattrs.tile % tiles.length];
+		const baseX = (tileidx / width) * TileWidth;
+		const baseY = (tileidx % width) * TileHeight;
 		foreach (rowidx, row; pixels) {
-			const x = (tileidx / width) * TileWidth + (tileattrs.flipX ? (TileWidth - 1) - rowidx : rowidx);
+			const x = baseX + (tileattrs.flipX ? ((TileWidth - 1) - rowidx) : rowidx);
 			foreach (colidx, pixel; row) {
-				const y = (tileidx % width) * TileHeight + (tileattrs.flipY ? (TileHeight - 1) - colidx : colidx);
-				buffer[(x * imageHeight + y)].red = palette[pixel % palette.length].red;
-				buffer[(x * imageHeight + y)].green = palette[pixel % palette.length].green;
-				buffer[(x * imageHeight + y)].blue = palette[pixel % palette.length].blue;
-				buffer[(x * imageHeight + y)].alpha = palette[pixel % palette.length].alpha;
+				const y = baseY + (tileattrs.flipY ? ((TileHeight - 1) - colidx) : colidx);
+				img.data[(x * imageWidth) + y] = cast(ubyte)((pixel % palettes[paletteID].length) + palettes[0 .. paletteID].map!(x => x.length).sum);
 			}
 		}
 	}
-	write_image(path, cast(int)imageWidth, cast(int)imageHeight, cast(ubyte[])buffer, 4);
+	writePng(path, img);
 }

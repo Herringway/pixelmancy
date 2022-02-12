@@ -5,21 +5,7 @@ import std.array;
 import tiledump.arrangement;
 import magicalrainbows;
 
-RGBA8888[][] convertPalettes(T, size_t paletteCount, size_t colourCount)(T[colourCount][paletteCount] palettes, bool firstColourTransparent) @safe pure {
-	auto output = new RGBA8888[][](paletteCount);
-	foreach (pidx, palette; palettes) {
-		auto newPalette = new RGBA8888[](colourCount);
-		foreach (idx, colour; palette) {
-			newPalette[idx] = convert!RGBA8888(colour);
-		}
-		if (firstColourTransparent) {
-			newPalette[0].alpha = 0;
-		}
-		output[pidx] = newPalette;
-	}
-	return output;
-}
-RGBA8888[][] convertPalettes(T, size_t colourCount)(T[colourCount][] palettes, bool firstColourTransparent) @safe pure {
+RGBA8888[][] convertPalettes(T, size_t colourCount)(in T[colourCount][] palettes, bool firstColourTransparent) @safe pure {
 	auto output = new RGBA8888[][](palettes.length);
 	foreach (pidx, palette; palettes) {
 		auto newPalette = new RGBA8888[](colourCount);
@@ -33,7 +19,7 @@ RGBA8888[][] convertPalettes(T, size_t colourCount)(T[colourCount][] palettes, b
 	}
 	return output;
 }
-RGBA8888[][] convertPalettes(T)(const T[][] palettes, bool firstColourTransparent) @safe pure {
+RGBA8888[][] convertPalettes(T)(in T[][] palettes, bool firstColourTransparent) @safe pure {
 	auto output = new RGBA8888[][](palettes.length);
 	foreach (pidx, palette; palettes) {
 		auto newPalette = new RGBA8888[](palette.length);

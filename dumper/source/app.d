@@ -11,16 +11,17 @@ import std.string;
 import std.traits;
 
 import tiledump.arrangement;
+import tiledump.imagesaver;
 import pixelatrix;
 import magicalrainbows;
 import rando.palette;
 
-const(Arrangement) getArrangement(const string path, ArrangementFormat format, const Arrangement defaultArrangement) @safe {
+const(Arrangement) getArrangement(const string path, ArrangementFormat format, size_t defaultWidth, const Arrangement defaultArrangement) @safe {
 	if (path != "") {
 		final switch (format) {
 			case ArrangementFormat.snes:
 				const data = readData(path);
-				return cast(Arrangement)*interpretData!SNESTileArrangement(data[0 .. SNESTileArrangement.sizeof]);
+				return cast(Arrangement)SNESTileArrangement(interpretData!(SNESTileAttributes[])(data), defaultWidth == 0 ? 32 : defaultWidth);
 		}
 	} else {
 		return defaultArrangement;
@@ -76,6 +77,7 @@ void main(string[] args) @system {
 		"arrangement|a", "Use a tile arrangement file", &arrangementFile,
 		"arrangement-style|s", "Use a specific tile arrangement generator", &arrangementStyle,
 		"palette|p", "Use a palette file", &paletteFile,
+		"palette-format|F", "Palette file format", &paletteFormat,
 		"output|o", "Write to file", &outFile,
 		"preset-palette|P", "Use a preset palette", &palettePreset,
 		"width|w", "Force image width", &forceWidth,
@@ -89,7 +91,7 @@ void main(string[] args) @system {
 		defaultGetoptPrinter("Some information about the program.", helpInformation.options);
 	}
 	const tiles = pixelMatrices(readData(args[1]), tileFormat);
-	const arrangement = getArrangement(arrangementFile, arrangementFormat, Arrangement.generate(arrangementStyle, tiles.length, forceWidth));
+	const arrangement = getArrangement(arrangementFile, arrangementFormat, forceWidth, Arrangement.generate(arrangementStyle, tiles.length, forceWidth));
 	auto palettes = getPalette(paletteFile, paletteFormat, tileFormat.colours, !firstColourNotTransparent, getPalette(palettePreset));
 	if (randomize) {
 		foreach (ref palette; palettes) {
@@ -106,9 +108,17 @@ ubyte[] readData(string filename) @trusted {
 }
 auto interpretData(T)(const ubyte[] data) {
 	import reversineer;
-	T* game = new T;
-	data.read!T(game);
-	return game;
+	static if (isArray!T) {
+		T result = new T(data.length / ElementType!T.sizeof);
+		foreach (idx, ref element; result) {
+			data[idx * element.sizeof .. (idx + 1) * element.sizeof].read!(typeof(element))(element);
+		}
+		return result;
+	} else {
+		T* game = new T;
+		data.read!T(game);
+		return game;
+	}
 }
 
 

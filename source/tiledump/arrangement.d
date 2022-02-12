@@ -32,7 +32,7 @@ enum ArrangementStyle {
 	vertical
 }
 
-align(1) struct SNESTileArrangement {
+align(1) struct SNESScreenTileArrangement {
 	align(1):
 	SNESTileAttributes[(256/8)*(224/8)] tiles;
 	auto opCast(T: Arrangement)() const {
@@ -41,6 +41,17 @@ align(1) struct SNESTileArrangement {
 			arr[idx] = cast(TileAttributes)tile;
 		}
 		return Arrangement(arr, 32);
+	}
+}
+struct SNESTileArrangement {
+	SNESTileAttributes[] tiles;
+	size_t width;
+	auto opCast(T: Arrangement)() const {
+		auto arr = new TileAttributes[](tiles.length);
+		foreach (idx, tile; tiles) {
+			arr[idx] = cast(TileAttributes)tile;
+		}
+		return Arrangement(arr, width);
 	}
 }
 align(1) struct SGBBorderTileArrangement {

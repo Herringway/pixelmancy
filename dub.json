@@ -8,7 +8,9 @@
 	"license": "BSL-1.0",
 	"stringImportPaths": ["testdata"],
 	"dependencies": {
-		"magicalrainbows": "*",
-		"siryul": "*"
-	}
+		"magicalrainbows": "~>0.0"
+	},
+	"subPackages": [
+		"serializable"
+	]
 }

@@ -1,7 +1,6 @@
 module pixelatrix.bpp4;
 
 import pixelatrix.common;
-import siryul;
 
 deprecated ubyte[8][8] toPixelMatrix(ubyte[] data) @safe pure in {
 	assert(data.length == 8*4, "Data length mismatch");
@@ -21,11 +20,6 @@ deprecated ubyte[8][8] toPixelMatrix(ubyte[] data) @safe pure in {
 align(1) struct Intertwined4BPP {
 	align(1):
 	ubyte[32] raw;
-	@SerializationMethod
-	string toBase64() const @safe {
-		import std.base64 : Base64;
-		return Base64.encode(raw[]);
-	}
 	ubyte[8][8] pixelMatrix() const @safe pure
 		out(result; result.isValidBitmap!4)
 	{
@@ -66,11 +60,6 @@ align(1) struct Intertwined4BPP {
 align(1) struct GBA4BPP {
 	align(1):
 	ubyte[32] raw;
-	@SerializationMethod
-	string toBase64() const @safe {
-		import std.base64 : Base64;
-		return Base64.encode(raw[]);
-	}
 	ubyte[8][8] pixelMatrix() const @safe pure
 		out(result; result.isValidBitmap!4)
 	{

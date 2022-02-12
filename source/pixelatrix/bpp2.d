@@ -1,7 +1,6 @@
 module pixelatrix.bpp2;
 
 import pixelatrix.common;
-import siryul;
 
 /++
 + 2 bit per pixel tile format with palette. Consists of two bitplanes stored
@@ -19,11 +18,6 @@ deprecated ubyte[8][8] toPixelMatrix(ubyte[] data) @safe pure
 align(1) struct Linear2BPP {
 	align(1):
 	ubyte[16] raw;
-	@SerializationMethod
-	string toBase64() const @safe {
-		import std.base64 : Base64;
-		return Base64.encode(raw[]);
-	}
 	ubyte[8][8] pixelMatrix() const @safe pure
 		out(result; result.isValidBitmap!2)
 	{
@@ -70,11 +64,6 @@ deprecated ubyte[8][8] toPixelMatrixIntertwined(ubyte[] data) @safe pure
 align(1) struct Intertwined2BPP {
 	align(1):
 	ubyte[16] raw;
-	@SerializationMethod
-	string toBase64() const @safe {
-		import std.base64 : Base64;
-		return Base64.encode(raw[]);
-	}
 	ubyte[8][8] pixelMatrix() const @safe pure
 		out(result; result.isValidBitmap!2)
 	{

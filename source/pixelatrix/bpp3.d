@@ -1,7 +1,6 @@
 module pixelatrix.bpp3;
 
 import pixelatrix.common;
-import siryul;
 
 /++
 + 3 bit per pixel tile format with palette. Each row has its bitplanes stored
@@ -10,11 +9,6 @@ import siryul;
 align(1) struct Intertwined3BPP {
 	align(1):
 	ubyte[8 * 3] raw;
-	@SerializationMethod
-	string toBase64() const @safe {
-		import std.base64 : Base64;
-		return Base64.encode(raw[]);
-	}
 	ubyte[8][8] pixelMatrix() const @safe pure
 		out(result; result.isValidBitmap!3)
 	{

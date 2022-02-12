@@ -1,7 +1,6 @@
 module pixelatrix.bpp1;
 
 import pixelatrix.common;
-import siryul;
 
 /++
 + 1 bit per pixel tile format. Commonly used by many platforms.
@@ -12,11 +11,6 @@ import siryul;
 align(1) struct Simple1BPP {
 	align(1):
 	ubyte[8] raw;
-	@SerializationMethod
-	string toBase64() const @safe {
-		import std.base64 : Base64;
-		return Base64.encode(raw[]);
-	}
 	ubyte[8][8] pixelMatrix() const @safe pure
 		out(result; result.isValidBitmap!1)
 	{

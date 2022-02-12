@@ -7,9 +7,9 @@
 	"license": "BSL-1.0",
 	"name": "tiledump",
 	"dependencies": {
-		"reversineer": "*",
-		"pixelatrix": "*",
-		"magicalrainbows": "*"
+		"reversineer": "~>0.0",
+		"pixelatrix": "~>0.0",
+		"magicalrainbows": "~>0.1"
 	},
 	"subPackages": [
 		"dumper"

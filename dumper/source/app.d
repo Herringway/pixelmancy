@@ -5,6 +5,7 @@ import std.format;
 import std.getopt;
 import std.meta;
 import std.range;
+import std.random;
 import std.stdio;
 import std.string;
 import std.traits;
@@ -12,6 +13,7 @@ import std.traits;
 import tiledump.arrangement;
 import pixelatrix;
 import magicalrainbows;
+import rando.palette;
 
 const(Arrangement) getArrangement(const string path, ArrangementFormat format, const Arrangement defaultArrangement) @safe {
 	if (path != "") {
@@ -24,7 +26,7 @@ const(Arrangement) getArrangement(const string path, ArrangementFormat format, c
 		return defaultArrangement;
 	}
 }
-const(RGBA8888[][]) getPalette(const string path, SupportedFormat format, size_t paletteSize, bool firstColourTransparent, const RGBA8888[][] preset) @safe {
+RGBA8888[][] getPalette(const string path, SupportedFormat format, size_t paletteSize, bool firstColourTransparent, RGBA8888[][] preset) @safe {
 	if (path != "") {
 		const data = readData(path);
 		auto colours = bytesToColors!RGBA8888(data, format).chunks(paletteSize);
@@ -46,9 +48,9 @@ enum PalettePreset {
 	gbPocket
 }
 
-const(RGBA8888[][]) getPalette(PalettePreset preset) @safe pure {
+RGBA8888[][] getPalette(PalettePreset preset) @safe pure {
 	final switch(preset) {
-		case PalettePreset.ansi: return defaultPalette;
+		case PalettePreset.ansi: return defaultPalette.map!(x => x.dup).array;
 		case PalettePreset.gb: return [GameBoy.map!(x => x.convert!RGBA8888).array];
 		case PalettePreset.cga16: return [CGA16.map!(x => x.convert!RGBA8888).array];
 		case PalettePreset.gbPocket: return [GameBoyPocket.map!(x => x.convert!RGBA8888).array];
@@ -61,6 +63,8 @@ void main(string[] args) @system {
 	string arrangementFile;
 	string paletteFile;
 	size_t forceWidth;
+	bool randomize;
+	ColourRandomizationLevel randomizationLevel = ColourRandomizationLevel.randomHue;
 	PalettePreset palettePreset;
 	bool firstColourNotTransparent;
 	TileFormat tileFormat = TileFormat.intertwined4BPP;
@@ -75,6 +79,8 @@ void main(string[] args) @system {
 		"output|o", "Write to file", &outFile,
 		"preset-palette|P", "Use a preset palette", &palettePreset,
 		"width|w", "Force image width", &forceWidth,
+		"randomize|r", "Randomize palette", &randomize,
+		"randomization-level|R", "Palette randomization level", &randomizationLevel,
 		"first-colour-not-transparent", "First colour in palette isn't transparent", &firstColourNotTransparent,
 		"tileformat|f", &tileFormat
 	);
@@ -84,7 +90,12 @@ void main(string[] args) @system {
 	}
 	const tiles = pixelMatrices(readData(args[1]), tileFormat);
 	const arrangement = getArrangement(arrangementFile, arrangementFormat, Arrangement.generate(arrangementStyle, tiles.length, forceWidth));
-	const palettes = getPalette(paletteFile, paletteFormat, tileFormat.colours, !firstColourNotTransparent, getPalette(palettePreset));
+	auto palettes = getPalette(paletteFile, paletteFormat, tileFormat.colours, !firstColourNotTransparent, getPalette(palettePreset));
+	if (randomize) {
+		foreach (ref palette; palettes) {
+			palette = randomizePalette(palette, randomizationLevel, rndGen.front);
+		}
+	}
 	writeln("Saving '", outFile, "'");
 	saveImage(outFile, tiles, arrangement, palettes);
 }

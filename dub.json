@@ -4,7 +4,7 @@
 		"Cameron"
 	],
 	"description": "Small library for handling old hardware graphic formats",
-	"copyright": "Copyright © 2018, Cameron",
+	"copyright": "Copyright © 2022, Cameron",
 	"license": "BSL-1.0",
 	"stringImportPaths": ["testdata"],
 	"dependencies": {

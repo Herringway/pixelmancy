@@ -88,7 +88,8 @@ void main(string[] args) @system {
 	);
 
 	if (helpInformation.helpWanted || (args.length < 2)) {
-		defaultGetoptPrinter("Some information about the program.", helpInformation.options);
+		defaultGetoptPrinter(format!"Usage: %s <tiles>"(args[0]), helpInformation.options);
+		return;
 	}
 	const tiles = pixelMatrices(readData(args[1]), tileFormat);
 	const arrangement = getArrangement(arrangementFile, arrangementFormat, forceWidth, Arrangement.generate(arrangementStyle, tiles.length, forceWidth));

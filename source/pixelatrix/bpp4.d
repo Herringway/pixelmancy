@@ -2,17 +2,6 @@ module pixelatrix.bpp4;
 
 import pixelatrix.common;
 
-deprecated ubyte[8][8] toPixelMatrix(ubyte[] data) @safe pure in {
-	assert(data.length == 8*4, "Data length mismatch");
-} out(result) {
-	foreach (row; result) {
-		foreach (pixel; row) {
-			assert(pixel < 16, "Pixel colour out of range");
-		}
-	}
-} do {
-	return Intertwined4BPP(data[0 .. 8 * 4]).pixelMatrix;
-}
 /++
 + 4 bit per pixel tile format with palette. Each row has its bitplanes stored
 + adjacent to one another. Commonly used by the SNES and PC Engine.

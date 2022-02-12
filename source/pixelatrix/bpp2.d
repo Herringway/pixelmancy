@@ -9,12 +9,6 @@ import pixelatrix.common;
 + Params: data = a 16 byte array
 + Returns: a decoded 8x8 tile.
 +/
-deprecated ubyte[8][8] toPixelMatrix(ubyte[] data) @safe pure
-	in(data.length == 8 * 2, "Data length mismatch")
-	out(result; result.isValidBitmap!2)
-{
-	return Linear2BPP(data[0 .. 8 * 2]).pixelMatrix;
-}
 align(1) struct Linear2BPP {
 	align(1):
 	ubyte[16] raw;
@@ -55,12 +49,6 @@ align(1) struct Linear2BPP {
 + Params: data = a 16 byte array
 + Returns: a decoded 8x8 tile.
 +/
-deprecated ubyte[8][8] toPixelMatrixIntertwined(ubyte[] data) @safe pure
-	in(data.length == 8 * 2, "Data length mismatch")
-	out(result; result.isValidBitmap!2)
-{
-	return Intertwined2BPP(data[0 .. 8 * 2]).pixelMatrix;
-}
 align(1) struct Intertwined2BPP {
 	align(1):
 	ubyte[16] raw;

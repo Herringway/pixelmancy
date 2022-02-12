@@ -9,6 +9,19 @@ import pixelatrix.common;
 align(1) struct Intertwined4BPP {
 	align(1):
 	ubyte[32] raw;
+	this(in ubyte[32] tile) @safe pure {
+		raw = tile;
+	}
+	this(in ubyte[8][8] tile) @safe pure {
+		foreach (rowID, row; tile) {
+			foreach (colID, col; row) {
+				raw[rowID * 2] |= cast(ubyte)((col & 1) << (row.length - 1 - colID));
+				raw[(rowID * 2) + 1] |= cast(ubyte)(((col & 2) >> 1) << (row.length - 1 - colID));
+				raw[16 + (rowID * 2)] |= cast(ubyte)(((col & 4) >> 2) << (row.length - 1 - colID));
+				raw[16 + (rowID * 2) + 1] |= cast(ubyte)(((col & 8) >> 3) << (row.length - 1 - colID));
+			}
+		}
+	}
 	ubyte[8][8] pixelMatrix() const @safe pure
 		out(result; result.isValidBitmap!4)
 	{
@@ -40,6 +53,7 @@ align(1) struct Intertwined4BPP {
 		[0x0, 0x0, 0x0, 0xF, 0x9, 0x9, 0xF, 0xA]
 	];
 	assert(data.pixelMatrix() == finaldata);
+	assert(Intertwined4BPP(data.pixelMatrix()) == data);
 }
 
 /++
@@ -49,6 +63,16 @@ align(1) struct Intertwined4BPP {
 align(1) struct GBA4BPP {
 	align(1):
 	ubyte[32] raw;
+	this(in ubyte[32] tile) @safe pure {
+		raw = tile;
+	}
+	this(in ubyte[8][8] tile) @safe pure {
+		foreach (rowID, row; tile) {
+			foreach (colID, col; row) {
+				raw[rowID * row.length / 2 + colID / 2] |= cast(ubyte)((col & 0xF) << (4 * (colID % 2)));
+			}
+		}
+	}
 	ubyte[8][8] pixelMatrix() const @safe pure
 		out(result; result.isValidBitmap!4)
 	{
@@ -75,4 +99,5 @@ align(1) struct GBA4BPP {
 		[0xC, 0xD, 0xC, 0xC, 0xE, 0x6, 0x6, 0xE]
 	];
 	assert(data.pixelMatrix() == finaldata);
+	assert(GBA4BPP(data.pixelMatrix()) == data);
 }

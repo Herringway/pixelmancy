@@ -71,6 +71,34 @@ ubyte[8][8] pixelMatrix(const ubyte[] data, TileFormat format) @safe pure {
 			return fromFormat!GBA4BPP(data);
 	}
 }
+ubyte[] tileData(const ubyte[8][8] data, TileFormat format) @safe pure {
+	import pixelatrix.bpp1 : Simple1BPP;
+	import pixelatrix.bpp2 : Linear2BPP, Intertwined2BPP;
+	import pixelatrix.bpp3 : Intertwined3BPP;
+	import pixelatrix.bpp4 : Intertwined4BPP, GBA4BPP;
+	import pixelatrix.bpp8 : Linear8BPP, Intertwined8BPP;
+	static ubyte[] toFormat(T)(const ubyte[8][8] data) {
+		return T(data).raw[].dup;
+	}
+	final switch (format) {
+		case TileFormat.simple1BPP:
+			return toFormat!Simple1BPP(data);
+		case TileFormat.linear2BPP:
+			return toFormat!Linear2BPP(data);
+		case TileFormat.intertwined2BPP:
+			return toFormat!Intertwined2BPP(data);
+		case TileFormat.intertwined3BPP:
+			return toFormat!Intertwined3BPP(data);
+		case TileFormat.intertwined4BPP:
+			return toFormat!Intertwined4BPP(data);
+		case TileFormat.intertwined8BPP:
+			return toFormat!Intertwined8BPP(data);
+		case TileFormat.linear8BPP:
+			return toFormat!Linear8BPP(data);
+		case TileFormat.gba4BPP:
+			return toFormat!GBA4BPP(data);
+	}
+}
 
 ubyte[8][8][] pixelMatrices(const ubyte[] data, TileFormat format) @safe pure {
 	import pixelatrix.bpp1 : Simple1BPP;

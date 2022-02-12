@@ -9,6 +9,18 @@ import pixelatrix.common;
 align(1) struct Intertwined3BPP {
 	align(1):
 	ubyte[8 * 3] raw;
+	this(in ubyte[24] tile) @safe pure {
+		raw = tile;
+	}
+	this(in ubyte[8][8] tile) @safe pure {
+		foreach (rowID, row; tile) {
+			foreach (colID, col; row) {
+				raw[rowID * 2] |= cast(ubyte)((col & 1) << (row.length - 1 - colID));
+				raw[(rowID * 2) + 1] |= cast(ubyte)(((col & 2) >> 1) << (row.length - 1 - colID));
+				raw[rowID + 16] |= cast(ubyte)(((col & 4) >> 2) << (row.length - 1 - colID));
+			}
+		}
+	}
 	ubyte[8][8] pixelMatrix() const @safe pure
 		out(result; result.isValidBitmap!3)
 	{
@@ -39,4 +51,5 @@ align(1) struct Intertwined3BPP {
 		[0x0, 0x0, 0x0, 0x7, 0x1, 0x1, 0x7, 0x2]
 	];
 	assert(data.pixelMatrix() == finaldata);
+	assert(Intertwined3BPP(data.pixelMatrix()) == data);
 }

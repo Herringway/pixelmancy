@@ -12,6 +12,17 @@ import pixelatrix.common;
 align(1) struct Linear2BPP {
 	align(1):
 	ubyte[16] raw;
+	this(in ubyte[16] tile) @safe pure {
+		raw = tile;
+	}
+	this(in ubyte[8][8] tile) @safe pure {
+		foreach (rowID, row; tile) {
+			foreach (colID, col; row) {
+				raw[rowID] |= cast(ubyte)((col & 1) << (row.length - 1 - colID));
+				raw[rowID + 8] |= cast(ubyte)(((col & 2) >> 1) << (row.length - 1 - colID));
+			}
+		}
+	}
 	ubyte[8][8] pixelMatrix() const @safe pure
 		out(result; result.isValidBitmap!2)
 	{
@@ -40,6 +51,7 @@ align(1) struct Linear2BPP {
 		[0, 0, 3, 0, 1, 1, 3, 3],
 		[0, 0, 0, 3, 1, 1, 3, 2]];
 	assert(data.pixelMatrix() == finaldata);
+	assert(Linear2BPP(data.pixelMatrix()) == data);
 }
 
 /++
@@ -52,6 +64,17 @@ align(1) struct Linear2BPP {
 align(1) struct Intertwined2BPP {
 	align(1):
 	ubyte[16] raw;
+	this(in ubyte[16] tile) @safe pure {
+		raw = tile;
+	}
+	this(in ubyte[8][8] tile) @safe pure {
+		foreach (rowID, row; tile) {
+			foreach (colID, col; row) {
+				raw[rowID * 2] |= cast(ubyte)((col & 1) << (row.length - 1 - colID));
+				raw[(rowID * 2) + 1] |= cast(ubyte)(((col & 2) >> 1) << (row.length - 1 - colID));
+			}
+		}
+	}
 	ubyte[8][8] pixelMatrix() const @safe pure
 		out(result; result.isValidBitmap!2)
 	{
@@ -80,4 +103,5 @@ align(1) struct Intertwined2BPP {
 		[0, 0, 3, 0, 1, 1, 3, 3],
 		[0, 0, 0, 3, 1, 1, 3, 2]];
 	assert(data.pixelMatrix() == finaldata);
+	assert(Intertwined2BPP(data.pixelMatrix()) == data);
 }

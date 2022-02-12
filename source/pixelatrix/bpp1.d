@@ -11,6 +11,16 @@ import pixelatrix.common;
 align(1) struct Simple1BPP {
 	align(1):
 	ubyte[8] raw;
+	this(in ubyte[8] tile) @safe pure {
+		raw = tile;
+	}
+	this(in ubyte[8][8] tile) @safe pure {
+		foreach (rowID, row; tile) {
+			foreach (colID, col; row) {
+				raw[rowID] |= cast(ubyte)((col == 1) << (row.length - 1 - colID));
+			}
+		}
+	}
 	ubyte[8][8] pixelMatrix() const @safe pure
 		out(result; result.isValidBitmap!1)
 	{
@@ -38,4 +48,5 @@ align(1) struct Simple1BPP {
 		[0, 0, 1, 0, 1, 1, 1, 1],
 		[0, 0, 0, 1, 1, 1, 1, 0]];
 	assert(data.pixelMatrix() == finaldata);
+	assert(Simple1BPP(data.pixelMatrix()) == data);
 }

@@ -9,6 +9,16 @@ import pixelatrix.common;
 align(1) struct Linear8BPP {
 	align(1):
 	ubyte[8 * 8] raw;
+	this(in ubyte[64] tile) @safe pure {
+		raw = tile;
+	}
+	this(in ubyte[8][8] tile) @safe pure {
+		foreach (rowID, row; tile) {
+			foreach (colID, col; row) {
+				raw[rowID * row.length + colID] = col;
+			}
+		}
+	}
 	ubyte[8][8] pixelMatrix() const @safe pure
 		out(result; result.isValidBitmap!8)
 	{
@@ -34,6 +44,7 @@ align(1) struct Linear8BPP {
 		[0x10, 0x32, 0x54, 0x76, 0x98, 0xBA, 0xDC, 0xFE]
 	];
 	assert(data.pixelMatrix() == finaldata);
+	assert(Linear8BPP(data.pixelMatrix()) == data);
 }
 /++
 + 8 bit per pixel tile format with palette. Each row has its bitplanes stored
@@ -42,6 +53,23 @@ align(1) struct Linear8BPP {
 align(1) struct Intertwined8BPP {
 	align(1):
 	ubyte[8 * 8] raw;
+	this(in ubyte[64] tile) @safe pure {
+		raw = tile;
+	}
+	this(in ubyte[8][8] tile) @safe pure {
+		foreach (rowID, row; tile) {
+			foreach (colID, col; row) {
+				raw[rowID * 2] |= cast(ubyte)((col & 1) << (row.length - 1 - colID));
+				raw[(rowID * 2) + 1] |= cast(ubyte)(((col & 2) >> 1) << (row.length - 1 - colID));
+				raw[16 + (rowID * 2)] |= cast(ubyte)(((col & 4) >> 2) << (row.length - 1 - colID));
+				raw[16 + (rowID * 2) + 1] |= cast(ubyte)(((col & 8) >> 3) << (row.length - 1 - colID));
+				raw[32 + (rowID * 2)] |= cast(ubyte)(((col & 16) >> 4) << (row.length - 1 - colID));
+				raw[32 + (rowID * 2) + 1] |= cast(ubyte)(((col & 32) >> 5) << (row.length - 1 - colID));
+				raw[48 + (rowID * 2)] |= cast(ubyte)(((col & 64) >> 6) << (row.length - 1 - colID));
+				raw[48 + (rowID * 2) + 1] |= cast(ubyte)(((col & 128) >> 7) << (row.length - 1 - colID));
+			}
+		}
+	}
 	ubyte[8][8] pixelMatrix() const @safe pure
 		out(result; result.isValidBitmap!8)
 	{
@@ -78,4 +106,5 @@ align(1) struct Intertwined8BPP {
 		[0x10, 0x32, 0x54, 0x76, 0x98, 0xBA, 0xDC, 0xFE]
 	];
 	assert(data.pixelMatrix() == finaldata);
+	assert(Intertwined8BPP(data.pixelMatrix()) == data);
 }

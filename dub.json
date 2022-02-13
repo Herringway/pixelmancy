@@ -12,6 +12,7 @@
 		"magicalrainbows": "~>0.1"
 	},
 	"subPackages": [
-		"dumper"
+		"dumper",
+		"fromimage"
 	]
 }

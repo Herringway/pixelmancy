@@ -1,0 +1,7 @@
+{
+	"name": "fromimage",
+	"dependencies": {
+		"tiledump": "*",
+		"arsd-official:png": "~>10.6.0"
+	}
+}

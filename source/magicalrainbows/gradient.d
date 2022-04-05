@@ -10,7 +10,10 @@ struct Gradient {
 	RGB888 end;
 	RGB888 front;
 	void popFront() @safe pure {
-		index++;
+		popFrontN(1);
+	}
+	void popFrontN(size_t steps) @safe pure {
+		index += steps;
 		double redInc = ((cast(double)end.red - cast(double)start.red) / cast(double)(count-1));
 		double greenInc = ((cast(double)end.green - cast(double)start.green) / cast(double)(count-1));
 		double blueInc = ((cast(double)end.blue - cast(double)start.blue) / cast(double)(count-1));

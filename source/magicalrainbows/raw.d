@@ -82,6 +82,36 @@ ubyte[Format.sizeof] colourToBytes(Format)(Format data) if (isColourFormat!Forma
 	assert(colourToBytes(RGB888(72, 232, 248)) == [72, 232, 248]);
 }
 
+ubyte[] colourToBytes(T)(T red, T green, T blue, SupportedFormat format) {
+	ubyte[] output;
+	final switch (format) {
+		case SupportedFormat.bgr222:
+			output = colourToBytes(BGR222(red, green, blue))[].dup;
+			break;
+		case SupportedFormat.bgr333md:
+			output = colourToBytes(BGR333MD(red, green, blue))[].dup;
+			break;
+		case SupportedFormat.bgr555:
+			output = colourToBytes(BGR555(red, green, blue))[].dup;
+			break;
+		case SupportedFormat.bgr565:
+			output = colourToBytes(BGR565(red, green, blue))[].dup;
+			break;
+		case SupportedFormat.rgb888:
+			output = colourToBytes(RGB888(red, green, blue))[].dup;
+			break;
+		case SupportedFormat.rgba8888:
+			output = colourToBytes(RGBA8888(red, green, blue))[].dup;
+			break;
+	}
+	return output;
+}
+///
+@safe unittest {
+	assert(colourToBytes(9, 29, 31, SupportedFormat.bgr555) == [0xA9, 0x7F]);
+	assert(colourToBytes(72, 232, 248, SupportedFormat.rgb888) == [72, 232, 248]);
+}
+
 ubyte[] colourToBytes(T)(T data, SupportedFormat format) if (isColourFormat!T) {
 	ubyte[] output;
 	final switch (format) {

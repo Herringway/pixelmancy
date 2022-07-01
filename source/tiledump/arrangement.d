@@ -35,6 +35,7 @@ enum ArrangementStyle {
 align(1) struct SNESScreenTileArrangement {
 	align(1):
 	SNESTileAttributes[(256/8)*(224/8)] tiles;
+	enum width = 32;
 	auto opCast(T: Arrangement)() const {
 		auto arr = new TileAttributes[](tiles.length);
 		foreach (idx, tile; tiles) {
@@ -57,6 +58,7 @@ struct SNESTileArrangement {
 align(1) struct SGBBorderTileArrangement {
 	align(1):
 	SNESTileAttributes[536] tiles;
+	enum width = 32;
 	auto opCast(T: Arrangement)() const {
 		auto arr = new TileAttributes[](32*28);
 		ushort idxOffset;

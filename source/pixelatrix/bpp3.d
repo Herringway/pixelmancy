@@ -15,9 +15,7 @@ align(1) struct Intertwined3BPP {
 	this(in ubyte[8][8] tile) @safe pure {
 		foreach (rowID, row; tile) {
 			foreach (colID, col; row) {
-				raw[rowID * 2] |= cast(ubyte)((col & 1) << (row.length - 1 - colID));
-				raw[(rowID * 2) + 1] |= cast(ubyte)(((col & 2) >> 1) << (row.length - 1 - colID));
-				raw[rowID + 16] |= cast(ubyte)(((col & 4) >> 2) << (row.length - 1 - colID));
+				this[rowID, colID] = col;
 			}
 		}
 	}
@@ -27,13 +25,21 @@ align(1) struct Intertwined3BPP {
 		ubyte[8][8] output;
 		foreach (x; 0..8) {
 			foreach (y; 0..8) {
-				output[x][7-y] = cast(ubyte)
-					(((raw[x*2]&(1<<y))>>y) +
-					(((raw[x*2+1]&(1<<y))>>y)<<1) +
-					(((raw[16 + x]&(1<<y))>>y)<<2));
+				output[x][y] = this[x, y];
 			}
 		}
 		return output;
+	}
+	ubyte opIndex(size_t x, size_t y) const @safe pure {
+		return getBit(raw[], (x * 2) * 8 + y) |
+			(getBit(raw[], ((x * 2) + 1) * 8 + y) << 1) |
+			(getBit(raw[], (x + 16) * 8 + y) << 2);
+	}
+	ubyte opIndexAssign(ubyte val, size_t x, size_t y) @safe pure {
+		setBit(raw[], (x * 2) * 8 + y, val & 1);
+		setBit(raw[], ((x * 2) + 1) * 8 + y, (val >> 1) & 1);
+		setBit(raw[], (x + 16) * 8 + y, (val >> 2) & 1);
+		return val;
 	}
 }
 ///

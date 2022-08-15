@@ -132,3 +132,12 @@ ubyte[8][8][] pixelMatrices(const ubyte[] data, TileFormat format) @safe pure {
 			return fromFormat!GBA4BPP(data);
 	}
 }
+
+package void setBit(scope ubyte[] bytes, size_t index, bool value) @safe pure {
+	const mask = ~(1 << (7 - (index % 8)));
+	const newBit = value << (7 - (index % 8));
+	bytes[index / 8] = cast(ubyte)((bytes[index / 8] & mask) | newBit);
+}
+package bool getBit(in ubyte[] bytes, size_t index) @safe pure {
+	return !!(bytes[index / 8] & (1 << (7 - (index % 8))));
+}

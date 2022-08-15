@@ -18,8 +18,7 @@ align(1) struct Linear2BPP {
 	this(in ubyte[8][8] tile) @safe pure {
 		foreach (rowID, row; tile) {
 			foreach (colID, col; row) {
-				raw[rowID] |= cast(ubyte)((col & 1) << (row.length - 1 - colID));
-				raw[rowID + 8] |= cast(ubyte)(((col & 2) >> 1) << (row.length - 1 - colID));
+				this[rowID, colID] = col;
 			}
 		}
 	}
@@ -29,12 +28,18 @@ align(1) struct Linear2BPP {
 		ubyte[8][8] output;
 		foreach (x; 0..8) {
 			foreach (y; 0..8) {
-				output[x][7-y] = cast(ubyte)
-					(((raw[x]&(1<<y))>>y) +
-					(((raw[x+8]&(1<<y))>>y)<<1));
+				output[x][y] = this[x, y];
 			}
 		}
 		return output;
+	}
+	ubyte opIndex(size_t x, size_t y) const @safe pure {
+		return getBit(raw[], x * 8 + y) | (getBit(raw[], (x + 8) * 8 + y) << 1);
+	}
+	ubyte opIndexAssign(ubyte val, size_t x, size_t y) @safe pure {
+		setBit(raw[], x * 8 + y, val & 1);
+		setBit(raw[], (x + 8) * 8 + y, (val >> 1) & 1);
+		return val;
 	}
 }
 ///
@@ -50,8 +55,12 @@ align(1) struct Linear2BPP {
 		[0, 3, 0, 3, 3, 3, 3, 3],
 		[0, 0, 3, 0, 1, 1, 3, 3],
 		[0, 0, 0, 3, 1, 1, 3, 2]];
+	assert(data[0, 1] == 3);
 	assert(data.pixelMatrix() == finaldata);
 	assert(Linear2BPP(data.pixelMatrix()) == data);
+	Linear2BPP data2 = data;
+	data2[0, 1] = 2;
+	assert(data2[0, 1] == 2);
 }
 
 /++
@@ -70,8 +79,7 @@ align(1) struct Intertwined2BPP {
 	this(in ubyte[8][8] tile) @safe pure {
 		foreach (rowID, row; tile) {
 			foreach (colID, col; row) {
-				raw[rowID * 2] |= cast(ubyte)((col & 1) << (row.length - 1 - colID));
-				raw[(rowID * 2) + 1] |= cast(ubyte)(((col & 2) >> 1) << (row.length - 1 - colID));
+				this[rowID, colID] = col;
 			}
 		}
 	}
@@ -81,12 +89,18 @@ align(1) struct Intertwined2BPP {
 		ubyte[8][8] output;
 		foreach (x; 0..8) {
 			foreach (y; 0..8) {
-				output[x][7-y] = cast(ubyte)
-					(((raw[x*2]&(1<<y))>>y) +
-					(((raw[x*2+1]&(1<<y))>>y)<<1));
+				output[x][y] = this[x, y];
 			}
 		}
 		return output;
+	}
+	ubyte opIndex(size_t x, size_t y) const @safe pure {
+		return getBit(raw[], (x * 2) * 8 + y) | (getBit(raw[], (x * 2 + 1) * 8 + y) << 1);
+	}
+	ubyte opIndexAssign(ubyte val, size_t x, size_t y) @safe pure {
+		setBit(raw[], (x * 2) * 8 + y, val & 1);
+		setBit(raw[], ((x * 2) + 1) * 8 + y, (val >> 1) & 1);
+		return val;
 	}
 }
 ///

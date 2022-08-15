@@ -15,7 +15,7 @@ align(1) struct Linear8BPP {
 	this(in ubyte[8][8] tile) @safe pure {
 		foreach (rowID, row; tile) {
 			foreach (colID, col; row) {
-				raw[rowID * row.length + colID] = col;
+				this[rowID, colID] = col;
 			}
 		}
 	}
@@ -27,6 +27,9 @@ align(1) struct Linear8BPP {
 			output[x] = raw[x * 8 .. (x * 8) + 8];
 		}
 		return output;
+	}
+	ref inout(ubyte) opIndex(size_t x, size_t y) inout @safe pure return {
+		return raw[x * 8 + y];
 	}
 }
 ///
@@ -59,14 +62,7 @@ align(1) struct Intertwined8BPP {
 	this(in ubyte[8][8] tile) @safe pure {
 		foreach (rowID, row; tile) {
 			foreach (colID, col; row) {
-				raw[rowID * 2] |= cast(ubyte)((col & 1) << (row.length - 1 - colID));
-				raw[(rowID * 2) + 1] |= cast(ubyte)(((col & 2) >> 1) << (row.length - 1 - colID));
-				raw[16 + (rowID * 2)] |= cast(ubyte)(((col & 4) >> 2) << (row.length - 1 - colID));
-				raw[16 + (rowID * 2) + 1] |= cast(ubyte)(((col & 8) >> 3) << (row.length - 1 - colID));
-				raw[32 + (rowID * 2)] |= cast(ubyte)(((col & 16) >> 4) << (row.length - 1 - colID));
-				raw[32 + (rowID * 2) + 1] |= cast(ubyte)(((col & 32) >> 5) << (row.length - 1 - colID));
-				raw[48 + (rowID * 2)] |= cast(ubyte)(((col & 64) >> 6) << (row.length - 1 - colID));
-				raw[48 + (rowID * 2) + 1] |= cast(ubyte)(((col & 128) >> 7) << (row.length - 1 - colID));
+				this[rowID, colID] = col;
 			}
 		}
 	}
@@ -76,19 +72,31 @@ align(1) struct Intertwined8BPP {
 		ubyte[8][8] output;
 		foreach (x; 0..8) {
 			foreach (y; 0..8) {
-				output[x][7-y] = cast(ubyte)
-					(((raw[(8 * 0) + x*2]&(1<<y))>>y) +
-					(((raw[(8 * 0) + x*2+1]&(1<<y))>>y)<<1) +
-					(((raw[(8 * 2) + x*2]&(1<<y))>>y)<<2) +
-					(((raw[(8 * 2) + x*2 + 1]&(1<<y))>>y)<<3) +
-					(((raw[(8 * 4) + x*2]&(1<<y))>>y)<<4) +
-					(((raw[(8 * 4) + x*2 + 1]&(1<<y))>>y)<<5) +
-					(((raw[(8 * 6) + x*2]&(1<<y))>>y)<<6) +
-					(((raw[(8 * 6) + x*2 + 1]&(1<<y))>>y)<<7)
-				);
+				output[x][y] = this[x, y];
 			}
 		}
 		return output;
+	}
+	ubyte opIndex(size_t x, size_t y) const @safe pure {
+		return getBit(raw[], (x * 2) * 8 + y) |
+			(getBit(raw[], ((x * 2) + 1) * 8 + y) << 1) |
+			(getBit(raw[], ((x * 2) + 16) * 8 + y) << 2) |
+			(getBit(raw[], ((x * 2) + 1 + 16) * 8 + y) << 3) |
+			(getBit(raw[], ((x * 2) + 32) * 8 + y) << 4) |
+			(getBit(raw[], ((x * 2) + 32 + 1) * 8 + y) << 5) |
+			(getBit(raw[], ((x * 2) + 48) * 8 + y) << 6) |
+			(getBit(raw[], ((x * 2) + 1 + 48) * 8 + y) << 7);
+	}
+	ubyte opIndexAssign(ubyte val, size_t x, size_t y) @safe pure {
+		setBit(raw[], (x * 2) * 8 + y, val & 1);
+		setBit(raw[], ((x * 2) + 1) * 8 + y, (val >> 1) & 1);
+		setBit(raw[], ((x * 2) + 16) * 8 + y, (val >> 2) & 1);
+		setBit(raw[], ((x * 2) + 1 + 16) * 8 + y, (val >> 3) & 1);
+		setBit(raw[], ((x * 2) + 32) * 8 + y, (val >> 4) & 1);
+		setBit(raw[], ((x * 2) + 1 + 32) * 8 + y, (val >> 5) & 1);
+		setBit(raw[], ((x * 2) + 48) * 8 + y, (val >> 6) & 1);
+		setBit(raw[], ((x * 2) + 1 + 48) * 8 + y, (val >> 7) & 1);
+		return val;
 	}
 }
 ///

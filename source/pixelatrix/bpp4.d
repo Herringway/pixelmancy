@@ -15,10 +15,7 @@ align(1) struct Intertwined4BPP {
 	this(in ubyte[8][8] tile) @safe pure {
 		foreach (rowID, row; tile) {
 			foreach (colID, col; row) {
-				raw[rowID * 2] |= cast(ubyte)((col & 1) << (row.length - 1 - colID));
-				raw[(rowID * 2) + 1] |= cast(ubyte)(((col & 2) >> 1) << (row.length - 1 - colID));
-				raw[16 + (rowID * 2)] |= cast(ubyte)(((col & 4) >> 2) << (row.length - 1 - colID));
-				raw[16 + (rowID * 2) + 1] |= cast(ubyte)(((col & 8) >> 3) << (row.length - 1 - colID));
+				this[rowID, colID] = col;
 			}
 		}
 	}
@@ -28,14 +25,23 @@ align(1) struct Intertwined4BPP {
 		ubyte[8][8] output;
 		foreach (x; 0..8) {
 			foreach (y; 0..8) {
-				output[x][7-y] = cast(ubyte)
-					(((raw[x*2]&(1<<y))>>y) +
-					(((raw[x*2+1]&(1<<y))>>y)<<1) +
-					(((raw[16 + x*2]&(1<<y))>>y)<<2) +
-					(((raw[16 + x*2 + 1]&(1<<y))>>y)<<3));
+				output[x][y] = this[x, y];
 			}
 		}
 		return output;
+	}
+	ubyte opIndex(size_t x, size_t y) const @safe pure {
+		return getBit(raw[], (x * 2) * 8 + y) |
+			(getBit(raw[], ((x * 2) + 1) * 8 + y) << 1) |
+			(getBit(raw[], ((x * 2) + 16) * 8 + y) << 2) |
+			(getBit(raw[], ((x * 2) + 1 + 16) * 8 + y) << 3);
+	}
+	ubyte opIndexAssign(ubyte val, size_t x, size_t y) @safe pure {
+		setBit(raw[], (x * 2) * 8 + y, val & 1);
+		setBit(raw[], ((x * 2) + 1) * 8 + y, (val >> 1) & 1);
+		setBit(raw[], ((x * 2) + 16) * 8 + y, (val >> 2) & 1);
+		setBit(raw[], ((x * 2) + 1 + 16) * 8 + y, (val >> 3) & 1);
+		return val;
 	}
 }
 ///
@@ -69,7 +75,7 @@ align(1) struct GBA4BPP {
 	this(in ubyte[8][8] tile) @safe pure {
 		foreach (rowID, row; tile) {
 			foreach (colID, col; row) {
-				raw[rowID * row.length / 2 + colID / 2] |= cast(ubyte)((col & 0xF) << (4 * (colID % 2)));
+				this[rowID, colID] = col;
 			}
 		}
 	}
@@ -77,11 +83,21 @@ align(1) struct GBA4BPP {
 		out(result; result.isValidBitmap!4)
 	{
 		ubyte[8][8] output;
-		foreach (i, b; raw) {
-			output[i / 4][(i % 4) * 2] = b&0xF;
-			output[i / 4][(i % 4) * 2 + 1] = (b&0xF0) >> 4;
+		foreach (x; 0..8) {
+			foreach (y; 0..8) {
+				output[x][y] = this[x, y];
+			}
 		}
 		return output;
+	}
+	ubyte opIndex(size_t x, size_t y) const @safe pure {
+		return (raw[x * 4 + y / 2] & (0xF << ((y & 1) * 4))) >> ((y & 1) * 4);
+	}
+	ubyte opIndexAssign(ubyte val, size_t x, size_t y) @safe pure {
+		const mask = (0xF << ((~y & 1) * 4)) >> ((~y & 1) * 4);
+		const newBit = (val & 0xF) << ((y & 1) * 4);
+		raw[x * 4 + y / 2] = (raw[x * 4 + y / 2] & mask) | newBit;
+		return val;
 	}
 }
 ///

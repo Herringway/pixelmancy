@@ -17,7 +17,7 @@ align(1) struct Simple1BPP {
 	this(in ubyte[8][8] tile) @safe pure {
 		foreach (rowID, row; tile) {
 			foreach (colID, col; row) {
-				raw[rowID] |= cast(ubyte)((col == 1) << (row.length - 1 - colID));
+				this[rowID, colID] = !!col;
 			}
 		}
 	}
@@ -27,11 +27,17 @@ align(1) struct Simple1BPP {
 		ubyte[8][8] output;
 		foreach (x; 0..8) {
 			foreach (y; 0..8) {
-				output[x][7-y] = cast(ubyte)
-					((raw[x]&(1<<y))>>y);
+				output[x][y] = this[x, y];
 			}
 		}
 		return output;
+	}
+	bool opIndex(size_t x, size_t y) const @safe pure {
+		return getBit(raw[], x * 8 + y);
+	}
+	bool opIndexAssign(bool val, size_t x, size_t y) @safe pure {
+		setBit(raw[], x * 8 + y, val);
+		return val;
 	}
 }
 ///
@@ -49,4 +55,17 @@ align(1) struct Simple1BPP {
 		[0, 0, 0, 1, 1, 1, 1, 0]];
 	assert(data.pixelMatrix() == finaldata);
 	assert(Simple1BPP(data.pixelMatrix()) == data);
+	foreach (x; 0 .. 8) {
+		foreach (y; 0 .. 8) {
+			assert(data[x, y] == finaldata[x][y]);
+		}
+	}
+	Simple1BPP data2 = data;
+	assert(data2[3, 3]);
+	assert(!data2[3, 4]);
+	data2[3, 4] = true;
+	assert(data2[3, 4]);
+	data2[3, 4] = false;
+	assert(!data2[3, 4]);
+	assert(data2 == data);
 }

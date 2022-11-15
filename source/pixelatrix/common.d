@@ -138,6 +138,6 @@ package void setBit(scope ubyte[] bytes, size_t index, bool value) @safe pure {
 	const newBit = value << (7 - (index % 8));
 	bytes[index / 8] = cast(ubyte)((bytes[index / 8] & mask) | newBit);
 }
-package bool getBit(in ubyte[] bytes, size_t index) @safe pure {
+package bool getBit(scope const ubyte[] bytes, size_t index) @safe pure {
 	return !!(bytes[index / 8] & (1 << (7 - (index % 8))));
 }

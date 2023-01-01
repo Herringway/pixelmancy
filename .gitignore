@@ -17,3 +17,6 @@ tiledump-test-*
 dub.selections.json
 .vs
 *.lib
+*.pdb
+*.bin
+*.pal

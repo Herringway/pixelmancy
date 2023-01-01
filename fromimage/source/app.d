@@ -6,6 +6,7 @@ import std.getopt;
 import std.stdio;
 
 import arsd.png;
+import siryul;
 import tiledump;
 import pixelatrix;
 import magicalrainbows;
@@ -14,10 +15,12 @@ void main(string[] args) {
 	string palettePath;
 	TileFormat tileFormat = TileFormat.intertwined4BPP;
 	ArrangementStyle arrangementStyle;
+	string arrangementFile;
 	SupportedFormat paletteFormat;
 	auto helpInformation = getopt(args,
     	std.getopt.config.caseSensitive,
 		"arrangement-style|s", "Assume a specific tile arrangement style", &arrangementStyle,
+		"arrangement-file|i", "Load an arrangement from a file", &arrangementFile,
 		"palette|p", "Write a palette file", &palettePath,
 		"palette-format|F", "Palette file format", &paletteFormat,
 		"tileformat|f", &tileFormat
@@ -47,7 +50,7 @@ void main(string[] args) {
 				tiles ~= tile;
 			}
 		}
-		const arrangement = Arrangement.generate(arrangementStyle, tiles.length, tileWidth);
+		const arrangement = arrangementFile ? fromFile!(Arrangement,YAML, DeSiryulize.optionalByDefault)(arrangementFile) : Arrangement.generate(arrangementStyle, tiles.length, tileWidth);
 		foreach (tileAttributes; arrangement.tiles) {
 			file.rawWrite(tileData(tiles[tileAttributes.tile], tileFormat));
 		}

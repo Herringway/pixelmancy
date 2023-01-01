@@ -2,6 +2,7 @@
 	"name": "fromimage",
 	"dependencies": {
 		"tiledump": "*",
+		"siryul": "~>0.7.0",
 		"arsd-official:png": "~>10.6.0"
 	}
 }

@@ -13,6 +13,7 @@ import std.traits;
 import tiledump.arrangement;
 import tiledump.imagesaver;
 import pixelatrix;
+import siryul;
 import magicalrainbows;
 import rando.palette;
 
@@ -64,6 +65,7 @@ void main(string[] args) @system {
 	string arrangementFile;
 	string paletteFile;
 	size_t forceWidth;
+	string arrangementDoc;
 	bool randomize;
 	ColourRandomizationLevel randomizationLevel = ColourRandomizationLevel.randomHue;
 	PalettePreset palettePreset;
@@ -75,6 +77,7 @@ void main(string[] args) @system {
 	auto helpInformation = getopt(args,
     	std.getopt.config.caseSensitive,
 		"arrangement|a", "Use a tile arrangement file", &arrangementFile,
+		"arrangementdoc|i", "Use a tile arrangement doc", &arrangementDoc,
 		"arrangement-style|s", "Use a specific tile arrangement generator", &arrangementStyle,
 		"palette|p", "Use a palette file", &paletteFile,
 		"palette-format|F", "Palette file format", &paletteFormat,
@@ -92,7 +95,7 @@ void main(string[] args) @system {
 		return;
 	}
 	const tiles = pixelMatrices(readData(args[1]), tileFormat);
-	const arrangement = getArrangement(arrangementFile, arrangementFormat, forceWidth, Arrangement.generate(arrangementStyle, tiles.length, forceWidth));
+	const arrangement = arrangementDoc ? fromFile!(Arrangement, YAML, DeSiryulize.optionalByDefault)(arrangementDoc) : getArrangement(arrangementFile, arrangementFormat, forceWidth, Arrangement.generate(arrangementStyle, tiles.length, forceWidth));
 	auto palettes = getPalette(paletteFile, paletteFormat, tileFormat.colours, !firstColourNotTransparent, getPalette(palettePreset));
 	if (randomize) {
 		foreach (ref palette; palettes) {

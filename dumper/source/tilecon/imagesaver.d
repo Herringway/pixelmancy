@@ -1,8 +1,8 @@
-module tiledump.imagesaver;
+module tilecon.imagesaver;
 
 import std.algorithm;
 import std.array;
-import tiledump.arrangement;
+import tilecon.arrangement;
 import magicalrainbows;
 
 RGBA8888[][] convertPalettes(T, size_t colourCount)(in T[colourCount][] palettes, bool firstColourTransparent) @safe pure {

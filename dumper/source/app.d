@@ -10,8 +10,8 @@ import std.stdio;
 import std.string;
 import std.traits;
 
-import tiledump.arrangement;
-import tiledump.imagesaver;
+import tilecon.arrangement;
+import tilecon.imagesaver;
 import pixelatrix;
 import siryul;
 import magicalrainbows;

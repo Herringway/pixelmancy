@@ -1,4 +1,4 @@
-module tiledump.arrangement;
+module tilecon.arrangement;
 
 import std.algorithm;
 import std.bitmanip;

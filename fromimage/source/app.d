@@ -7,7 +7,7 @@ import std.stdio;
 
 import arsd.png;
 import siryul;
-import tiledump;
+import tilecon;
 import pixelatrix;
 import magicalrainbows;
 

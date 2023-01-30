@@ -5,7 +5,7 @@
 	"copyright": "Copyright © 2022, Herringway",
 	"description": " ",
 	"license": "BSL-1.0",
-	"name": "tiledump",
+	"name": "tilecon",
 	"dependencies": {
 		"reversineer": "~>0.0",
 		"pixelatrix": "~>0.0",

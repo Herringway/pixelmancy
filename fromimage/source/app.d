@@ -4,6 +4,7 @@ import std.array;
 import std.format;
 import std.getopt;
 import std.logger;
+import std.range;
 import std.stdio;
 
 import arsd.png;
@@ -20,6 +21,7 @@ void main(string[] args) {
 	string writeArrangementFile;
 	SupportedFormat paletteFormat;
 	bool noDuplicateTiles;
+	bool prunePalettes;
 	auto helpInformation = getopt(args,
     	std.getopt.config.caseSensitive,
 		"arrangement-style|s", "Assume a specific tile arrangement style", &arrangementStyle,
@@ -28,6 +30,7 @@ void main(string[] args) {
 		"deduplicate|d", "Only write unique tiles", &noDuplicateTiles,
 		"palette|p", "Write a palette file", &palettePath,
 		"palette-format|F", "Palette file format", &paletteFormat,
+		"prune-empty-paletts|P", "Don't output empty palettes", &prunePalettes,
 		"tileformat|f", &tileFormat
 	);
 
@@ -77,9 +80,17 @@ void main(string[] args) {
 		if (palettePath) {
 			auto paletteFile = File(palettePath, "wb");
 			RGBA8888[] colours = img.palette.map!(x => RGBA8888(x.r, x.g, x.b, x.a)).array;
-			colours.length = max(16, colours.length);
-			foreach (colour; colours) {
-				paletteFile.rawWrite(colourToBytes(colour, paletteFormat));
+			auto roundUp(size_t v) {
+			    return (v / 16 + !!(v % 16)) * 16;
+			}
+			colours.length = roundUp(colours.length);
+			foreach (palette; colours.chunks(16)) {
+				if (palette.all!(x => x == RGBA8888(0, 0, 0, 255))) {
+					continue;
+				}
+				foreach (colour; palette) {
+					paletteFile.rawWrite(colourToBytes(colour, paletteFormat));
+				}
 			}
 		}
 	} else {

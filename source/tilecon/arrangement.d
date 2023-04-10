@@ -44,6 +44,18 @@ align(1) struct SNESScreenTileArrangement {
 		return Arrangement(arr, 32);
 	}
 }
+align(1) struct ConsoleFullTileArrangement {
+	align(1):
+	SNESTileAttributes[(256/8)*(256/8)] tiles;
+	enum width = 32;
+	auto opCast(T: Arrangement)() const {
+		auto arr = new TileAttributes[](tiles.length);
+		foreach (idx, tile; tiles) {
+			arr[idx] = cast(TileAttributes)tile;
+		}
+		return Arrangement(arr, 32);
+	}
+}
 struct SNESTileArrangement {
 	SNESTileAttributes[] tiles;
 	size_t width;

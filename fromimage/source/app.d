@@ -3,6 +3,7 @@ import std.algorithm;
 import std.array;
 import std.format;
 import std.getopt;
+import std.logger;
 import std.stdio;
 
 import arsd.png;
@@ -16,11 +17,15 @@ void main(string[] args) {
 	TileFormat tileFormat = TileFormat.intertwined4BPP;
 	ArrangementStyle arrangementStyle;
 	string arrangementFile;
+	string writeArrangementFile;
 	SupportedFormat paletteFormat;
+	bool noDuplicateTiles;
 	auto helpInformation = getopt(args,
     	std.getopt.config.caseSensitive,
 		"arrangement-style|s", "Assume a specific tile arrangement style", &arrangementStyle,
 		"arrangement-file|i", "Load an arrangement from a file", &arrangementFile,
+		"write-arrangement-file|a", "Write arrangement to a file", &writeArrangementFile,
+		"deduplicate|d", "Only write unique tiles", &noDuplicateTiles,
 		"palette|p", "Write a palette file", &palettePath,
 		"palette-format|F", "Palette file format", &paletteFormat,
 		"tileformat|f", &tileFormat
@@ -37,6 +42,7 @@ void main(string[] args) {
 		}
 		const tileWidth = img.width / 8;
 		const tileHeight = img.height / 8;
+		infof("Tiles: %sx%s", tileWidth, tileHeight);
 		ubyte[8][8][] tiles;
 		tiles.reserve(tileWidth * tileHeight);
 		auto tileRows = cast(ubyte[8][])img.data;
@@ -51,15 +57,32 @@ void main(string[] args) {
 			}
 		}
 		const arrangement = arrangementFile ? fromFile!(Arrangement,YAML, DeSiryulize.optionalByDefault)(arrangementFile) : Arrangement.generate(arrangementStyle, tiles.length, tileWidth);
-		foreach (tileAttributes; arrangement.tiles) {
-			file.rawWrite(tileData(tiles[tileAttributes.tile], tileFormat));
+		const(ubyte)[][] seenTiles;
+		ConsoleFullTileArrangement[1] arrangementToWrite;
+		foreach (idx, tileAttributes; arrangement.tiles) {
+			const data = tileData(tiles[tileAttributes.tile], tileFormat);
+			const found = seenTiles.countUntil(data);
+			if (!noDuplicateTiles || (found == -1)) {
+				file.rawWrite(data);
+				if (noDuplicateTiles) {
+					seenTiles ~= data;
+				}
+			}
+			auto newTile = (found == -1) ? (seenTiles.length - 1) : found;
+			arrangementToWrite[0].tiles[(idx / tileWidth) * 32 + (idx % tileWidth)] = SNESTileAttributes(TileAttributes(newTile, tileAttributes.palette, tileAttributes.flipX, tileAttributes.flipY));
+		}
+		if (writeArrangementFile) {
+			File(writeArrangementFile, "w").rawWrite(arrangementToWrite[]);
 		}
 		if (palettePath) {
 			auto paletteFile = File(palettePath, "wb");
 			RGBA8888[] colours = img.palette.map!(x => RGBA8888(x.r, x.g, x.b, x.a)).array;
+			colours.length = max(16, colours.length);
 			foreach (colour; colours) {
 				paletteFile.rawWrite(colourToBytes(colour, paletteFormat));
 			}
 		}
+	} else {
+		writeln("Invalid image");
 	}
 }

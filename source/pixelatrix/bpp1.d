@@ -9,6 +9,9 @@ import pixelatrix.common;
 + Returns: a decoded 8x8 tile.
 +/
 align(1) struct Simple1BPP {
+	enum width = 8;
+	enum height = 8;
+	enum bpp = 1;
 	align(1):
 	ubyte[8] raw;
 	this(in ubyte[8] tile) @safe pure {
@@ -17,26 +20,15 @@ align(1) struct Simple1BPP {
 	this(in ubyte[8][8] tile) @safe pure {
 		foreach (rowID, row; tile) {
 			foreach (colID, col; row) {
-				this[rowID, colID] = !!col;
+				this[colID, rowID] = !!col;
 			}
 		}
-	}
-	ubyte[8][8] pixelMatrix() const @safe pure
-		out(result; result.isValidBitmap!1)
-	{
-		ubyte[8][8] output;
-		foreach (x; 0..8) {
-			foreach (y; 0..8) {
-				output[x][y] = this[x, y];
-			}
-		}
-		return output;
 	}
 	bool opIndex(size_t x, size_t y) const @safe pure {
-		return getBit(raw[], x * 8 + y);
+		return getBit(raw[], y * 8 + x);
 	}
 	bool opIndexAssign(bool val, size_t x, size_t y) @safe pure {
-		setBit(raw[], x * 8 + y, val);
+		setBit(raw[], y * 8 + x, val);
 		return val;
 	}
 }
@@ -57,15 +49,16 @@ align(1) struct Simple1BPP {
 	assert(Simple1BPP(data.pixelMatrix()) == data);
 	foreach (x; 0 .. 8) {
 		foreach (y; 0 .. 8) {
-			assert(data[x, y] == finaldata[x][y]);
+			assert(data[x, y] == finaldata[y][x]);
 		}
 	}
 	Simple1BPP data2 = data;
 	assert(data2[3, 3]);
-	assert(!data2[3, 4]);
-	data2[3, 4] = true;
+	assert(!data2[4, 3]);
 	assert(data2[3, 4]);
-	data2[3, 4] = false;
-	assert(!data2[3, 4]);
+	data2[4, 3] = true;
+	assert(data2[4, 3]);
+	data2[4, 3] = false;
+	assert(!data2[4, 3]);
 	assert(data2 == data);
 }

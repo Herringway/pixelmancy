@@ -1,5 +1,6 @@
 module pixelatrix.bpp3;
 
+import pixelatrix.bpp1;
 import pixelatrix.common;
 
 /++
@@ -7,45 +8,25 @@ import pixelatrix.common;
 + adjacent to one another. Commonly used by the SNES.
 +/
 align(1) struct Intertwined3BPP {
+	enum width = 8;
+	enum height = 8;
+	enum bpp = 3;
 	align(1):
-	ubyte[8 * 3] raw;
-	this(in ubyte[24] tile) @safe pure {
-		raw = tile;
-	}
-	this(in ubyte[8][8] tile) @safe pure {
-		foreach (rowID, row; tile) {
-			foreach (colID, col; row) {
-				this[rowID, colID] = col;
-			}
-		}
-	}
-	ubyte[8][8] pixelMatrix() const @safe pure
-		out(result; result.isValidBitmap!3)
-	{
-		ubyte[8][8] output;
-		foreach (x; 0..8) {
-			foreach (y; 0..8) {
-				output[x][y] = this[x, y];
-			}
-		}
-		return output;
-	}
+	Intertwined!2 planes01;
+	Simple1BPP plane2;
 	ubyte opIndex(size_t x, size_t y) const @safe pure {
-		return getBit(raw[], (x * 2) * 8 + y) |
-			(getBit(raw[], ((x * 2) + 1) * 8 + y) << 1) |
-			(getBit(raw[], (x + 16) * 8 + y) << 2);
+		return cast(ubyte)(planes01[x, y] + (plane2[x, y] << 2));
 	}
 	ubyte opIndexAssign(ubyte val, size_t x, size_t y) @safe pure {
-		setBit(raw[], (x * 2) * 8 + y, val & 1);
-		setBit(raw[], ((x * 2) + 1) * 8 + y, (val >> 1) & 1);
-		setBit(raw[], (x + 16) * 8 + y, (val >> 2) & 1);
+		planes01[x, y] = val & 3;
+		plane2[x, y] = (val & 4) >> 2;
 		return val;
 	}
 }
 ///
 @safe pure unittest {
 	import std.string : representation;
-	const data = Intertwined3BPP(import("bpp3-sample1.bin").representation[0 .. 24]);
+	const data = (cast(const(Intertwined3BPP)[])import("bpp3-sample1.bin").representation)[0];
 	const ubyte[8][8] finaldata = [
 		[0x0, 0x7, 0x2, 0x6, 0x6, 0x6, 0x7, 0x2],
 		[0x0, 0x0, 0x7, 0x6, 0x6, 0x6, 0x6, 0x6],
@@ -57,5 +38,11 @@ align(1) struct Intertwined3BPP {
 		[0x0, 0x0, 0x0, 0x7, 0x1, 0x1, 0x7, 0x2]
 	];
 	assert(data.pixelMatrix() == finaldata);
-	assert(Intertwined3BPP(data.pixelMatrix()) == data);
+	assert(data[1, 0] == 7);
+	{
+		Intertwined3BPP data2 = data;
+		assert(data2[0, 1] == 0);
+		data2[0, 1] = 6;
+		assert(data2[0, 1] == 6);
+	}
 }

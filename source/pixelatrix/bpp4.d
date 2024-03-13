@@ -30,7 +30,6 @@ alias Intertwined4BPP = Intertwined!4;
 	}
 }
 
-deprecated alias GBA4BPP = Packed4BPP;
 /++
 + 4 bit per pixel tile format with palette. Each pixel is stored in linear order.
 + Commonly used by the GBA.

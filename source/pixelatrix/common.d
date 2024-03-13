@@ -150,24 +150,28 @@ interface Tile {
 	size_t size() const @safe pure;
 	uint opIndex(size_t x, size_t y) const @safe pure;
 	uint opIndexAssign(uint val, size_t x, size_t y) @safe pure;
+	const(ubyte)[] raw() const @safe pure;
 }
 
 class TileClass(T) : Tile {
-	T tile;
+	T[1] tile;
 	this(const ubyte[T.sizeof] data) @safe pure {
 		tile = (cast(const(T)[])(data[]))[0];
 	}
 	ubyte bpp() const @safe pure {
-		return tile.bpp;
+		return T.bpp;
 	}
 	size_t size() const @safe pure {
 		return T.sizeof;
 	}
 	uint opIndex(size_t x, size_t y) const @safe pure {
-		return tile[x, y];
+		return tile[0][x, y];
 	}
 	uint opIndexAssign(uint val, size_t x, size_t y) @safe pure {
-		return tile[x, y] = cast(ubyte)val;
+		return tile[0][x, y] = cast(ubyte)val;
+	}
+	const(ubyte)[] raw() const @safe pure {
+		return cast(const(ubyte)[])tile;
 	}
 }
 
@@ -207,7 +211,7 @@ Tile[] getTiles(const ubyte[] data, TileFormat format) @safe pure {
 	import pixelatrix.bpp4 : Intertwined4BPP, Packed4BPP;
 	import pixelatrix.bpp8 : Intertwined8BPP, Packed8BPP;
 	static Tile[] getType(T)(const ubyte[] data)
-		in(data.length % T.sizeof, "Provided data is not an even multiple of the tile size")
+		in((data.length % T.sizeof) == 0, "Provided data is not an even multiple of the tile size")
 	{
 		Tile[] tiles;
 		tiles.reserve(data.length / T.sizeof);
@@ -234,4 +238,31 @@ Tile[] getTiles(const ubyte[] data, TileFormat format) @safe pure {
 		case TileFormat.packed8BPP:
 			return getType!Packed8BPP(data);
 	}
+}
+
+void getBytes(const Tile tile, scope void delegate(scope const(ubyte)[]) @safe pure sink) @safe pure {
+	sink(tile.raw);
+}
+
+void getBytes(const Tile[] tiles, scope void delegate(scope const(ubyte)[]) @safe pure sink) @safe pure {
+	foreach (tile; tiles) {
+		sink(tile.raw);
+	}
+}
+
+ubyte[] getBytes(const Tile tile) @safe pure {
+	ubyte[] result;
+	getBytes(tile, (data) { result ~= data; });
+	return result;
+}
+
+ubyte[] getBytes(const Tile[] tiles) @safe pure {
+	ubyte[] result;
+	getBytes(tiles, (data) { result ~= data; });
+	return result;
+}
+
+@safe pure unittest {
+	ubyte[] data = new ubyte[](128);
+	assert(getBytes(getTiles(data, TileFormat.packed4BPP)) == data);
 }

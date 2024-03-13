@@ -1,6 +1,6 @@
 module pixelatrix.common;
 
-bool isValidBitmap(size_t size)(const ubyte[8][8] input) {
+package bool isValidBitmap(size_t size)(const ubyte[8][8] input) {
 	foreach (row; input) {
 		foreach (pixel; row) {
 			if (pixel > (1<<size))  {
@@ -11,7 +11,7 @@ bool isValidBitmap(size_t size)(const ubyte[8][8] input) {
 	return true;
 }
 
-bool isValidBitmap(size_t size)(const ubyte[][] input) {
+package bool isValidBitmap(size_t size)(const ubyte[][] input) {
 	foreach (row; input) {
 		foreach (pixel; row) {
 			if (pixel > (1<<size))  {

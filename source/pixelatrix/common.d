@@ -144,3 +144,94 @@ auto pixelMatrix(Tile)(const Tile tile)
 	}
 	return output;
 }
+
+interface Tile {
+	ubyte bpp() const @safe pure;
+	size_t size() const @safe pure;
+	uint opIndex(size_t x, size_t y) const @safe pure;
+	uint opIndexAssign(uint val, size_t x, size_t y) @safe pure;
+}
+
+class TileClass(T) : Tile {
+	T tile;
+	this(const ubyte[T.sizeof] data) @safe pure {
+		tile = (cast(const(T)[])(data[]))[0];
+	}
+	ubyte bpp() const @safe pure {
+		return tile.bpp;
+	}
+	size_t size() const @safe pure {
+		return T.sizeof;
+	}
+	uint opIndex(size_t x, size_t y) const @safe pure {
+		return tile[x, y];
+	}
+	uint opIndexAssign(uint val, size_t x, size_t y) @safe pure {
+		return tile[x, y] = cast(ubyte)val;
+	}
+}
+
+Tile getTile(const ubyte[] data, TileFormat format) @safe pure {
+	import pixelatrix.bpp1 : Simple1BPP;
+	import pixelatrix.bpp2 : Linear2BPP, Intertwined2BPP;
+	import pixelatrix.bpp3 : Intertwined3BPP;
+	import pixelatrix.bpp4 : Intertwined4BPP, Packed4BPP;
+	import pixelatrix.bpp8 : Intertwined8BPP, Packed8BPP;
+	static Tile getType(T)(const ubyte[] data) {
+		return new TileClass!T(data[0 .. T.sizeof]);
+	}
+	final switch (format) {
+		case TileFormat.simple1BPP:
+			return getType!Simple1BPP(data);
+		case TileFormat.linear2BPP:
+			return getType!Linear2BPP(data);
+		case TileFormat.intertwined2BPP:
+			return getType!Intertwined2BPP(data);
+		case TileFormat.intertwined3BPP:
+			return getType!Intertwined3BPP(data);
+		case TileFormat.intertwined4BPP:
+			return getType!Intertwined4BPP(data);
+		case TileFormat.packed4BPP:
+			return getType!Packed4BPP(data);
+		case TileFormat.intertwined8BPP:
+			return getType!Intertwined8BPP(data);
+		case TileFormat.packed8BPP:
+			return getType!Packed8BPP(data);
+	}
+}
+
+Tile[] getTiles(const ubyte[] data, TileFormat format) @safe pure {
+	import pixelatrix.bpp1 : Simple1BPP;
+	import pixelatrix.bpp2 : Linear2BPP, Intertwined2BPP;
+	import pixelatrix.bpp3 : Intertwined3BPP;
+	import pixelatrix.bpp4 : Intertwined4BPP, Packed4BPP;
+	import pixelatrix.bpp8 : Intertwined8BPP, Packed8BPP;
+	static Tile[] getType(T)(const ubyte[] data)
+		in(data.length % T.sizeof, "Provided data is not an even multiple of the tile size")
+	{
+		Tile[] tiles;
+		tiles.reserve(data.length / T.sizeof);
+		foreach (i; 0 .. data.length / T.sizeof) {
+			tiles ~= new TileClass!T(data[i * T.sizeof .. (i + 1) * T.sizeof][0 .. T.sizeof]);
+		}
+		return tiles;
+	}
+	final switch (format) {
+		case TileFormat.simple1BPP:
+			return getType!Simple1BPP(data);
+		case TileFormat.linear2BPP:
+			return getType!Linear2BPP(data);
+		case TileFormat.intertwined2BPP:
+			return getType!Intertwined2BPP(data);
+		case TileFormat.intertwined3BPP:
+			return getType!Intertwined3BPP(data);
+		case TileFormat.intertwined4BPP:
+			return getType!Intertwined4BPP(data);
+		case TileFormat.packed4BPP:
+			return getType!Packed4BPP(data);
+		case TileFormat.intertwined8BPP:
+			return getType!Intertwined8BPP(data);
+		case TileFormat.packed8BPP:
+			return getType!Packed8BPP(data);
+	}
+}

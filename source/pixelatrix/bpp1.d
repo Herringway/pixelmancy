@@ -24,11 +24,11 @@ align(1) struct Simple1BPP {
 			}
 		}
 	}
-	bool opIndex(size_t x, size_t y) const @safe pure {
+	ubyte opIndex(size_t x, size_t y) const @safe pure {
 		return getBit(raw[], y * 8 + x);
 	}
-	bool opIndexAssign(bool val, size_t x, size_t y) @safe pure {
-		setBit(raw[], y * 8 + x, val);
+	ubyte opIndexAssign(ubyte val, size_t x, size_t y) @safe pure {
+		setBit(raw[], y * 8 + x, !!val);
 		return val;
 	}
 }
@@ -53,12 +53,12 @@ align(1) struct Simple1BPP {
 		}
 	}
 	Simple1BPP data2 = data;
-	assert(data2[3, 3]);
-	assert(!data2[4, 3]);
-	assert(data2[3, 4]);
-	data2[4, 3] = true;
+	assert(data2[3, 3] == 1);
+	assert(data2[4, 3] == 0);
+	assert(data2[3, 4] == 1);
+	data2[4, 3] = 1;
 	assert(data2[4, 3]);
-	data2[4, 3] = false;
-	assert(!data2[4, 3]);
+	data2[4, 3] = 0;
+	assert(data2[4, 3] == 0);
 	assert(data2 == data);
 }

@@ -28,9 +28,9 @@ enum TileFormat {
 	intertwined2BPP,
 	intertwined3BPP,
 	intertwined4BPP,
-	gba4BPP,
-	linear8BPP,
+	packed4BPP,
 	intertwined8BPP,
+	packed8BPP,
 }
 
 size_t colours(const TileFormat format) @safe pure {
@@ -38,18 +38,15 @@ size_t colours(const TileFormat format) @safe pure {
 		case TileFormat.simple1BPP:
 			return 2^^1;
 		case TileFormat.linear2BPP:
-			return 2^^2;
 		case TileFormat.intertwined2BPP:
 			return 2^^2;
 		case TileFormat.intertwined3BPP:
 			return 2^^3;
 		case TileFormat.intertwined4BPP:
-			return 2^^4;
-		case TileFormat.gba4BPP:
+		case TileFormat.packed4BPP:
 			return 2^^4;
 		case TileFormat.intertwined8BPP:
-			return 2^^8;
-		case TileFormat.linear8BPP:
+		case TileFormat.packed8BPP:
 			return 2^^8;
 	}
 }
@@ -62,7 +59,6 @@ package void setBit(scope ubyte[] bytes, size_t index, bool value) @safe pure {
 package bool getBit(scope const ubyte[] bytes, size_t index) @safe pure {
 	return !!(bytes[index / 8] & (1 << (7 - (index % 8))));
 }
-
 
 align(1) struct Intertwined(size_t inBPP) {
 	enum width = 8;

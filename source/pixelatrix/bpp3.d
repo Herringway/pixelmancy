@@ -3,6 +3,8 @@ module pixelatrix.bpp3;
 import pixelatrix.bpp1;
 import pixelatrix.common;
 
+import std.format;
+
 /++
 + 3 bit per pixel tile format with palette. Each row has its bitplanes stored
 + adjacent to one another. Commonly used by the SNES.
@@ -14,10 +16,17 @@ align(1) struct Intertwined3BPP {
 	align(1):
 	Intertwined!2 planes01;
 	Simple1BPP plane2;
-	ubyte opIndex(size_t x, size_t y) const @safe pure {
+	ubyte opIndex(size_t x, size_t y) const @safe pure
+		in(x < width, format!"index [%s, %s] is out of bounds for array of length [%s, %s]"(x, y, width, height))
+		in(y < height, format!"index [%s, %s] is out of bounds for array of length [%s, %s]"(x, y, width, height))
+	{
 		return cast(ubyte)(planes01[x, y] + (plane2[x, y] << 2));
 	}
-	ubyte opIndexAssign(ubyte val, size_t x, size_t y) @safe pure {
+	ubyte opIndexAssign(ubyte val, size_t x, size_t y) @safe pure
+		in(x < width, format!"index [%s, %s] is out of bounds for array of length [%s, %s]"(x, y, width, height))
+		in(y < height, format!"index [%s, %s] is out of bounds for array of length [%s, %s]"(x, y, width, height))
+		in(val < 1 << bpp, "Value out of range")
+	{
 		planes01[x, y] = val & 3;
 		plane2[x, y] = (val & 4) >> 2;
 		return val;

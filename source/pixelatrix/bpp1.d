@@ -9,6 +9,7 @@ import pixelatrix.common;
 + Returns: a decoded 8x8 tile.
 +/
 align(1) struct Simple1BPP {
+	import std.format : format;
 	enum width = 8;
 	enum height = 8;
 	enum bpp = 1;
@@ -24,10 +25,17 @@ align(1) struct Simple1BPP {
 			}
 		}
 	}
-	ubyte opIndex(size_t x, size_t y) const @safe pure {
+	ubyte opIndex(size_t x, size_t y) const @safe pure
+		in(x < width, format!"index [%s, %s] is out of bounds for array of length [%s, %s]"(x, y, width, height))
+		in(y < height, format!"index [%s, %s] is out of bounds for array of length [%s, %s]"(x, y, width, height))
+	{
 		return getBit(raw[], y * 8 + x);
 	}
-	ubyte opIndexAssign(ubyte val, size_t x, size_t y) @safe pure {
+	ubyte opIndexAssign(ubyte val, size_t x, size_t y) @safe pure
+		in(x < width, format!"index [%s, %s] is out of bounds for array of length [%s, %s]"(x, y, width, height))
+		in(y < height, format!"index [%s, %s] is out of bounds for array of length [%s, %s]"(x, y, width, height))
+		in(val < 1 << bpp, "Value out of range")
+	{
 		setBit(raw[], y * 8 + x, !!val);
 		return val;
 	}

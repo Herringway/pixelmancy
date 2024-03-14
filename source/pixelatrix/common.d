@@ -61,19 +61,27 @@ package bool getBit(scope const ubyte[] bytes, size_t index) @safe pure {
 }
 
 align(1) struct Intertwined(size_t inBPP) {
+	import std.format : format;
 	enum width = 8;
 	enum height = 8;
 	enum bpp = inBPP;
 	align(1):
 	ubyte[(width * height * bpp) / 8] raw;
-	ubyte opIndex(size_t x, size_t y) const @safe pure {
+	ubyte opIndex(size_t x, size_t y) const @safe pure
+		in(x < width, format!"index [%s, %s] is out of bounds for array of length [%s, %s]"(x, y, width, height))
+		in(y < height, format!"index [%s, %s] is out of bounds for array of length [%s, %s]"(x, y, width, height))
+	{
 		ubyte result;
 		static foreach (layer; 0 .. bpp) {
 			result |= getBit(raw[], (y * 2 + ((layer & ~1) << 3) + (layer & 1)) * 8 + x) << layer;
 		}
 		return result;
 	}
-	ubyte opIndexAssign(ubyte val, size_t x, size_t y) @safe pure {
+	ubyte opIndexAssign(ubyte val, size_t x, size_t y) @safe pure
+		in(x < width, format!"index [%s, %s] is out of bounds for array of length [%s, %s]"(x, y, width, height))
+		in(y < height, format!"index [%s, %s] is out of bounds for array of length [%s, %s]"(x, y, width, height))
+		in(val < 1 << bpp, "Value out of range")
+	{
 		static foreach (layer; 0 .. bpp) {
 			setBit(raw[], ((y * 2) + ((layer & ~1) << 3) + (layer & 1)) * 8 + x, (val >> layer) & 1);
 		}
@@ -82,13 +90,17 @@ align(1) struct Intertwined(size_t inBPP) {
 }
 
 align(1) struct Linear(size_t inBPP) {
+	import std.format : format;
+	import pixelatrix.bpp1 : Simple1BPP;
 	enum width = 8;
 	enum height = 8;
 	enum bpp = inBPP;
-	import pixelatrix.bpp1 : Simple1BPP;
 	align(1):
 	Simple1BPP[bpp] planes;
-	ubyte opIndex(size_t x, size_t y) const @safe pure {
+	ubyte opIndex(size_t x, size_t y) const @safe pure
+		in(x < width, format!"index [%s, %s] is out of bounds for array of length [%s, %s]"(x, y, width, height))
+		in(y < height, format!"index [%s, %s] is out of bounds for array of length [%s, %s]"(x, y, width, height))
+	{
 		ubyte result;
 		static foreach (layer; 0 .. bpp) {
 			result |= planes[layer][x, y] << layer;
@@ -96,6 +108,8 @@ align(1) struct Linear(size_t inBPP) {
 		return result;
 	}
 	ubyte opIndexAssign(ubyte val, size_t x, size_t y) @safe pure
+		in(x < width, format!"index [%s, %s] is out of bounds for array of length [%s, %s]"(x, y, width, height))
+		in(y < height, format!"index [%s, %s] is out of bounds for array of length [%s, %s]"(x, y, width, height))
 		in(val < 1 << bpp, "Value out of range")
 	{
 		static foreach (layer; 0 .. bpp) {
@@ -109,18 +123,26 @@ align(1) struct Linear(size_t inBPP) {
 }
 
 align(1) struct Packed(size_t inBPP) {
+	import std.format : format;
 	enum width = 8;
 	enum height = 8;
 	enum bpp = inBPP;
 	align(1):
 	ubyte[(width * height * bpp) / 8] raw;
-	ubyte opIndex(size_t x, size_t y) const @safe pure {
+	ubyte opIndex(size_t x, size_t y) const @safe pure
+		in(x < width, format!"index [%s, %s] is out of bounds for array of length [%s, %s]"(x, y, width, height))
+		in(y < height, format!"index [%s, %s] is out of bounds for array of length [%s, %s]"(x, y, width, height))
+	{
 		const pos = (y * width + x) / (8 / bpp);
 		const shift = ((x & 1) * bpp) & 7;
 		const mask = ((1 << bpp) - 1) << shift;
 		return (raw[pos] & mask) >> shift;
 	}
-	ubyte opIndexAssign(ubyte val, size_t x, size_t y) @safe pure {
+	ubyte opIndexAssign(ubyte val, size_t x, size_t y) @safe pure
+		in(x < width, format!"index [%s, %s] is out of bounds for array of length [%s, %s]"(x, y, width, height))
+		in(y < height, format!"index [%s, %s] is out of bounds for array of length [%s, %s]"(x, y, width, height))
+		in(val < 1 << bpp, "Value out of range")
+	{
 		const pos = (y * width + x) / (8 / bpp);
 		const shift = ((x & 1) * bpp) & 7;
 		const mask = ((1 << bpp) - 1) << shift;

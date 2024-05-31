@@ -69,6 +69,21 @@ public MemoryImage loadPcx(T:const(char)[]) (T fname) {
   }
 }
 
+// PCX file header
+struct PCXHeader {
+  ubyte manufacturer; // 0x0a --signifies a PCX file
+  ubyte ver; // version 5 is what we look for
+  ubyte encoding; // when 1, it's RLE encoding (only type as of yet)
+  ubyte bitsperpixel; // how many bits to represent 1 pixel
+  ushort xmin, ymin, xmax, ymax; // dimensions of window (really insigned?)
+  ushort hdpi, vdpi; // device resolution (horizontal, vertical)
+  ubyte[16*3] colormap; // 16-color palette
+  ubyte reserved;
+  ubyte colorplanes; // number of color planes
+  ushort bytesperline; // number of bytes per line (per color plane)
+  ushort palettetype; // 1 = color,2 = grayscale (unused in v.5+)
+  ubyte[58] filler; // used to fill-out 128 byte header (useless)
+}
 
 // ////////////////////////////////////////////////////////////////////////// //
 // pass filename to ease detection
@@ -78,21 +93,6 @@ public MemoryImage loadPcx(ST) (auto ref ST fl, const(char)[] filename=null) if 
 private MemoryImage loadPcxImpl(ST) (auto ref ST fl, const(char)[] filename) {
   import core.stdc.stdlib : malloc, free;
 
-  // PCX file header
-  static struct PCXHeader {
-    ubyte manufacturer; // 0x0a --signifies a PCX file
-    ubyte ver; // version 5 is what we look for
-    ubyte encoding; // when 1, it's RLE encoding (only type as of yet)
-    ubyte bitsperpixel; // how many bits to represent 1 pixel
-    ushort xmin, ymin, xmax, ymax; // dimensions of window (really insigned?)
-    ushort hdpi, vdpi; // device resolution (horizontal, vertical)
-    ubyte[16*3] colormap; // 16-color palette
-    ubyte reserved;
-    ubyte colorplanes; // number of color planes
-    ushort bytesperline; // number of bytes per line (per color plane)
-    ushort palettetype; // 1 = color,2 = grayscale (unused in v.5+)
-    ubyte[58] filler; // used to fill-out 128 byte header (useless)
-  }
 
   bool isGoodExtension (const(char)[] filename) {
     if (filename.length >= 4) {

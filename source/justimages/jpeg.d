@@ -43,8 +43,6 @@
  */
 module justimages.jpeg;
 
-@system:
-
 // Set to 1 to enable freq. domain chroma upsampling on images using H2V2 subsampling (0=faster nearest neighbor sampling).
 // This is slower, but results in higher quality on images with highly saturated colors.
 version = JPGD_SUPPORT_FREQ_DOMAIN_UPSAMPLING;
@@ -476,9 +474,9 @@ private:
 public:
   // Inspect `error_code` after constructing to determine if the stream is valid or not. You may look at the `width`, `height`, etc.
   // methods after the constructor is called. You may then either destruct the object, or begin decoding the image by calling begin_decoding(), then decode() on each scanline.
-  this (JpegStreamReadFunc rfn) { decode_init(rfn); }
+  this (JpegStreamReadFunc rfn) @safe { decode_init(rfn); }
 
-  ~this () { free_all_blocks(); }
+  ~this () @trusted { free_all_blocks(); }
 
   @disable this (this); // no copies
 
@@ -575,7 +573,7 @@ public:
 
 private:
   // Retrieve one character from the input stream.
-  uint get_char () {
+  uint get_char () @trusted {
     // Any bytes remaining in buffer?
     if (!m_in_buf_left) {
       // Try to get more bytes.
@@ -594,7 +592,7 @@ private:
   }
 
   // Same as previous method, except can indicate if the character is a pad character or not.
-  uint get_char (bool* pPadding_flag) {
+  uint get_char (bool* pPadding_flag) @trusted {
     if (!m_in_buf_left) {
       prep_in_buffer();
       if (!m_in_buf_left) {
@@ -633,7 +631,7 @@ private:
   }
 
   // Retrieves a variable number of bits from the input stream. Does not recognize markers.
-  uint get_bits (int num_bits) {
+  uint get_bits (int num_bits) @safe {
     if (!num_bits) return 0;
     uint i = m_bit_buf >> (32 - num_bits);
     if ((m_bits_left -= num_bits) <= 0) {
@@ -995,7 +993,7 @@ private:
   } // end namespace DCT_Upsample
 
   // Unconditionally frees all allocated m_blocks.
-  void free_all_blocks () {
+  void free_all_blocks () @trusted {
     //m_pStream = null;
     readfn = null;
     for (mem_block *b = m_pMem_blocks; b; ) {
@@ -1054,7 +1052,7 @@ private:
   // Refill the input buffer.
   // This method will sit in a loop until (A) the buffer is full or (B)
   // the stream's read() method reports and end of file condition.
-  void prep_in_buffer () {
+  void prep_in_buffer () @trusted {
     m_in_buf_left = 0;
     m_pIn_buf_ofs = m_in_buf.ptr;
 
@@ -1441,7 +1439,7 @@ private:
   }
 
   // Find a start of frame (SOF) marker.
-  void locate_sof_marker () {
+  void locate_sof_marker () @trusted {
     locate_soi_marker();
 
     int c = process_markers();
@@ -1481,7 +1479,7 @@ private:
   }
 
   // Reset everything to default/uninitialized state.
-  void initit (JpegStreamReadFunc rfn) {
+  void initit (JpegStreamReadFunc rfn) @safe {
     m_pMem_blocks = null;
     m_error_code = JPGD_SUCCESS;
     m_ready_flag = false;
@@ -1489,25 +1487,25 @@ private:
     readfn = rfn;
     m_progressive_flag = false;
 
-    memset(m_huff_ac.ptr, 0, m_huff_ac.sizeof);
-    memset(m_huff_num.ptr, 0, m_huff_num.sizeof);
-    memset(m_huff_val.ptr, 0, m_huff_val.sizeof);
-    memset(m_quant.ptr, 0, m_quant.sizeof);
+    m_huff_ac = m_huff_ac.init;
+    m_huff_num = m_huff_num.init;
+    m_huff_val = m_huff_val.init;
+    m_quant = m_quant.init;
 
     m_scan_type = 0;
     m_comps_in_frame = 0;
 
-    memset(m_comp_h_samp.ptr, 0, m_comp_h_samp.sizeof);
-    memset(m_comp_v_samp.ptr, 0, m_comp_v_samp.sizeof);
-    memset(m_comp_quant.ptr, 0, m_comp_quant.sizeof);
-    memset(m_comp_ident.ptr, 0, m_comp_ident.sizeof);
-    memset(m_comp_h_blocks.ptr, 0, m_comp_h_blocks.sizeof);
-    memset(m_comp_v_blocks.ptr, 0, m_comp_v_blocks.sizeof);
+    m_comp_h_samp = m_comp_h_samp.init;
+    m_comp_v_samp = m_comp_v_samp.init;
+    m_comp_quant = m_comp_quant.init;
+    m_comp_ident = m_comp_ident.init;
+    m_comp_h_blocks = m_comp_h_blocks.init;
+    m_comp_v_blocks = m_comp_v_blocks.init;
 
     m_comps_in_scan = 0;
-    memset(m_comp_list.ptr, 0, m_comp_list.sizeof);
-    memset(m_comp_dc_tab.ptr, 0, m_comp_dc_tab.sizeof);
-    memset(m_comp_ac_tab.ptr, 0, m_comp_ac_tab.sizeof);
+    m_comp_list = m_comp_list.init;
+    m_comp_dc_tab = m_comp_dc_tab.init;
+    m_comp_ac_tab = m_comp_ac_tab.init;
 
     m_spectral_start = 0;
     m_spectral_end = 0;
@@ -1524,7 +1522,7 @@ private:
     m_expanded_blocks_per_row = 0;
     m_freq_domain_chroma_upsample = false;
 
-    memset(m_mcu_org.ptr, 0, m_mcu_org.sizeof);
+    m_mcu_org = m_mcu_org.init;
 
     m_total_lines_left = 0;
     m_mcu_lines_left = 0;
@@ -1532,24 +1530,24 @@ private:
     m_dest_bytes_per_scan_line = 0;
     m_dest_bytes_per_pixel = 0;
 
-    memset(m_pHuff_tabs.ptr, 0, m_pHuff_tabs.sizeof);
+    m_pHuff_tabs = m_pHuff_tabs.init;
 
-    memset(m_dc_coeffs.ptr, 0, m_dc_coeffs.sizeof);
-    memset(m_ac_coeffs.ptr, 0, m_ac_coeffs.sizeof);
-    memset(m_block_y_mcu.ptr, 0, m_block_y_mcu.sizeof);
+    m_dc_coeffs = m_dc_coeffs.init;
+    m_ac_coeffs = m_ac_coeffs.init;
+    m_block_y_mcu = m_block_y_mcu.init;
 
     m_eob_run = 0;
 
-    memset(m_block_y_mcu.ptr, 0, m_block_y_mcu.sizeof);
+    m_block_y_mcu = m_block_y_mcu.init;
 
     m_pIn_buf_ofs = m_in_buf.ptr;
     m_in_buf_left = 0;
     m_eof_flag = false;
     m_tem_flag = 0;
 
-    memset(m_in_buf_pad_start.ptr, 0, m_in_buf_pad_start.sizeof);
-    memset(m_in_buf.ptr, 0, m_in_buf.sizeof);
-    memset(m_in_buf_pad_end.ptr, 0, m_in_buf_pad_end.sizeof);
+    m_in_buf_pad_start = m_in_buf_pad_start.init;
+    m_in_buf = m_in_buf.init;
+    m_in_buf_pad_end = m_in_buf_pad_end.init;
 
     m_restart_interval = 0;
     m_restarts_left    = 0;
@@ -1559,7 +1557,7 @@ private:
     m_max_blocks_per_mcu = 0;
     m_max_mcus_per_col = 0;
 
-    memset(m_last_dc_val.ptr, 0, m_last_dc_val.sizeof);
+    m_last_dc_val = m_last_dc_val.init;
     m_pMCU_coefficients = null;
     m_pSample_buf = null;
 
@@ -1579,7 +1577,7 @@ private:
     get_bits(16);
 
     for (int i = 0; i < JPGD_MAX_BLOCKS_PER_MCU; i++)
-      m_mcu_block_max_zag.ptr[i] = 64;
+      m_mcu_block_max_zag[i] = 64;
   }
 
   enum SCALEBITS = 16;
@@ -2960,7 +2958,7 @@ private:
       init_sequential();
   }
 
-  void decode_init (JpegStreamReadFunc rfn) {
+  void decode_init (JpegStreamReadFunc rfn) @safe {
     initit(rfn);
     locate_sof_marker();
   }
@@ -2970,7 +2968,7 @@ private:
 // ////////////////////////////////////////////////////////////////////////// //
 /// read JPEG image header, determine dimensions and number of components.
 /// return `false` if image is not JPEG (i hope).
-public bool detect_jpeg_image_from_stream (scope JpegStreamReadFunc rfn, out int width, out int height, out int actual_comps) {
+public bool detect_jpeg_image_from_stream (scope JpegStreamReadFunc rfn, out int width, out int height, out int actual_comps) @safe {
   if (rfn is null) return false;
   auto decoder = jpeg_decoder(rfn);
   debug(justimages) { import core.stdc.stdio : printf; printf("%u bytes read.\n", cast(uint)decoder.total_bytes_read); }
@@ -3036,7 +3034,7 @@ public bool detect_jpeg_image_from_file (const(char)[] filename, out int width, 
 // ////////////////////////////////////////////////////////////////////////// //
 /// read JPEG image header, determine dimensions and number of components.
 /// return `false` if image is not JPEG (i hope).
-public bool detect_jpeg_image_from_memory (const(void)[] buf, out int width, out int height, out int actual_comps) {
+public bool detect_jpeg_image_from_memory (const(void)[] buf, out int width, out int height, out int actual_comps) @safe {
   size_t bufpos;
   return detect_jpeg_image_from_stream(
     delegate int (void* pBuf, int max_bytes_to_read, bool *pEOF_flag) {

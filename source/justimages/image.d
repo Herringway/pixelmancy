@@ -51,11 +51,11 @@ MemoryImage readSvg(const(ubyte)[] rawData) {
 }
 
 
-private bool strEquCI (const(char)[] s0, const(char)[] s1) pure nothrow @trusted @nogc {
+private bool strEquCI (const(char)[] s0, const(char)[] s1) pure nothrow @safe @nogc {
   if (s0.length != s1.length) return false;
   foreach (immutable idx, char ch; s0) {
     if (ch >= 'A' && ch <= 'Z') ch += 32; // poor man's tolower()
-    char c1 = s1.ptr[idx];
+    char c1 = s1[idx];
     if (c1 >= 'A' && c1 <= 'Z') c1 += 32; // poor man's tolower()
     if (ch != c1) return false;
   }
@@ -78,15 +78,15 @@ enum ImageFileFormat {
 
 
 /// Try to guess image format from file extension.
-public ImageFileFormat guessImageFormatFromExtension (const(char)[] filename) @system {
+public ImageFileFormat guessImageFormatFromExtension (const(char)[] filename) @safe {
   if (filename.length < 2) return ImageFileFormat.Unknown;
   size_t extpos = filename.length;
   version(Windows) {
-    while (extpos > 0 && filename.ptr[extpos-1] != '.' && filename.ptr[extpos-1] != '/' && filename.ptr[extpos-1] != '\\' && filename.ptr[extpos-1] != ':') --extpos;
+    while (extpos > 0 && filename[extpos-1] != '.' && filename[extpos-1] != '/' && filename[extpos-1] != '\\' && filename[extpos-1] != ':') --extpos;
   } else {
-    while (extpos > 0 && filename.ptr[extpos-1] != '.' && filename.ptr[extpos-1] != '/') --extpos;
+    while (extpos > 0 && filename[extpos-1] != '.' && filename[extpos-1] != '/') --extpos;
   }
-  if (extpos == 0 || filename.ptr[extpos-1] != '.') return ImageFileFormat.Unknown;
+  if (extpos == 0 || filename[extpos-1] != '.') return ImageFileFormat.Unknown;
   auto ext = filename[extpos..$];
   if (strEquCI(ext, "png")) return ImageFileFormat.Png;
   if (strEquCI(ext, "bmp")) return ImageFileFormat.Bmp;
@@ -99,27 +99,46 @@ public ImageFileFormat guessImageFormatFromExtension (const(char)[] filename) @s
   return ImageFileFormat.Unknown;
 }
 
+@safe unittest {
+  assert(guessImageFormatFromExtension("test.png") == ImageFileFormat.Png);
+  assert(guessImageFormatFromExtension("test.PNG") == ImageFileFormat.Png);
+  assert(guessImageFormatFromExtension("test.gif") == ImageFileFormat.Gif);
+  assert(guessImageFormatFromExtension("test.GIF") == ImageFileFormat.Gif);
+  assert(guessImageFormatFromExtension("test.bmp") == ImageFileFormat.Bmp);
+  assert(guessImageFormatFromExtension("test.BMP") == ImageFileFormat.Bmp);
+  assert(guessImageFormatFromExtension("test.tga") == ImageFileFormat.Tga);
+  assert(guessImageFormatFromExtension("test.TGA") == ImageFileFormat.Tga);
+  assert(guessImageFormatFromExtension("test.dds") == ImageFileFormat.Dds);
+  assert(guessImageFormatFromExtension("test.DDS") == ImageFileFormat.Dds);
+  assert(guessImageFormatFromExtension("test.svg") == ImageFileFormat.Svg);
+  assert(guessImageFormatFromExtension("test.SVG") == ImageFileFormat.Svg);
+  assert(guessImageFormatFromExtension("test.jpg") == ImageFileFormat.Jpeg);
+  assert(guessImageFormatFromExtension("test.JPG") == ImageFileFormat.Jpeg);
+  assert(guessImageFormatFromExtension("test.jpeg") == ImageFileFormat.Jpeg);
+  assert(guessImageFormatFromExtension("test.JPEG") == ImageFileFormat.Jpeg);
+  assert(guessImageFormatFromExtension("test") == ImageFileFormat.Unknown);
+  assert(guessImageFormatFromExtension("nonimage.test") == ImageFileFormat.Unknown);
+  assert(guessImageFormatFromExtension("jpg") == ImageFileFormat.Unknown); // no extension
+}
 
 /// Try to guess image format by first data bytes.
-public ImageFileFormat guessImageFormatFromMemory (const(void)[] membuf) @system {
+public ImageFileFormat guessImageFormatFromMemory (const(void)[] membuf) @safe {
   enum TargaSign = "TRUEVISION-XFILE.\x00";
   auto buf = cast(const(ubyte)[])membuf;
   if (buf.length == 0) return ImageFileFormat.Unknown;
   // detect file format
   // png
-  if (buf.length > 7 && buf.ptr[0] == 0x89 && buf.ptr[1] == 0x50 && buf.ptr[2] == 0x4E &&
-      buf.ptr[3] == 0x47 && buf.ptr[4] == 0x0D && buf.ptr[5] == 0x0A && buf.ptr[6] == 0x1A)
+  if (buf.length > 7 && buf[0 .. 7] == [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A])
   {
     return ImageFileFormat.Png;
   }
   // bmp
-  if (buf.length > 6 && buf.ptr[0] == 'B' && buf.ptr[1] == 'M') {
-    uint datasize = buf.ptr[2]|(buf.ptr[3]<<8)|(buf.ptr[4]<<16)|(buf.ptr[5]<<24);
+  if (buf.length > 6 && buf[0 .. 2] == "BM") {
+    uint datasize = (cast(const(uint)[])(buf[2 .. 2 + uint.sizeof]))[0];
     if (datasize > 6 && datasize <= buf.length) return ImageFileFormat.Bmp;
   }
   // gif
-  if (buf.length > 5 && buf.ptr[0] == 'G' && buf.ptr[1] == 'I' && buf.ptr[2] == 'F' &&
-      buf.ptr[3] == '8' && (buf.ptr[4] == '7' || buf.ptr[4] == '9'))
+  if (buf.length > 5 && buf[0 .. 5] == "GIF87" || buf[0 .. 5] == "GIF89")
   {
     return ImageFileFormat.Gif;
   }
@@ -133,29 +152,18 @@ public ImageFileFormat guessImageFormatFromMemory (const(void)[] membuf) @system
   // tga (sorry, targas without footer, i don't love you)
   if (buf.length > TargaSign.length+4*2 && cast(const(char)[])(buf[$-TargaSign.length..$]) == TargaSign) {
     // more guesswork
-    switch (buf.ptr[2]) {
+    switch (buf[2]) {
       case 1: case 2: case 3: case 9: case 10: case 11: return ImageFileFormat.Tga;
       default:
     }
   }
   // ok, try to guess targa by validating some header fields
-  bool guessTarga () nothrow @trusted @nogc {
+  bool guessTarga () nothrow @safe @nogc {
     if (buf.length < 45) return false; // minimal 1x1 tga
-    immutable ubyte idlength = buf.ptr[0];
-    immutable ubyte bColorMapType = buf.ptr[1];
-    immutable ubyte type = buf.ptr[2];
-    immutable ushort wColorMapFirstEntryIndex = cast(ushort)(buf.ptr[3]|(buf.ptr[4]<<8));
-    immutable ushort wColorMapLength = cast(ushort)(buf.ptr[5]|(buf.ptr[6]<<8));
-    immutable ubyte bColorMapEntrySize = buf.ptr[7];
-    immutable ushort wOriginX = cast(ushort)(buf.ptr[8]|(buf.ptr[9]<<8));
-    immutable ushort wOriginY = cast(ushort)(buf.ptr[10]|(buf.ptr[11]<<8));
-    immutable ushort wImageWidth = cast(ushort)(buf.ptr[12]|(buf.ptr[13]<<8));
-    immutable ushort wImageHeight = cast(ushort)(buf.ptr[14]|(buf.ptr[15]<<8));
-    immutable ubyte bPixelDepth = buf.ptr[16];
-    immutable ubyte bImageDescriptor = buf.ptr[17];
-    if (wImageWidth < 1 || wImageHeight < 1 || wImageWidth > 32000 || wImageHeight > 32000) return false; // arbitrary limit
-    immutable uint pixelsize = (bPixelDepth>>3);
-    switch (type) {
+    immutable header = (cast(const(TGAHeader)[])(buf[0 .. TGAHeader.sizeof]))[0];
+    if (header.width < 1 || header.height < 1 || header.width > 32000 || header.height > 32000) return false; // arbitrary limit
+    immutable uint pixelsize = (header.bpp>>3);
+    switch (header.imgType) {
       case 2: // truecolor, raw
       case 10: // truecolor, rle
         switch (pixelsize) {
@@ -175,68 +183,56 @@ public ImageFileFormat guessImageFormatFromMemory (const(void)[] membuf) @system
         return false;
     }
     // check for valid colormap
-    switch (bColorMapType) {
+    switch (header.cmapType) {
       case 0:
-        if (wColorMapFirstEntryIndex != 0 || wColorMapLength != 0) return 0;
+        if (header.cmapFirstIdx != 0 || header.cmapSize != 0) return 0;
         break;
       case 1:
-        if (bColorMapEntrySize != 15 && bColorMapEntrySize != 16 && bColorMapEntrySize != 24 && bColorMapEntrySize != 32) return false;
-        if (wColorMapLength == 0) return false;
+        if (header.cmapElementSize != 15 && header.cmapElementSize != 16 && header.cmapElementSize != 24 && header.cmapElementSize != 32) return false;
+        if (header.cmapSize == 0) return false;
         break;
       default: // invalid colormap type
         return false;
     }
-    if (((bImageDescriptor>>6)&3) != 0) return false;
+    if (!header.zeroBits) return false;
     // this *looks* like a tga
     return true;
   }
   if (guessTarga()) return ImageFileFormat.Tga;
 
-  bool guessPcx() nothrow @trusted @nogc {
-    if (buf.length < 129) return false; // we should have at least header
-
-    ubyte manufacturer = buf.ptr[0];
-    ubyte ver = buf.ptr[1];
-    ubyte encoding = buf.ptr[2];
-    ubyte bitsperpixel = buf.ptr[3];
-    ushort xmin = cast(ushort)(buf.ptr[4]+256*buf.ptr[5]);
-    ushort ymin = cast(ushort)(buf.ptr[6]+256*buf.ptr[7]);
-    ushort xmax = cast(ushort)(buf.ptr[8]+256*buf.ptr[9]);
-    ushort ymax = cast(ushort)(buf.ptr[10]+256*buf.ptr[11]);
-    ubyte reserved = buf.ptr[64];
-    ubyte colorplanes = buf.ptr[65];
-    ushort bytesperline = cast(ushort)(buf.ptr[66]+256*buf.ptr[67]);
-    //ushort palettetype = cast(ushort)(buf.ptr[68]+256*buf.ptr[69]);
+  bool guessPcx() nothrow @safe @nogc {
+    if (buf.length < PCXHeader.sizeof) return false; // we should have at least header
+    immutable header = (cast(const(PCXHeader)[])(buf[0 .. PCXHeader.sizeof]))[0];
 
     // check some header fields
-    if (manufacturer != 0x0a) return false;
-    if (/*ver != 0 && ver != 2 && ver != 3 &&*/ ver != 5) return false;
-    if (encoding != 0 && encoding != 1) return false;
+    if (header.manufacturer != 0x0a) return false;
+    if (/*header.ver != 0 && header.ver != 2 && header.ver != 3 &&*/ header.ver != 5) return false;
+    if (header.encoding != 0 && header.encoding != 1) return false;
 
-    int wdt = xmax-xmin+1;
-    int hgt = ymax-ymin+1;
+    int wdt = header.xmax-header.xmin+1;
+    int hgt = header.ymax-header.ymin+1;
 
     // arbitrary size limits
     if (wdt < 1 || wdt > 32000) return false;
     if (hgt < 1 || hgt > 32000) return false;
 
-    if (bytesperline < wdt) return false;
+    if (header.bytesperline < wdt) return false;
 
     // if it's not a 256-color PCX file, and not 24-bit PCX file, gtfo
     bool bpp24 = false;
-    if (colorplanes == 1) {
-      if (bitsperpixel != 8 && bitsperpixel != 24 && bitsperpixel != 32) return false;
-      bpp24 = (bitsperpixel == 24);
-    } else if (colorplanes == 3 || colorplanes == 4) {
-      if (bitsperpixel != 8) return false;
+    if (header.colorplanes == 1) {
+      if (header.bitsperpixel != 8 && header.bitsperpixel != 24 && header.bitsperpixel != 32) return false;
+      bpp24 = (header.bitsperpixel == 24);
+    } else if (header.colorplanes == 3 || header.colorplanes == 4) {
+      if (header.bitsperpixel != 8) return false;
       bpp24 = true;
     }
 
     // additional checks
-    if (reserved != 0) return false;
+    if (header.reserved != 0) return false;
 
     // 8bpp files MUST have palette
-    if (!bpp24 && buf.length < 129+769) return false;
+    if (!bpp24 && buf.length < PCXHeader.sizeof + 769) return false;
 
     // it can be pcx
     return true;
@@ -244,12 +240,23 @@ public ImageFileFormat guessImageFormatFromMemory (const(void)[] membuf) @system
   if (guessPcx()) return ImageFileFormat.Pcx;
 
   // kinda lame svg detection but don't want to parse too much of it here
-  if (buf.length > 6 && buf.ptr[0] == '<') {
+  if (buf.length > 6 && buf[0] == '<') {
       return ImageFileFormat.Svg;
   }
 
   // dunno
   return ImageFileFormat.Unknown;
+}
+
+@safe unittest {
+  import std.file : read;
+  assert(guessImageFormatFromMemory(read("samples/test.png")) == ImageFileFormat.Png);
+  assert(guessImageFormatFromMemory(read("samples/test.gif")) == ImageFileFormat.Gif);
+  assert(guessImageFormatFromMemory(read("samples/test.bmp")) == ImageFileFormat.Bmp);
+  assert(guessImageFormatFromMemory(read("samples/test.jpg")) == ImageFileFormat.Jpeg);
+  assert(guessImageFormatFromMemory(read("samples/test.dds")) == ImageFileFormat.Dds);
+  assert(guessImageFormatFromMemory(read("samples/test.tga")) == ImageFileFormat.Tga);
+  assert(guessImageFormatFromMemory(read("samples/test.svg")) == ImageFileFormat.Svg);
 }
 
 

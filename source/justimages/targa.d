@@ -72,29 +72,30 @@ public MemoryImage loadTga(T:const(char)[]) (T fname) {
 // hack around "has scoped destruction, cannot build closure"
 public MemoryImage loadTga(ST) (auto ref ST fl, const(char)[] filename=null) if (isReadableStream!ST && isSeekableStream!ST) { return loadTgaImpl(fl, filename); }
 
+static struct TGAHeader {
+  align(1):
+  ubyte idsize;
+  ubyte cmapType;
+  ubyte imgType;
+  ushort cmapFirstIdx;
+  ushort cmapSize;
+  ubyte cmapElementSize;
+  ushort originX;
+  ushort originY;
+  ushort width;
+  ushort height;
+  ubyte bpp;
+  ubyte imgdsc;
+
+  @property bool zeroBits () const pure nothrow @safe @nogc { return ((imgdsc&0xc0) == 0); }
+  @property bool xflip () const pure nothrow @safe @nogc { return ((imgdsc&0b010000) != 0); }
+  @property bool yflip () const pure nothrow @safe @nogc { return ((imgdsc&0b100000) == 0); }
+}
 private MemoryImage loadTgaImpl(ST) (auto ref ST fl, const(char)[] filename) {
   enum TGAFILESIGNATURE = "TRUEVISION-XFILE.\x00";
 
   static immutable ubyte[32] cmap16 = [0,8,16,25,33,41,49,58,66,74,82,90,99,107,115,123,132,140,148,156,165,173,181,189,197,206,214,222,230,239,247,255];
 
-  static struct Header {
-    ubyte idsize;
-    ubyte cmapType;
-    ubyte imgType;
-    ushort cmapFirstIdx;
-    ushort cmapSize;
-    ubyte cmapElementSize;
-    ushort originX;
-    ushort originY;
-    ushort width;
-    ushort height;
-    ubyte bpp;
-    ubyte imgdsc;
-
-    @property bool zeroBits () const pure nothrow @safe @nogc { return ((imgdsc&0xc0) == 0); }
-    @property bool xflip () const pure nothrow @safe @nogc { return ((imgdsc&0b010000) != 0); }
-    @property bool yflip () const pure nothrow @safe @nogc { return ((imgdsc&0b100000) == 0); }
-  }
 
   static struct ExtFooter {
     uint extofs;
@@ -219,7 +220,7 @@ private MemoryImage loadTgaImpl(ST) (auto ref ST fl, const(char)[] filename) {
 
   if (!detect(fl, filename)) throw new Exception("not a TGA");
   fl.seek(0);
-  Header hdr;
+  TGAHeader hdr;
   fl.readStruct(hdr);
   // parse header
   // arbitrary size limits

@@ -1510,7 +1510,7 @@ struct LazyPngFile(LazyPngChunksProvider)
 			}
 
 			~this () {
-				version(arsdpng_debug) { import core.stdc.stdio : printf; printf("destroying lazy PNG reader...\n"); }
+				debug(justimages) { import core.stdc.stdio : printf; printf("destroying lazy PNG reader...\n"); }
 				import core.stdc.stdlib : free;
 				if (zs !is null) { inflateEnd(zs); free(zs); }
 				if (pkbuf.ptr !is null) free(pkbuf.ptr);

@@ -5,9 +5,6 @@ module justimages.pcx;
 import justimages.color;
 import std.stdio : File; // sorry
 
-static if (__traits(compiles, { import iv.vfs; })) enum ArsdPcxHasIVVFS = true; else enum ArsdPcxHasIVVFS = false;
-static if (ArsdPcxHasIVVFS) import iv.vfs;
-
 
 // ////////////////////////////////////////////////////////////////////////// //
 public MemoryImage loadPcxMem (const(void)[] buf, const(char)[] filename=null) {
@@ -59,15 +56,12 @@ public MemoryImage loadPcxMem (const(void)[] buf, const(char)[] filename=null) {
   return loadPcx(rd, filename);
 }
 
-static if (ArsdPcxHasIVVFS) public MemoryImage loadPcx (VFile fl) { return loadPcxImpl(fl, fl.name); }
 public MemoryImage loadPcx (File fl) { return loadPcxImpl(fl, fl.name); }
 public MemoryImage loadPcx(T:const(char)[]) (T fname) {
   static if (is(T == typeof(null))) {
     throw new Exception("cannot load nameless tga");
   } else {
-    static if (ArsdPcxHasIVVFS) {
-      return loadPcx(VFile(fname));
-    } else static if (is(T == string)) {
+    static if (is(T == string)) {
       return loadPcx(File(fname), fname);
     } else {
       return loadPcx(File(fname.idup), fname);
@@ -145,7 +139,7 @@ private MemoryImage loadPcxImpl(ST) (auto ref ST fl, const(char)[] filename) {
     hasAlpha = (hdr.colorplanes == 4);
   }
 
-  version(arsd_debug_pcx) { import core.stdc.stdio; printf("colorplanes=%u; bitsperpixel=%u; bytesperline=%u\n", cast(uint)hdr.colorplanes, cast(uint)hdr.bitsperpixel, cast(uint)hdr.bytesperline); }
+  debug(justimages) { import core.stdc.stdio; printf("colorplanes=%u; bitsperpixel=%u; bytesperline=%u\n", cast(uint)hdr.colorplanes, cast(uint)hdr.bitsperpixel, cast(uint)hdr.bytesperline); }
 
   // additional checks
   if (hdr.reserved != 0) throw new Exception("invalid pcx hdr");
@@ -263,7 +257,6 @@ private MemoryImage loadPcxImpl(ST) (auto ref ST fl, const(char)[] filename) {
 
 // ////////////////////////////////////////////////////////////////////////// //
 private:
-static if (!ArsdPcxHasIVVFS) {
 import core.stdc.stdio : SEEK_SET, SEEK_CUR, SEEK_END;
 
 enum Seek : int {
@@ -540,5 +533,4 @@ if (is(SS == struct) && isGoodEndianness!es && isReadableStream!ST)
   }
 
   unserData(st);
-}
 }

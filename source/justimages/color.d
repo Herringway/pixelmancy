@@ -1307,14 +1307,10 @@ interface MemoryImage {
 	MemoryImage clone() const pure nothrow @safe;
 
 	/// Load image from file. This will import justimages.image to do the actual work, and cost nothing if you don't use it.
-	static MemoryImage fromImage(T : const(char)[]) (T filename) @trusted {
-		static if (__traits(compiles, (){import justimages.image;})) {
-			// yay, we have image loader here, try it!
-			import justimages.image;
-			return loadImageFromFile(filename);
-		} else {
-			static assert(0, "please provide 'justimages.image' to load images!");
-		}
+	static MemoryImage fromImage(const(char)[] filename) @system {
+		// yay, we have image loader here, try it!
+		import justimages.image;
+		return loadImageFromFile(filename);
 	}
 
 	// ***This method is deliberately not publicly documented.***

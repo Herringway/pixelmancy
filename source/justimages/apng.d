@@ -43,7 +43,7 @@ unittest {
 		frame.frameControlChunk.delay_num = 10;
 
 
-		writeApngToFile(apng, "/home/me/test.apng");
+		writeApngToFile(apng, "test.apng");
 	}
 
 	version(Demo) main(); // exclude from docs

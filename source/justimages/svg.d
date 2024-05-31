@@ -69,7 +69,7 @@
       });
     });
 
-    NSVGrasterizer rast = nsvgCreateRasterizer();
+    NSVGRasterizer rast = nsvgCreateRasterizer();
     // Allocate memory for image
     ubyte* img = malloc(w*h*4);
     // Rasterize
@@ -91,7 +91,7 @@
 	    int w = 200;
 	    int h = 200;
 
-	    NSVGrasterizer rast = nsvgCreateRasterizer();
+	    NSVGRasterizer rast = nsvgCreateRasterizer();
 	    // Allocate memory for image
 	    auto img = new TrueColorImage(w, h);
 	    // Rasterize
@@ -109,26 +109,10 @@
 module justimages.svg;
 
 private import core.stdc.math : fabs, fabsf, atan2f, acosf, cosf, sinf, tanf, sqrt, sqrtf, floorf, ceilf, fmodf;
-//private import iv.vfs;
 
-version(nanosvg_disable_vfs) {
-  enum NanoSVGHasIVVFS = false;
-} else {
-  static if (is(typeof((){import iv.vfs;}))) {
-    enum NanoSVGHasIVVFS = true;
-    import iv.vfs;
-  } else {
-    enum NanoSVGHasIVVFS = false;
-  }
-}
-
-version(aliced) {} else {
-  private alias usize = size_t;
-}
+private alias usize = size_t;
 
 version = nanosvg_crappy_stylesheet_parser;
-//version = nanosvg_debug_styles;
-//version(rdmd) import iv.strex;
 
 //version = nanosvg_use_beziers; // convert everything to beziers
 //version = nanosvg_only_cubic_beziers; // convert everything to cubic beziers
@@ -141,8 +125,7 @@ public enum NSVGDefaults {
 
 
 // ////////////////////////////////////////////////////////////////////////// //
-public alias NSVGrasterizer = NSVGrasterizerS*; ///
-public alias NSVGRasterizer = NSVGrasterizer; ///
+public alias NSVGRasterizer = NSVGrasterizerS*; ///
 
 ///
 struct NSVG {
@@ -918,7 +901,7 @@ void nsvg__parseXML (const(char)[] input,
       }
       // start of a tag
       //{ import std.stdio; writeln("ctx: ", input[0..cpos].quote); }
-      ////version(nanosvg_debug_styles) { import std.stdio; writeln("ctx: ", input[0..cpos].quote); }
+      ////debug(justimages) { import std.stdio; writeln("ctx: ", input[0..cpos].quote); }
       nsvg__parseContent(input[0..cpos], contentCb, ud);
       input = input[cpos+1..$];
       if (input.length > 2 && input.ptr[0] == '!' && input.ptr[1] == '-' && input.ptr[2] == '-') {
@@ -1764,13 +1747,6 @@ void nsvg__addPath (Parser* p, bool closed) {
     addPoint(x0, y1);
   }
 
-  version(none) {
-    foreach (immutable idx, float f; p.stream[0..p.nsflts]) {
-      import core.stdc.stdio;
-      printf("idx=%u; f=%g\n", cast(uint)idx, cast(double)f);
-    }
-  }
-
   for (int i = 0; i+3 <= p.nsflts; ) {
     int argc = 0; // pair of coords
     NSVG.Command cmd = cast(NSVG.Command)p.stream[i];
@@ -2514,9 +2490,9 @@ void nsvg__parseClassOrId (Parser* p, char lch, const(char)[] str) {
     if (str.length == 0) break;
     usize pos = 1;
     while (pos < str.length && str.ptr[pos] > ' ') ++pos;
-    version(nanosvg_debug_styles) { import std.stdio; writeln("class to find: ", lch, str[0..pos].quote); }
+    debug(justimages) { import std.stdio; writeln("class to find: ", lch, str[0..pos].quote); }
     if (auto st = p.findStyle(lch, str[0..pos])) {
-      version(nanosvg_debug_styles) { import std.stdio; writeln("class: [", str[0..pos], "]; value: ", st.value.quote); }
+      debug(justimages) { import std.stdio; writeln("class: [", str[0..pos], "]; value: ", st.value.quote); }
       nsvg__parseStyle(p, st.value);
     }
     str = str[pos..$];
@@ -2619,7 +2595,7 @@ bool nsvg__parseNameValue (Parser* p, const(char)[] str) {
 
   str = str[pos+(pos < str.length ? 1 : 0)..$].trimLeft.trimRight(';');
 
-  version(nanosvg_debug_styles) { import std.stdio; writeln("** name=", name.quote, "; value=", str.quote); }
+  debug(justimages) { import std.stdio; writeln("** name=", name.quote, "; value=", str.quote); }
 
   return nsvg__parseAttr(p, name, str);
 }
@@ -2638,7 +2614,7 @@ void nsvg__parseStyle (Parser* p, const(char)[] str) {
       }
     }
     const(char)[] val = trimRight(str[0..pos]);
-    version(nanosvg_debug_styles) { import std.stdio; writeln("style: ", val.quote); }
+    debug(justimages) { import std.stdio; writeln("style: ", val.quote); }
     str = str[pos+(pos < str.length ? 1 : 0)..$];
     if (val.length > 0) nsvg__parseNameValue(p, val);
   }
@@ -3354,7 +3330,7 @@ void nsvg__parseGradientStop (Parser* p, AttrList attr) {
 void nsvg__startElement (void* ud, const(char)[] el, AttrList attr) {
   Parser* p = cast(Parser*)ud;
 
-  version(nanosvg_debug_styles) { import std.stdio; writeln("tagB: ", el.quote); }
+  debug(justimages) { import std.stdio; writeln("tagB: ", el.quote); }
   version(nanosvg_crappy_stylesheet_parser) { p.inStyle = (el == "style"); }
 
   if (p.defsFlag) {
@@ -3416,7 +3392,7 @@ void nsvg__startElement (void* ud, const(char)[] el, AttrList attr) {
 }
 
 void nsvg__endElement (void* ud, const(char)[] el) {
-  version(nanosvg_debug_styles) { import std.stdio; writeln("tagE: ", el.quote); }
+  debug(justimages) { import std.stdio; writeln("tagE: ", el.quote); }
   Parser* p = cast(Parser*)ud;
        if (el == "g") nsvg__popAttr(p);
   else if (el == "path") p.pathFlag = false;
@@ -3440,7 +3416,7 @@ void nsvg__content (void* ud, const(char)[] s) {
       while (s.length && (s[$-1] <= ' ' || s[$-1] == '>')) s = s[0..$-1];
       if (s.length > 1 && s[$-2..$] == "]]") s = s[0..$-2]; else break;
     }
-    version(nanosvg_debug_styles) { import std.stdio; writeln("ctx: ", s.quote); }
+    debug(justimages) { import std.stdio; writeln("ctx: ", s.quote); }
     uint tokensAdded = 0;
     while (s.length) {
       if (s.length > 1 && s.ptr[0] == '/' && s.ptr[1] == '*') {
@@ -3454,7 +3430,7 @@ void nsvg__content (void* ud, const(char)[] s) {
         while (s.length && s.ptr[0] <= ' ') s = s[1..$];
         continue;
       }
-      //version(nanosvg_debug_styles) { import std.stdio; writeln("::: ", s.quote); }
+      //debug(justimages) { import std.stdio; writeln("::: ", s.quote); }
       if (s.ptr[0] == '{') {
         usize pos = 1;
         while (pos < s.length && s.ptr[pos] != '}') {
@@ -3468,7 +3444,7 @@ void nsvg__content (void* ud, const(char)[] s) {
             ++pos;
           }
         }
-        version(nanosvg_debug_styles) { import std.stdio; writeln("*** style: ", s[1..pos].quote); }
+        debug(justimages) { import std.stdio; writeln("*** style: ", s[1..pos].quote); }
         if (tokensAdded > 0) {
           foreach (immutable idx; p.styleCount-tokensAdded..p.styleCount) p.styles[idx].value = s[1..pos];
         }
@@ -3479,7 +3455,7 @@ void nsvg__content (void* ud, const(char)[] s) {
         usize pos = 0;
         while (pos < s.length && s.ptr[pos] > ' ' && s.ptr[pos] != '{' && s.ptr[pos] != '/') ++pos;
         const(char)[] tk = s[0..pos];
-        version(nanosvg_debug_styles) { import std.stdio; writeln("token: ", tk.quote); }
+        debug(justimages) { import std.stdio; writeln("token: ", tk.quote); }
         s = s[pos..$];
         {
           import core.stdc.stdlib : realloc;
@@ -3492,7 +3468,7 @@ void nsvg__content (void* ud, const(char)[] s) {
         ++tokensAdded;
       }
     }
-    version(nanosvg_debug_styles) foreach (const ref st; p.styles[0..p.styleCount]) { import std.stdio; writeln("name: ", st.name.quote, "; value: ", st.value.quote); }
+    debug(justimages) foreach (const ref st; p.styles[0..p.styleCount]) { import std.stdio; writeln("name: ", st.name.quote, "; value: ", st.value.quote); }
   }
 }
 
@@ -3698,75 +3674,31 @@ public NSVG* nsvgParseFromFile (const(char)[] filename, const(char)[] units="px"
   if (filename.length == 0) return null;
 
   try {
-    static if (NanoSVGHasIVVFS) {
-      auto fl = VFile(filename);
-      auto size = fl.size;
-      if (size > int.max/8 || size < 1) return null;
-      data = cast(char*)malloc(cast(uint)size+AddedBytes);
-      if (data is null) return null;
-      data[0..cast(uint)size+AddedBytes] = 0;
-      fl.rawReadExact(data[0..cast(uint)size]);
-      fl.close();
-    } else {
-      import core.stdc.stdio : FILE, fopen, fclose, fread, ftell, fseek;
-      import std.internal.cstring : tempCString;
-      auto fl = fopen(filename.tempCString, "rb");
-      if (fl is null) return null;
-      scope(exit) fclose(fl);
-      if (fseek(fl, 0, 2/*SEEK_END*/) != 0) return null;
-      auto size = ftell(fl);
-      if (fseek(fl, 0, 0/*SEEK_SET*/) != 0) return null;
-      if (size < 16 || size > int.max/32) return null;
-      data = cast(char*)malloc(cast(uint)size+AddedBytes);
-      if (data is null) assert(0, "out of memory in NanoVega fontstash");
-      data[0..cast(uint)size+AddedBytes] = 0;
-      char* dptr = data;
-      auto left = cast(uint)size;
-      while (left > 0) {
-        auto rd = fread(dptr, 1, left, fl);
-        if (rd == 0) return null; // unexpected EOF or reading error, it doesn't matter
-        dptr += rd;
-        left -= rd;
-      }
+    import core.stdc.stdio : FILE, fopen, fclose, fread, ftell, fseek;
+    import std.internal.cstring : tempCString;
+    auto fl = fopen(filename.tempCString, "rb");
+    if (fl is null) return null;
+    scope(exit) fclose(fl);
+    if (fseek(fl, 0, 2/*SEEK_END*/) != 0) return null;
+    auto size = ftell(fl);
+    if (fseek(fl, 0, 0/*SEEK_SET*/) != 0) return null;
+    if (size < 16 || size > int.max/32) return null;
+    data = cast(char*)malloc(cast(uint)size+AddedBytes);
+    if (data is null) assert(0, "out of memory in NanoVega fontstash");
+    data[0..cast(uint)size+AddedBytes] = 0;
+    char* dptr = data;
+    auto left = cast(uint)size;
+    while (left > 0) {
+      auto rd = fread(dptr, 1, left, fl);
+      if (rd == 0) return null; // unexpected EOF or reading error, it doesn't matter
+      dptr += rd;
+      left -= rd;
     }
     return nsvgParse(data[0..cast(uint)size], units, dpi, canvaswdt, canvashgt);
   } catch (Exception e) {
     return null;
   }
 }
-
-
-static if (NanoSVGHasIVVFS) {
-///
-public NSVG* nsvgParseFromFile(ST) (auto ref ST fi, const(char)[] units="px", float dpi=96, int canvaswdt=-1, int canvashgt=-1) nothrow
-if (isReadableStream!ST && isSeekableStream!ST && streamHasSize!ST)
-{
-  import core.stdc.stdlib : malloc, free;
-
-  enum AddedBytes = 8;
-  usize size;
-  char* data = null;
-  scope(exit) if (data is null) free(data);
-
-  try {
-    auto sz = fi.size;
-    auto pp = fi.tell;
-    if (pp >= sz) return null;
-    sz -= pp;
-    if (sz > 0x3ff_ffff) return null;
-    size = cast(usize)sz;
-    data = cast(char*)malloc(size+AddedBytes);
-    if (data is null) return null;
-    scope(exit) free(data);
-    data[0..size+AddedBytes] = 0;
-    fi.rawReadExact(data[0..size]);
-    return nsvgParse(data[0..size], units, dpi, canvaswdt, canvashgt);
-  } catch (Exception e) {
-    return null;
-  }
-}
-}
-
 
 // ////////////////////////////////////////////////////////////////////////// //
 // rasterizer
@@ -3844,8 +3776,8 @@ struct NSVGrasterizerS {
 
 
 ///
-public NSVGrasterizer nsvgCreateRasterizer () {
-  NSVGrasterizer r = xalloc!NSVGrasterizerS;
+public NSVGRasterizer nsvgCreateRasterizer () {
+  NSVGRasterizer r = xalloc!NSVGrasterizerS;
   if (r is null) goto error;
 
   r.tessTol = 0.25f;
@@ -3859,7 +3791,7 @@ error:
 }
 
 ///
-public void kill (NSVGrasterizer r) {
+public void kill (NSVGRasterizer r) {
   NSVGmemPage* p;
 
   if (r is null) return;
@@ -3879,7 +3811,7 @@ public void kill (NSVGrasterizer r) {
   xfree(r);
 }
 
-NSVGmemPage* nsvg__nextPage (NSVGrasterizer r, NSVGmemPage* cur) {
+NSVGmemPage* nsvg__nextPage (NSVGRasterizer r, NSVGmemPage* cur) {
   NSVGmemPage *newp;
 
   // If using existing chain, return the next page in chain
@@ -3898,7 +3830,7 @@ NSVGmemPage* nsvg__nextPage (NSVGrasterizer r, NSVGmemPage* cur) {
   return newp;
 }
 
-void nsvg__resetPool (NSVGrasterizer r) {
+void nsvg__resetPool (NSVGRasterizer r) {
   NSVGmemPage* p = r.pages;
   while (p !is null) {
     p.size = 0;
@@ -3907,7 +3839,7 @@ void nsvg__resetPool (NSVGrasterizer r) {
   r.curpage = r.pages;
 }
 
-ubyte* nsvg__alloc (NSVGrasterizer r, int size) {
+ubyte* nsvg__alloc (NSVGRasterizer r, int size) {
   ubyte* buf;
   if (size > NSVG__MEMPAGE_SIZE) return null;
   if (r.curpage is null || r.curpage.size+size > NSVG__MEMPAGE_SIZE) {
@@ -3924,7 +3856,7 @@ int nsvg__ptEquals (float x1, float y1, float x2, float y2, float tol) {
   return dx*dx+dy*dy < tol*tol;
 }
 
-void nsvg__addPathPoint (NSVGrasterizer r, float x, float y, int flags) {
+void nsvg__addPathPoint (NSVGRasterizer r, float x, float y, int flags) {
   import core.stdc.stdlib : realloc;
 
   NSVGpoint* pt;
@@ -3950,7 +3882,7 @@ void nsvg__addPathPoint (NSVGrasterizer r, float x, float y, int flags) {
   ++r.npoints;
 }
 
-void nsvg__appendPathPoint (NSVGrasterizer r, NSVGpoint pt) {
+void nsvg__appendPathPoint (NSVGRasterizer r, NSVGpoint pt) {
   import core.stdc.stdlib : realloc;
   if (r.npoints+1 > r.cpoints) {
     r.cpoints = (r.cpoints > 0 ? r.cpoints*2 : 64);
@@ -3961,7 +3893,7 @@ void nsvg__appendPathPoint (NSVGrasterizer r, NSVGpoint pt) {
   ++r.npoints;
 }
 
-void nsvg__duplicatePoints (NSVGrasterizer r) {
+void nsvg__duplicatePoints (NSVGRasterizer r) {
   import core.stdc.stdlib : realloc;
   import core.stdc.string : memmove;
   if (r.npoints > r.cpoints2) {
@@ -3973,7 +3905,7 @@ void nsvg__duplicatePoints (NSVGrasterizer r) {
   r.npoints2 = r.npoints;
 }
 
-void nsvg__addEdge (NSVGrasterizer r, float x0, float y0, float x1, float y1) {
+void nsvg__addEdge (NSVGRasterizer r, float x0, float y0, float x1, float y1) {
   NSVGedge* e;
 
   // Skip horizontal edges
@@ -4014,7 +3946,7 @@ float nsvg__normalize (float *x, float* y) {
   return d;
 }
 
-void nsvg__flattenCubicBez (NSVGrasterizer r, in float x1, in float y1, in float x2, in float y2, in float x3, in float y3, in float x4, in float y4, in int level, in int type) {
+void nsvg__flattenCubicBez (NSVGRasterizer r, in float x1, in float y1, in float x2, in float y2, in float x3, in float y3, in float x4, in float y4, in int level, in int type) {
   if (level > 10) return;
 
   // check for collinear points, and use AFD tesselator on such curves (it is WAY faster for this case)
@@ -4071,7 +4003,7 @@ void nsvg__flattenCubicBez (NSVGrasterizer r, in float x1, in float y1, in float
 // "Adaptive forward differencing for rendering curves and surfaces."
 // ACM SIGGRAPH Computer Graphics. Vol. 21. No. 4. ACM, 1987.
 // original code by Taylor Holliday <taylor@audulus.com>
-void nsvg__flattenCubicBezAFD (NSVGrasterizer r, in float x1, in float y1, in float x2, in float y2, in float x3, in float y3, in float x4, in float y4, in int type) nothrow @trusted @nogc {
+void nsvg__flattenCubicBezAFD (NSVGRasterizer r, in float x1, in float y1, in float x2, in float y2, in float x3, in float y3, in float x4, in float y4, in int type) nothrow @trusted @nogc {
   enum AFD_ONE = (1<<10);
 
   // power basis
@@ -4166,7 +4098,7 @@ void nsvg__flattenCubicBezAFD (NSVGrasterizer r, in float x1, in float y1, in fl
   }
 }
 
-void nsvg__flattenShape (NSVGrasterizer r, const(NSVG.Shape)* shape, float scale) {
+void nsvg__flattenShape (NSVGRasterizer r, const(NSVG.Shape)* shape, float scale) {
   for (const(NSVG.Path)* path = shape.paths; path !is null; path = path.next) {
     r.npoints = 0;
     if (path.empty) continue;
@@ -4223,7 +4155,7 @@ void nsvg__initClosed (NSVGpoint* left, NSVGpoint* right, const(NSVGpoint)* p0, 
   right.x = rx; right.y = ry;
 }
 
-void nsvg__buttCap (NSVGrasterizer r, NSVGpoint* left, NSVGpoint* right, const(NSVGpoint)* p, float dx, float dy, float lineWidth, int connect) {
+void nsvg__buttCap (NSVGRasterizer r, NSVGpoint* left, NSVGpoint* right, const(NSVGpoint)* p, float dx, float dy, float lineWidth, int connect) {
   immutable float w = lineWidth*0.5f;
   immutable float px = p.x, py = p.y;
   immutable float dlx = dy, dly = -dx;
@@ -4240,7 +4172,7 @@ void nsvg__buttCap (NSVGrasterizer r, NSVGpoint* left, NSVGpoint* right, const(N
   right.x = rx; right.y = ry;
 }
 
-void nsvg__squareCap (NSVGrasterizer r, NSVGpoint* left, NSVGpoint* right, const(NSVGpoint)* p, float dx, float dy, float lineWidth, int connect) {
+void nsvg__squareCap (NSVGRasterizer r, NSVGpoint* left, NSVGpoint* right, const(NSVGpoint)* p, float dx, float dy, float lineWidth, int connect) {
   immutable float w = lineWidth*0.5f;
   immutable float px = p.x-dx*w, py = p.y-dy*w;
   immutable float dlx = dy, dly = -dx;
@@ -4257,7 +4189,7 @@ void nsvg__squareCap (NSVGrasterizer r, NSVGpoint* left, NSVGpoint* right, const
   right.x = rx; right.y = ry;
 }
 
-void nsvg__roundCap (NSVGrasterizer r, NSVGpoint* left, NSVGpoint* right, const(NSVGpoint)* p, float dx, float dy, float lineWidth, int ncap, int connect) {
+void nsvg__roundCap (NSVGRasterizer r, NSVGpoint* left, NSVGpoint* right, const(NSVGpoint)* p, float dx, float dy, float lineWidth, int ncap, int connect) {
   immutable float w = lineWidth*0.5f;
   immutable float px = p.x, py = p.y;
   immutable float dlx = dy, dly = -dx;
@@ -4292,7 +4224,7 @@ void nsvg__roundCap (NSVGrasterizer r, NSVGpoint* left, NSVGpoint* right, const(
   right.x = rx; right.y = ry;
 }
 
-void nsvg__bevelJoin (NSVGrasterizer r, NSVGpoint* left, NSVGpoint* right, const(NSVGpoint)* p0, const(NSVGpoint)* p1, float lineWidth) {
+void nsvg__bevelJoin (NSVGRasterizer r, NSVGpoint* left, NSVGpoint* right, const(NSVGpoint)* p0, const(NSVGpoint)* p1, float lineWidth) {
   immutable float w = lineWidth*0.5f;
   immutable float dlx0 = p0.dy, dly0 = -p0.dx;
   immutable float dlx1 = p1.dy, dly1 = -p1.dx;
@@ -4311,7 +4243,7 @@ void nsvg__bevelJoin (NSVGrasterizer r, NSVGpoint* left, NSVGpoint* right, const
   right.x = rx1; right.y = ry1;
 }
 
-void nsvg__miterJoin (NSVGrasterizer r, NSVGpoint* left, NSVGpoint* right, const(NSVGpoint)* p0, const(NSVGpoint)* p1, float lineWidth) {
+void nsvg__miterJoin (NSVGRasterizer r, NSVGpoint* left, NSVGpoint* right, const(NSVGpoint)* p0, const(NSVGpoint)* p1, float lineWidth) {
   immutable float w = lineWidth*0.5f;
   immutable float dlx0 = p0.dy, dly0 = -p0.dx;
   immutable float dlx1 = p1.dy, dly1 = -p1.dx;
@@ -4346,7 +4278,7 @@ void nsvg__miterJoin (NSVGrasterizer r, NSVGpoint* left, NSVGpoint* right, const
   right.x = rx1; right.y = ry1;
 }
 
-void nsvg__roundJoin (NSVGrasterizer r, NSVGpoint* left, NSVGpoint* right, const(NSVGpoint)* p0, const(NSVGpoint)* p1, float lineWidth, int ncap) {
+void nsvg__roundJoin (NSVGRasterizer r, NSVGpoint* left, NSVGpoint* right, const(NSVGpoint)* p0, const(NSVGpoint)* p1, float lineWidth, int ncap) {
   int i, n;
   float w = lineWidth*0.5f;
   float dlx0 = p0.dy, dly0 = -p0.dx;
@@ -4386,7 +4318,7 @@ void nsvg__roundJoin (NSVGrasterizer r, NSVGpoint* left, NSVGpoint* right, const
   right.x = rx; right.y = ry;
 }
 
-void nsvg__straightJoin (NSVGrasterizer r, NSVGpoint* left, NSVGpoint* right, const(NSVGpoint)* p1, float lineWidth) {
+void nsvg__straightJoin (NSVGRasterizer r, NSVGpoint* left, NSVGpoint* right, const(NSVGpoint)* p1, float lineWidth) {
   float w = lineWidth*0.5f;
   float lx = p1.x-(p1.dmx*w), ly = p1.y-(p1.dmy*w);
   float rx = p1.x+(p1.dmx*w), ry = p1.y+(p1.dmy*w);
@@ -4405,7 +4337,7 @@ int nsvg__curveDivs (float r, float arc, float tol) {
   return divs;
 }
 
-void nsvg__expandStroke (NSVGrasterizer r, const(NSVGpoint)* points, int npoints, int closed, int lineJoin, int lineCap, float lineWidth) {
+void nsvg__expandStroke (NSVGRasterizer r, const(NSVGpoint)* points, int npoints, int closed, int lineJoin, int lineCap, float lineWidth) {
   int ncap = nsvg__curveDivs(lineWidth*0.5f, NSVG_PI, r.tessTol);  // Calculate divisions per half circle.
   //NSVGpoint left = {0, 0, 0, 0, 0, 0, 0, 0}, right = {0, 0, 0, 0, 0, 0, 0, 0}, firstLeft = {0, 0, 0, 0, 0, 0, 0, 0}, firstRight = {0, 0, 0, 0, 0, 0, 0, 0};
   NSVGpoint left, right, firstLeft, firstRight;
@@ -4476,7 +4408,7 @@ void nsvg__expandStroke (NSVGrasterizer r, const(NSVGpoint)* points, int npoints
   }
 }
 
-void nsvg__prepareStroke (NSVGrasterizer r, float miterLimit, int lineJoin) {
+void nsvg__prepareStroke (NSVGRasterizer r, float miterLimit, int lineJoin) {
   int i, j;
   NSVGpoint* p0, p1;
 
@@ -4532,7 +4464,7 @@ void nsvg__prepareStroke (NSVGrasterizer r, float miterLimit, int lineJoin) {
   }
 }
 
-void nsvg__flattenShapeStroke (NSVGrasterizer r, const(NSVG.Shape)* shape, float scale) {
+void nsvg__flattenShapeStroke (NSVGRasterizer r, const(NSVG.Shape)* shape, float scale) {
   int i, j, closed;
   const(NSVG.Path)* path;
   const(NSVGpoint)* p0, p1;
@@ -4663,7 +4595,7 @@ extern(C) int nsvg__cmpEdge (scope const void *p, scope const void *q) nothrow @
 }
 
 
-static NSVGactiveEdge* nsvg__addActive (NSVGrasterizer r, const(NSVGedge)* e, float startPoint) {
+static NSVGactiveEdge* nsvg__addActive (NSVGRasterizer r, const(NSVGedge)* e, float startPoint) {
   NSVGactiveEdge* z;
 
   if (r.freelist !is null) {
@@ -4692,7 +4624,7 @@ static NSVGactiveEdge* nsvg__addActive (NSVGrasterizer r, const(NSVGedge)* e, fl
   return z;
 }
 
-void nsvg__freeActive (NSVGrasterizer r, NSVGactiveEdge* z) {
+void nsvg__freeActive (NSVGRasterizer r, NSVGactiveEdge* z) {
   z.next = r.freelist;
   r.freelist = z;
 }
@@ -4904,7 +4836,7 @@ void nsvg__scanlineSolid (ubyte* dst, int count, ubyte* cover, int x, int y, flo
   }
 }
 
-void nsvg__rasterizeSortedEdges (NSVGrasterizer r, float tx, float ty, float scale, const(NSVGcachedPaint)* cache, char fillRule) {
+void nsvg__rasterizeSortedEdges (NSVGRasterizer r, float tx, float ty, float scale, const(NSVGcachedPaint)* cache, char fillRule) {
   NSVGactiveEdge* active = null;
   int s;
   int e = 0;
@@ -5124,7 +5056,7 @@ extern(C) {
  *   h = height of the image to render
  *   stride = number of bytes per scaleline in the destination buffer
  */
-public void rasterize (NSVGrasterizer r, const(NSVG)* image, float tx, float ty, float scale, ubyte* dst, int w, int h, int stride=-1) {
+public void rasterize (NSVGRasterizer r, const(NSVG)* image, float tx, float ty, float scale, ubyte* dst, int w, int h, int stride=-1) {
   const(NSVG.Shape)* shape = null;
   NSVGedge* e = null;
   NSVGcachedPaint cache;
@@ -5223,7 +5155,6 @@ ptrdiff_t xindexOf (const(void)[] hay, const(void)[] need, usize stIdx=0) pure @
   if (hay.length <= stIdx || need.length == 0 || need.length > hay.length-stIdx) {
     return -1;
   } else {
-    //import iv.strex : memmem;
     auto res = memmem(hay.ptr+stIdx, hay.length-stIdx, need.ptr, need.length);
     return (res !is null ? cast(ptrdiff_t)(res-hay.ptr) : -1);
   }

@@ -6,9 +6,6 @@ module justimages.bmp;
 
 import justimages.color;
 
-//version = arsd_debug_bitmap_loader;
-
-
 /// Reads a .bmp file from the given `filename`
 MemoryImage readBmp(string filename) {
 	import core.stdc.stdio;
@@ -19,7 +16,7 @@ MemoryImage readBmp(string filename) {
 	scope(exit) fclose(fp);
 
 	void specialFread(void* tgt, size_t size) {
-		version(arsd_debug_bitmap_loader) { import core.stdc.stdio; printf("ofs: 0x%08x\n", cast(uint)ftell(fp)); }
+		debug(justimages) { import core.stdc.stdio; printf("ofs: 0x%08x\n", cast(uint)ftell(fp)); }
 		fread(tgt, size, 1, fp);
 	}
 
@@ -101,7 +98,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 	void require2(ushort t) {
 		auto got = read2();
 		if(got != t) {
-			version(arsd_debug_bitmap_loader) { import core.stdc.stdio; printf("expected: %d, got %d\n", cast(int) t, cast(int) got); }
+			debug(justimages) { import core.stdc.stdio; printf("expected: %d, got %d\n", cast(int) t, cast(int) got); }
 			throw new Exception("didn't get expected short value");
 		}
 	}
@@ -121,13 +118,13 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 		require2(0); 	// reserved
 
 		auto offsetToBits = read4();
-		version(arsd_debug_bitmap_loader) { import core.stdc.stdio; printf("pixel data offset: 0x%08x\n", cast(uint)offsetToBits); }
+		debug(justimages) { import core.stdc.stdio; printf("pixel data offset: 0x%08x\n", cast(uint)offsetToBits); }
 	}
 
 	auto sizeOfBitmapInfoHeader = read4();
 	if (sizeOfBitmapInfoHeader < 12) throw new Exception("invalid bitmap header size");
 
-	version(arsd_debug_bitmap_loader) { import core.stdc.stdio; printf("size of bitmap info header: %d\n", cast(uint)sizeOfBitmapInfoHeader); }
+	debug(justimages) { import core.stdc.stdio; printf("size of bitmap info header: %d\n", cast(uint)sizeOfBitmapInfoHeader); }
 
 	int width, height, rdheight;
 
@@ -144,13 +141,13 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 	height = (rdheight < 0 ? -rdheight : rdheight);
 
 	if(hasAndMask) {
-		version(arsd_debug_bitmap_loader) { import core.stdc.stdio; printf("has and mask so height slashed %d\n", height / 2); }
+		debug(justimages) { import core.stdc.stdio; printf("has and mask so height slashed %d\n", height / 2); }
 		height = height / 2;
 	}
 
 	rdheight = (rdheight < 0 ? 1 : -1); // so we can use it as delta (note the inverted sign)
 
-	version(arsd_debug_bitmap_loader) { import core.stdc.stdio; printf("size: %dx%d\n", cast(int)width, cast(int) height); }
+	debug(justimages) { import core.stdc.stdio; printf("size: %dx%d\n", cast(int)width, cast(int) height); }
 	if (width < 1 || height < 1) throw new Exception("invalid bitmap dimensions");
 
 	require2(1); // planes
@@ -190,7 +187,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 	if (compression == 1 && bitsPerPixel != 8) throw new Exception("invalid bitmap compression");
 	if (compression == 2 && bitsPerPixel != 4) throw new Exception("invalid bitmap compression");
 
-	version(arsd_debug_bitmap_loader) { import core.stdc.stdio; printf("compression: %u; bpp: %u\n", compression, cast(uint)bitsPerPixel); }
+	debug(justimages) { import core.stdc.stdio; printf("compression: %u; bpp: %u\n", compression, cast(uint)bitsPerPixel); }
 
 	uint redMask;
 	uint greenMask;
@@ -207,7 +204,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 	// FIXME: we could probably handle RLE4 as well
 
 	// I don't know about the rest of the header, so I'm just skipping it.
-	version(arsd_debug_bitmap_loader) { import core.stdc.stdio; printf("header bytes left: %u\n", cast(uint)sizeOfBitmapInfoHeader); }
+	debug(justimages) { import core.stdc.stdio; printf("header bytes left: %u\n", cast(uint)sizeOfBitmapInfoHeader); }
 	foreach (skip; 0..sizeOfBitmapInfoHeader) read1();
 
 	headerRead = true;
@@ -220,7 +217,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 			// the and mask is always 1bpp and i want to translate it into transparent pixels
 
 			for(int y = (height - 1); y >= 0; y--) {
-				//version(arsd_debug_bitmap_loader) { import core.stdc.stdio; printf(" reading and mask %d\n", y); }
+				//debug(justimages) { import core.stdc.stdio; printf(" reading and mask %d\n", y); }
 				int read;
 				for(int x = 0; x < width; x++) {
 					const b = read1();
@@ -228,7 +225,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 					read++;
 					foreach_reverse(lol; 0 .. 8) {
 						bool transparent = !!((b & (1 << lol)));
-						version(arsd_debug_bitmap_loader) { import std.stdio; write(transparent ? "o":"x"); }
+						debug(justimages) { import std.stdio; write(transparent ? "o":"x"); }
 						apply(x, y, transparent);
 
 						x++;
@@ -241,7 +238,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 					read1();
 					read++;
 				}
-				version(arsd_debug_bitmap_loader) {import std.stdio; writeln(""); }
+				debug(justimages) {import std.stdio; writeln(""); }
 			}
 
 			/+
@@ -253,7 +250,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 			// discard; the and mask is optional in practice since using all 0's
 			// gives a result and some files in the wild deliberately truncate the
 			// file (though they aren't supposed to....) expecting readers to do this.
-			version(arsd_debug_bitmap_loader) { import std.stdio; writeln(e); }
+			debug(justimages) { import std.stdio; writeln(e); }
 		}
 	}
 
@@ -261,7 +258,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 
 	if(bitsPerPixel <= 8) {
 		// indexed image
-		version(arsd_debug_bitmap_loader) { import core.stdc.stdio; printf("colorsUsed=%u; colorsImportant=%u\n", colorsUsed, colorsImportant); }
+		debug(justimages) { import core.stdc.stdio; printf("colorsUsed=%u; colorsImportant=%u\n", colorsUsed, colorsImportant); }
 		if (colorsUsed == 0 || colorsUsed > (1 << bitsPerPixel)) colorsUsed = (1 << bitsPerPixel);
 		auto img = new IndexedImage(width, height);
 		img.palette.reserve(1 << bitsPerPixel);
@@ -289,42 +286,42 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 				if (x >= 0 && y >= 0 && x < width && y < height) img.data.ptr[y*width+x] = v&0xff;
 				++x;
 			}
-			version(arsd_debug_bitmap_loader) { import core.stdc.stdio; printf("width=%d; height=%d; rdheight=%d\n", width, height, rdheight); }
+			debug(justimages) { import core.stdc.stdio; printf("width=%d; height=%d; rdheight=%d\n", width, height, rdheight); }
 			for (;;) {
 				ubyte codelen = read1();
 				ubyte codecode = read1();
-				version(arsd_debug_bitmap_loader) { import core.stdc.stdio; printf("x=%d; y=%d; len=%u; code=%u\n", x, y, cast(uint)codelen, cast(uint)codecode); }
+				debug(justimages) { import core.stdc.stdio; printf("x=%d; y=%d; len=%u; code=%u\n", x, y, cast(uint)codelen, cast(uint)codecode); }
 				bytesRead += 2;
 				if (codelen == 0) {
 					// special code
 					if (codecode == 0) {
 						// end of line
-						version(arsd_debug_bitmap_loader) { import core.stdc.stdio; printf("  EOL\n"); }
+						debug(justimages) { import core.stdc.stdio; printf("  EOL\n"); }
 						while (x < width) setpix(1);
 						x = 0;
 						y += rdheight;
 						if (y < 0 || y >= height) break; // ooops
 					} else if (codecode == 1) {
-						version(arsd_debug_bitmap_loader) { import core.stdc.stdio; printf("  EOB\n"); }
+						debug(justimages) { import core.stdc.stdio; printf("  EOB\n"); }
 						// end of bitmap
 						break;
 					} else if (codecode == 2) {
 						// delta
 						int xofs = read1();
 						int yofs = read1();
-						version(arsd_debug_bitmap_loader) { import core.stdc.stdio; printf("  deltax=%d; deltay=%d\n", xofs, yofs); }
+						debug(justimages) { import core.stdc.stdio; printf("  deltax=%d; deltay=%d\n", xofs, yofs); }
 						bytesRead += 2;
 						x += xofs;
 						y += yofs*rdheight;
 						if (y < 0 || y >= height) break; // ooops
 					} else {
-						version(arsd_debug_bitmap_loader) { import core.stdc.stdio; printf("  LITERAL: %u\n", cast(uint)codecode); }
+						debug(justimages) { import core.stdc.stdio; printf("  LITERAL: %u\n", cast(uint)codecode); }
 						// literal copy
 						while (codecode-- > 0) {
 							setpix(read1());
 							++bytesRead;
 						}
-						version(arsd_debug_bitmap_loader) if (bytesRead%2) { import core.stdc.stdio; printf("  LITERAL SKIP\n"); }
+						debug(justimages) if (bytesRead%2) { import core.stdc.stdio; printf("  LITERAL SKIP\n"); }
 						if (bytesRead%2) { read1(); ++bytesRead; }
 						assert(bytesRead%2 == 0);
 					}
@@ -429,7 +426,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 		int offsetStart = width * height * 4;
 		int bytesPerPixel = 4;
 		for(int y = height; y > 0; y--) {
-			version(arsd_debug_bitmap_loader) { import core.stdc.stdio; printf("  true color image: %d\n", y); }
+			debug(justimages) { import core.stdc.stdio; printf("  true color image: %d\n", y); }
 			offsetStart -= width * bytesPerPixel;
 			int offset = offsetStart;
 			int b = 0;

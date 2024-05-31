@@ -492,8 +492,8 @@ public:
       m_ready_flag = true;
       return JPGD_SUCCESS;
     } catch (Exception e) {
-      //version(jpegd_test) {{ import core.stdc.stdio; stderr.fprintf("ERROR: %.*s...\n", cast(int)e.msg.length, e.msg.ptr); }}
-      version(jpegd_test) {{ import std.stdio; stderr.writeln(e.toString); }}
+      //debug(justimages) {{ import core.stdc.stdio; stderr.fprintf("ERROR: %.*s...\n", cast(int)e.msg.length, e.msg.ptr); }}
+      debug(justimages) {{ import std.stdio; stderr.writeln(e.toString); }}
     }
     return JPGD_FAILED;
   }
@@ -2492,7 +2492,7 @@ private:
 
     if (m_comps_in_frame == 1)
     {
-      version(jpegd_test) {{ import std.stdio; stderr.writeln("m_comp_h_samp=", m_comp_h_samp.ptr[0], "; m_comp_v_samp=", m_comp_v_samp.ptr[0]); }}
+      debug(justimages) {{ import std.stdio; stderr.writeln("m_comp_h_samp=", m_comp_h_samp.ptr[0], "; m_comp_v_samp=", m_comp_v_samp.ptr[0]); }}
 
       //if ((m_comp_h_samp.ptr[0] != 1) || (m_comp_v_samp.ptr[0] != 1))
       //  stop_decoding(JPGD_UNSUPPORTED_SAMP_FACTORS);
@@ -2973,7 +2973,7 @@ private:
 public bool detect_jpeg_image_from_stream (scope JpegStreamReadFunc rfn, out int width, out int height, out int actual_comps) {
   if (rfn is null) return false;
   auto decoder = jpeg_decoder(rfn);
-  version(jpegd_test) { import core.stdc.stdio : printf; printf("%u bytes read.\n", cast(uint)decoder.total_bytes_read); }
+  debug(justimages) { import core.stdc.stdio : printf; printf("%u bytes read.\n", cast(uint)decoder.total_bytes_read); }
   if (decoder.error_code != JPGD_SUCCESS) return false;
   width = decoder.width;
   height = decoder.height;
@@ -3066,7 +3066,7 @@ public ubyte[] decompress_jpeg_image_from_stream(bool useMalloc=false) (scope Jp
 
   auto decoder = jpeg_decoder(rfn);
   if (decoder.error_code != JPGD_SUCCESS) return null;
-  version(jpegd_test) scope(exit) { import core.stdc.stdio : printf; printf("%u bytes read.\n", cast(uint)decoder.total_bytes_read); }
+  debug(justimages) scope(exit) { import core.stdc.stdio : printf; printf("%u bytes read.\n", cast(uint)decoder.total_bytes_read); }
 
   immutable int image_width = decoder.width;
   immutable int image_height = decoder.height;
@@ -3231,39 +3231,6 @@ public ubyte[] decompress_jpeg_image_from_memory(bool useMalloc=false) (const(vo
 }
 
 
-// ////////////////////////////////////////////////////////////////////////// //
-// if we have access "iv.vfs", add some handy API
-static if (__traits(compiles, { import iv.vfs; })) enum JpegHasIVVFS = true; else enum JpegHasIVVFS = false;
-
-static if (JpegHasIVVFS) {
-import iv.vfs;
-
-// ////////////////////////////////////////////////////////////////////////// //
-/// decompress JPEG image from disk file.
-/// you can specify required color components in `req_comps` (3 for RGB or 4 for RGBA), or leave it as is to use image value.
-public ubyte[] decompress_jpeg_image_from_file(bool useMalloc=false) (VFile fl, out int width, out int height, out int actual_comps, int req_comps=-1) {
-  return decompress_jpeg_image_from_stream!useMalloc(
-    delegate int (void* pBuf, int max_bytes_to_read, bool *pEOF_flag) {
-      if (!fl.isOpen) return -1;
-      if (fl.eof) {
-        *pEOF_flag = true;
-        return 0;
-      }
-      auto rd = fl.rawRead(pBuf[0..max_bytes_to_read]);
-      if (fl.eof) *pEOF_flag = true;
-      return cast(int)rd.length;
-    },
-    width, height, actual_comps, req_comps);
-}
-// vfs API
-}
-
-
-// ////////////////////////////////////////////////////////////////////////// //
-// if we have access "justimages.color", add some handy API
-static if (__traits(compiles, { import justimages.color; })) enum JpegHasArsd = true; else enum JpegHasArsd = false;
-
-
 
 public struct LastJpegError {
 	int stage;
@@ -3274,7 +3241,6 @@ public struct LastJpegError {
 public LastJpegError lastJpegError;
 
 
-static if (JpegHasArsd) {
 import justimages.color;
 
 // ////////////////////////////////////////////////////////////////////////// //
@@ -3287,7 +3253,7 @@ public MemoryImage readJpegFromStream (scope JpegStreamReadFunc rfn) {
 
   auto decoder = jpeg_decoder(rfn);
   if (decoder.error_code != JPGD_SUCCESS) { lastJpegError = LastJpegError(1, decoder.error_code); return null; }
-  version(jpegd_test) scope(exit) { import core.stdc.stdio : printf; printf("%u bytes read.\n", cast(uint)decoder.total_bytes_read); }
+  debug(justimages) scope(exit) { import core.stdc.stdio : printf; printf("%u bytes read.\n", cast(uint)decoder.total_bytes_read); }
 
   immutable int image_width = decoder.width;
   immutable int image_height = decoder.height;
@@ -3295,7 +3261,7 @@ public MemoryImage readJpegFromStream (scope JpegStreamReadFunc rfn) {
   //height = image_height;
   //actual_comps = decoder.num_components;
 
-  version(jpegd_test) {{ import core.stdc.stdio; stderr.fprintf("starting (%dx%d)...\n", image_width, image_height); }}
+  debug(justimages) {{ import core.stdc.stdio; stderr.fprintf("starting (%dx%d)...\n", image_width, image_height); }}
 
   auto err = decoder.begin_decoding();
   if (err != JPGD_SUCCESS || image_width < 1 || image_height < 1) {
@@ -3309,7 +3275,7 @@ public MemoryImage readJpegFromStream (scope JpegStreamReadFunc rfn) {
   ubyte* pImage_data = img.imageData.bytes.ptr;
 
   for (int y = 0; y < image_height; ++y) {
-    //version(jpegd_test) {{ import core.stdc.stdio; stderr.fprintf("loading line %d...\n", y); }}
+    //debug(justimages) {{ import core.stdc.stdio; stderr.fprintf("loading line %d...\n", y); }}
 
     const(ubyte)* pScan_line;
     uint scan_line_len;
@@ -3470,74 +3436,6 @@ public MemoryImage readJpegFromMemory (const(void)[] buf) {
       return max_bytes_to_read;
     }
   );
-}
-// done with arsd API
-}
-
-
-static if (JpegHasIVVFS) {
-public MemoryImage readJpeg (VFile fl) {
-  return readJpegFromStream(
-    delegate int (void* pBuf, int max_bytes_to_read, bool *pEOF_flag) {
-      if (!fl.isOpen) return -1;
-      if (fl.eof) {
-        *pEOF_flag = true;
-        return 0;
-      }
-      auto rd = fl.rawRead(pBuf[0..max_bytes_to_read]);
-      if (fl.eof) *pEOF_flag = true;
-      return cast(int)rd.length;
-    }
-  );
-}
-
-public bool detectJpeg (VFile fl, out int width, out int height, out int actual_comps) {
-  return detect_jpeg_image_from_stream(
-    delegate int (void* pBuf, int max_bytes_to_read, bool *pEOF_flag) {
-      if (!fl.isOpen) return -1;
-      if (fl.eof) {
-        *pEOF_flag = true;
-        return 0;
-      }
-      auto rd = fl.rawRead(pBuf[0..max_bytes_to_read]);
-      if (fl.eof) *pEOF_flag = true;
-      return cast(int)rd.length;
-    },
-    width, height, actual_comps);
-}
-// vfs API
-}
-
-
-// ////////////////////////////////////////////////////////////////////////// //
-version(jpegd_test) {
-import justimages.color;
-import justimages.png;
-
-void main (string[] args) {
-  import std.stdio;
-  int width, height, comps;
-  {
-    assert(detect_jpeg_image_from_file((args.length > 1 ? args[1] : "image.jpg"), width, height, comps));
-    writeln(width, "x", height, "x", comps);
-    auto img = readJpeg((args.length > 1 ? args[1] : "image.jpg"));
-    writeln(img.width, "x", img.height);
-    writePng("z00.png", img);
-  }
-  {
-    ubyte[] file;
-    {
-      auto fl = File(args.length > 1 ? args[1] : "image.jpg");
-      file.length = cast(int)fl.size;
-      fl.rawRead(file[]);
-    }
-    assert(detect_jpeg_image_from_memory(file[], width, height, comps));
-    writeln(width, "x", height, "x", comps);
-    auto img = readJpegFromMemory(file[]);
-    writeln(img.width, "x", img.height);
-    writePng("z01.png", img);
-  }
-}
 }
 
 // jpge.cpp - C++ class for JPEG compression.

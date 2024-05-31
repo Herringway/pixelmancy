@@ -4,9 +4,6 @@ module justimages.targa;
 import justimages.color;
 import std.stdio : File; // sorry
 
-static if (__traits(compiles, { import iv.vfs; })) enum ArsdTargaHasIVVFS = true; else enum ArsdTargaHasIVVFS = false;
-static if (ArsdTargaHasIVVFS) import iv.vfs;
-
 
 // ////////////////////////////////////////////////////////////////////////// //
 public MemoryImage loadTgaMem (const(void)[] buf, const(char)[] filename=null) {
@@ -58,15 +55,12 @@ public MemoryImage loadTgaMem (const(void)[] buf, const(char)[] filename=null) {
   return loadTga(rd, filename);
 }
 
-static if (ArsdTargaHasIVVFS) public MemoryImage loadTga (VFile fl) { return loadTgaImpl(fl, fl.name); }
 public MemoryImage loadTga (File fl) { return loadTgaImpl(fl, fl.name); }
 public MemoryImage loadTga(T:const(char)[]) (T fname) {
   static if (is(T == typeof(null))) {
     throw new Exception("cannot load nameless tga");
   } else {
-    static if (ArsdTargaHasIVVFS) {
-      return loadTga(VFile(fname));
-    } else static if (is(T == string)) {
+    static if (is(T == string)) {
       return loadTga(File(fname), fname);
     } else {
       return loadTga(File(fname.idup), fname);
@@ -415,7 +409,6 @@ private MemoryImage loadTgaImpl(ST) (auto ref ST fl, const(char)[] filename) {
 
 // ////////////////////////////////////////////////////////////////////////// //
 private:
-static if (!ArsdTargaHasIVVFS) {
 import core.stdc.stdio : SEEK_SET, SEEK_CUR, SEEK_END;
 
 enum Seek : int {
@@ -692,5 +685,4 @@ if (is(SS == struct) && isGoodEndianness!es && isReadableStream!ST)
   }
 
   unserData(st);
-}
 }

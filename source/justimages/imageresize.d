@@ -71,8 +71,6 @@ private:
 
 @system:
 
-//version = iresample_debug;
-
 
 // ////////////////////////////////////////////////////////////////////////// //
 public enum ImageResizeDefaultFilter = "lanczos4"; /// Default filter for image resampler.
@@ -189,7 +187,7 @@ public void imageResize(int Components=4) (
 
 
   if (lastGamma != gamma) {
-    version(iresample_debug) { import core.stdc.stdio; stderr.fprintf("creating translation tables for gamma %f (previous gamma is %f)\n", gamma, lastGamma); }
+    debug(justimages) { import core.stdc.stdio; stderr.fprintf("creating translation tables for gamma %f (previous gamma is %f)\n", gamma, lastGamma); }
     foreach (immutable i, ref v; srgb2linear[]) {
       import std.math : pow;
       v = cast(float)pow(cast(int)i*1.0f/255.0f, gamma);
@@ -203,7 +201,7 @@ public void imageResize(int Components=4) (
     }
     lastGamma = gamma;
   }
-  version(iresample_debug) { import core.stdc.stdio; stderr.fprintf("filter is %d\n", filter); }
+  debug(justimages) { import core.stdc.stdio; stderr.fprintf("filter is %d\n", filter); }
 
   ImageResampleWorker[Components] resamplers;
   float[][Components] samples;
@@ -278,7 +276,7 @@ public void imageResize(int Components=4) (
           ++dsc;
         }
       }
-      //version(iresample_debug) { import core.stdc.stdio; stderr.fprintf("writing dest row %d with %u components\n", dsty, Components); }
+      //debug(justimages) { import core.stdc.stdio; stderr.fprintf("writing dest row %d with %u components\n", dsty, Components); }
       dstPutRow(dsty, dstrow);
       ++dsty;
     }
@@ -955,15 +953,10 @@ private:
 // ////////////////////////////////////////////////////////////////////////// //
 private nothrow @trusted @nogc:
 int resamplerRangeCheck (int v, int h) {
-  version(assert) {
-    //import std.conv : to;
-    //assert(v >= 0 && v < h, "invalid v ("~to!string(v)~"), should be in [0.."~to!string(h)~")");
-    assert(v >= 0 && v < h); // alas, @nogc
-    return v;
-  } else {
-    pragma(inline, true);
-    return v;
-  }
+  //import std.conv : to;
+  //assert(v >= 0 && v < h, "invalid v ("~to!string(v)~"), should be in [0.."~to!string(h)~")");
+  assert(v >= 0 && v < h); // alas, @nogc
+  return v;
 }
 
 enum M_PI = 3.14159265358979323846;

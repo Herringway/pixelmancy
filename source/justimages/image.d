@@ -27,8 +27,6 @@ public import justimages.imageresize;
 
 import core.memory;
 
-static if (__traits(compiles, { import iv.vfs; })) enum ArsdImageHasIVVFS = true; else enum ArsdImageHasIVVFS = false;
-
 MemoryImage readSvg(string filename) {
 	import std.file;
 	return readSvg(cast(const(ubyte)[]) readText(filename));
@@ -44,7 +42,7 @@ MemoryImage readSvg(const(ubyte)[] rawData) {
     int w = cast(int) image.width + 1;
     int h = cast(int) image.height + 1;
 
-    NSVGrasterizer rast = nsvgCreateRasterizer();
+    NSVGRasterizer rast = nsvgCreateRasterizer();
     auto img = new TrueColorImage(w, h);
     rasterize(rast, image, 0, 0, 1, img.imageData.bytes.ptr, w, h, w*4);
     image.kill();
@@ -263,15 +261,11 @@ public MemoryImage loadImageFromFile(T:const(char)[]) (T filename) {
     final switch (guessImageFormatFromExtension(filename)) {
       case ImageFileFormat.Unknown:
         //throw new Exception("cannot determine file format from extension");
-        static if (ArsdImageHasIVVFS) {
-          auto fl = VFile(filename);
+        import std.stdio;
+        static if (is(T == string)) {
+          auto fl = File(filename);
         } else {
-          import std.stdio;
-          static if (is(T == string)) {
-            auto fl = File(filename);
-          } else {
-            auto fl = File(filename.idup);
-          }
+          auto fl = File(filename.idup);
         }
         auto fsz = fl.size-fl.tell;
         if (fsz < 4) throw new Exception("cannot determine file format");
@@ -288,15 +282,11 @@ public MemoryImage loadImageFromFile(T:const(char)[]) (T filename) {
       case ImageFileFormat.Pcx: return loadPcx(filename);
       case ImageFileFormat.Svg: static if (is(T == string)) return readSvg(filename); else return readSvg(filename.idup);
       case ImageFileFormat.Dds:
-        static if (ArsdImageHasIVVFS) {
-          auto fl = VFile(filename);
+        import std.stdio;
+        static if (is(T == string)) {
+          auto fl = File(filename);
         } else {
-          import std.stdio;
-          static if (is(T == string)) {
-            auto fl = File(filename);
-          } else {
-            auto fl = File(filename.idup);
-          }
+          auto fl = File(filename.idup);
         }
         return ddsLoadFromFile(fl);
     }
@@ -317,20 +307,6 @@ public MemoryImage loadImageFromMemory (const(void)[] membuf) {
     case ImageFileFormat.Svg: return readSvg(cast(const(ubyte)[]) membuf);
     case ImageFileFormat.Dds: return ddsLoadFromMemory(membuf);
   }
-}
-
-
-static if (ArsdImageHasIVVFS) {
-import iv.vfs;
-public MemoryImage loadImageFromFile (VFile fl) {
-  auto fsz = fl.size-fl.tell;
-  if (fsz < 4) throw new Exception("cannot determine file format");
-  if (fsz > int.max/8) throw new Exception("image data too big");
-  auto data = new ubyte[](cast(uint)fsz);
-  scope(exit) { import core.memory : GC; GC.free(data.ptr); } // this should be safe, as image will copy data to it's internal storage
-  fl.rawReadExact(data);
-  return loadImageFromMemory(data);
-}
 }
 
 // FYI: There used to be image resize code in here directly, but I moved it to `imageresize.d`.

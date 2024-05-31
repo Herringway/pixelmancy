@@ -111,22 +111,6 @@ public TrueColorImage ddsLoadFromFile() (std.stdio.File fl) {
 }
 
 
-static if (__traits(compiles, { import iv.vfs; })) {
-  import iv.vfs;
-  public TrueColorImage ddsLoadFromFile() (VFile fl) {
-    import core.stdc.stdlib : malloc, free;
-    auto fsize = fl.size-fl.tell;
-    if (fsize < 128 || fsize > int.max/8) throw new Exception("invalid dds size");
-    ddsBuffer_t* dds = cast(ddsBuffer_t*)malloc(cast(uint)fsize);
-    if (dds is null) throw new Exception("out of memory");
-    scope(exit) free(dds);
-    ubyte[] lb = (cast(ubyte*)dds)[0..cast(uint)fsize];
-    fl.rawReadExact(lb);
-    return ddsLoadFromMemory(lb);
-  }
-}
-
-
 
 // ////////////////////////////////////////////////////////////////////////// //
 private nothrow @trusted @nogc:

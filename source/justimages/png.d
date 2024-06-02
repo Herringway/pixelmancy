@@ -1433,12 +1433,12 @@ struct LazyPngFile(LazyPngChunksProvider)
 		if(chunkSize == 0)
 			chunkSize = bytesPerLine();
 
-		struct DatastreamByChunk(T) {
+		static struct DatastreamByChunk {
 			std.zlib.UnCompress decompressor;
 			int chunkSize;
-			T chunks;
+			LazyPngChunksProvider chunks;
 
-			this(int cs, T chunks) @trusted {
+			this(int cs, LazyPngChunksProvider chunks) @trusted {
 				decompressor = new std.zlib.UnCompress();
 				this.chunkSize = cs;
 				this.chunks = chunks;
@@ -1482,11 +1482,9 @@ struct LazyPngFile(LazyPngChunksProvider)
 				return (current.length == 0);
 			}
 		}
-		return DatastreamByChunk!(typeof(chunks))(chunkSize, chunks);
+		return DatastreamByChunk(chunkSize, chunks);
 	}
 
-	// FIXME: no longer compiles
-	version(none)
 	auto byRgbaScanline() {
 		static struct ByRgbaScanline {
 			ReturnType!(rawDatastreamByChunk) datastream;

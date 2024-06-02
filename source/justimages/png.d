@@ -18,6 +18,14 @@ module justimages.png;
 
 import core.memory;
 
+private ubyte[] readTrusted(string filename) @trusted {
+	import std.file : read;
+	return cast(ubyte[]) read(filename);
+}
+private void writeTrusted(string filename, const(ubyte)[] data) @trusted {
+	import std.file : write;
+	write(filename, data);
+}
 /++
 	Easily reads a png file into a [MemoryImage]
 
@@ -28,9 +36,23 @@ import core.memory;
 
 		Greyscale pngs and bit depths other than 8 are converted for the ease of the MemoryImage interface. If you need more detail, try [PNG] and [getDatastream] etc.
 +/
-MemoryImage readPng(string filename) {
-	import std.file;
-	return imageFromPng(readPng(cast(ubyte[]) read(filename)));
+MemoryImage readPng(string filename) @safe {
+	return imageFromPng(readPng(readTrusted(filename)));
+}
+
+@safe unittest {
+	with(readPng("samples/test.png")) {
+		assert(getPixel(0, 0) == Color(0, 0, 255, 255));
+		assert(getPixel(128, 0) == Color(0, 255, 0, 255));
+		assert(getPixel(0, 128) == Color(255, 0, 0, 255));
+		assert(getPixel(128, 128) == Color(0, 0, 0, 0));
+	}
+	with(readPng("samples/test8.png")) {
+		assert(getPixel(0, 0) == Color(0, 0, 255, 255));
+		assert(getPixel(128, 0) == Color(0, 255, 0, 255));
+		assert(getPixel(0, 128) == Color(255, 0, 0, 255));
+		assert(getPixel(128, 128) == Color(0, 0, 0, 0));
+	}
 }
 
 /++
@@ -39,7 +61,7 @@ MemoryImage readPng(string filename) {
 	History:
 		Added December 29, 2021 (dub v10.5)
 +/
-MemoryImage readPngFromBytes(const(ubyte)[] bytes) {
+MemoryImage readPngFromBytes(const(ubyte)[] bytes) @safe {
 	return imageFromPng(readPng(bytes));
 }
 
@@ -49,10 +71,9 @@ MemoryImage readPngFromBytes(const(ubyte)[] bytes) {
 	See_Also:
 		[writePngToArray]
 +/
-void writePng(string filename, MemoryImage mi) {
+void writePng(string filename, MemoryImage mi) @safe {
 	// FIXME: it would be nice to write the file lazily so we don't have so many intermediate buffers here
-	import std.file;
-	std.file.write(filename, writePngToArray(mi));
+	writeTrusted(filename, writePngToArray(mi));
 }
 
 /++
@@ -63,7 +84,7 @@ void writePng(string filename, MemoryImage mi) {
 	See_Also:
 		[writePng]
 +/
-ubyte[] writePngToArray(MemoryImage mi) {
+ubyte[] writePngToArray(MemoryImage mi) @safe {
 	PNG* png;
 	if(auto p = cast(IndexedImage) mi)
 		png = pngFromImage(p);
@@ -71,6 +92,16 @@ ubyte[] writePngToArray(MemoryImage mi) {
 		png = pngFromImage(p);
 	else assert(0);
 	return writePng(png);
+}
+
+@safe unittest {
+	auto orig = readPng("samples/test.png");
+	auto roundTripped = readPngFromBytes(writePngToArray(orig));
+	foreach (x; 0 .. orig.width) {
+		foreach (y; 0 .. orig.height) {
+			assert(roundTripped.getPixel(x, y) == orig.getPixel(x, y));
+		}
+	}
 }
 
 /++
@@ -87,7 +118,7 @@ enum PngType {
 /++
 	Saves an image from an existing array of pixel data. Note that depth other than 8 may not be implemented yet. Also note depth of 16 must be stored big endian
 +/
-void writePng(string filename, const ubyte[] data, int width, int height, PngType type, ubyte depth = 8) {
+void writePng(string filename, const ubyte[] data, int width, int height, PngType type, ubyte depth = 8) @safe {
 	PngHeader h;
 	h.width = width;
 	h.height = height;
@@ -126,7 +157,7 @@ void main(string[] args) {
 // By Adam D. Ruppe, 2009-2010, released into the public domain
 //import std.file;
 
-//import std.zlib;
+import std.zlib;
 
 public import justimages.color;
 
@@ -138,7 +169,7 @@ public import justimages.color;
 
 	auto i = cast(TrueColorImage) imageFromPng(readPng(cast(ubyte)[]) std.file.read("file.png")));
 */
-MemoryImage imageFromPng(PNG* png) {
+MemoryImage imageFromPng(PNG* png) @safe {
 	PngHeader h = getHeader(png);
 
 	/** Types from the PNG spec:
@@ -188,7 +219,7 @@ MemoryImage imageFromPng(PNG* png) {
 	size_t idataIdx = 0;
 
 	auto file = LazyPngFile!(Chunk[])(png.chunks);
-	immutable(ubyte)[] previousLine;
+	const(ubyte)[] previousLine;
 	auto bpp = bytesPerPixel(h);
 	foreach(line; file.rawDatastreamByChunk()) {
 		auto filter = line[0];
@@ -209,7 +240,7 @@ MemoryImage imageFromPng(PNG* png) {
 
 	idata needs to be already sized for the image! width * height if indexed, width*height*4 if not.
 +/
-void convertPngData(ubyte type, ubyte depth, const(ubyte)[] data, int width, ubyte[] idata, ref size_t idataIdx) {
+void convertPngData(ubyte type, ubyte depth, const(ubyte)[] data, int width, ubyte[] idata, ref size_t idataIdx) @safe {
 	ubyte consumeOne() {
 		ubyte ret = data[0];
 		data = data[1 .. $];
@@ -336,7 +367,7 @@ struct PngHeader {
 
 	This is called by [writePng].
 +/
-PNG* pngFromImage(IndexedImage i) {
+PNG* pngFromImage(IndexedImage i) @safe {
 	PngHeader h;
 	h.width = i.width;
 	h.height = i.height;
@@ -458,7 +489,7 @@ PNG* pngFromImage(IndexedImage i) {
 	This is called by [writePng].
 +/
 
-PNG* pngFromImage(TrueColorImage i) {
+PNG* pngFromImage(TrueColorImage i) @safe {
 	PngHeader h;
 	h.width = i.width;
 	h.height = i.height;
@@ -498,8 +529,6 @@ struct PNG {
 			Prior to October 10, 2022, this was called `header`.
 	+/
 	ubyte[8] magic;// = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]; // this is the only valid value but idk if it is worth changing here since the ctor sets it regardless.
-	/// ditto
-	deprecated("use `magic` instead") alias header = magic;
 
 	/++
 		The array of chunks that make up the file contents. See [getChunkNullable], [getChunk], [insertChunk], and [replaceChunk] for functions to access and manipulate this array.
@@ -516,11 +545,11 @@ struct PNG {
 		See_Also:
 			[getChunkNullable], which returns a null pointer instead of throwing.
 	+/
-	pure @trusted /* see note on getChunkNullable */
+	pure @safe
 	Chunk* getChunk(string what) {
-		foreach(ref c; chunks) {
+		foreach(idx, ref c; chunks) {
 			if(c.stype == what)
-				return &c;
+				return &chunks[idx];
 		}
 		throw new Exception("no such chunk " ~ what);
 	}
@@ -531,11 +560,11 @@ struct PNG {
 		See_Also:
 			[getChunk], which throws if the chunk cannot be found.
 	+/
-	nothrow @nogc pure @trusted /* trusted because &c i know is referring to the dynamic array, not actually a local. That has lifetime at least as much of the parent PNG object. */
+	nothrow @nogc pure @safe
 	Chunk* getChunkNullable(string what) {
-		foreach(ref c; chunks) {
+		foreach(idx, ref c; chunks) {
 			if(c.stype == what)
-				return &c;
+				return &chunks[idx];
 		}
 		return null;
 	}
@@ -546,7 +575,7 @@ struct PNG {
 		Use `Chunk.create()` to create new chunk, and then `insertChunk()` to add it.
 		Return `true` if we did replacement.
 	+/
-	nothrow pure @trusted /* the chunks.ptr here fails safe, but it does that for performance and again I control that data so can be reasonably assured */
+	nothrow pure @safe
 	bool insertChunk (Chunk* chk, bool replaceExisting=false) {
 		if (chk is null) return false; // just in case
 		// use reversed loop, as "IDAT" is usually present, and it is usually the last,
@@ -560,8 +589,8 @@ struct PNG {
 			if (cc.stype == "IDAT") {
 				// ok, insert it; and don't use phobos
 				chunks.length += 1;
-				foreach_reverse (immutable c; idx+1..chunks.length) chunks.ptr[c] = chunks.ptr[c-1];
-				chunks.ptr[idx] = *chk;
+				foreach_reverse (immutable c; idx+1..chunks.length) chunks[c] = chunks[c-1];
+				chunks[idx] = *chk;
 				return false;
 			}
 		}
@@ -584,7 +613,6 @@ void writeImageToPngFile(in char[] filename, TrueColorImage image) {
 	PNG* png;
 	ubyte[] com;
 {
-	import std.zlib;
 	PngHeader h;
 	h.width = image.width;
 	h.height = image.height;
@@ -659,7 +687,7 @@ void writeImageToPngFile(in char[] filename, TrueColorImage image) {
 /++
 	Turns a [PNG] structure into an array of bytes, ready to be written to a file.
 +/
-ubyte[] writePng(PNG* p) {
+ubyte[] writePng(PNG* p) @safe {
 	ubyte[] a;
 	if(p.length)
 		a.length = p.length;
@@ -738,7 +766,7 @@ PngHeader getHeaderFromFile(string filename) {
 
 	You might want the other [readPng] overload instead, which returns an even more processed [MemoryImage] object.
 +/
-PNG* readPng(in ubyte[] data) {
+PNG* readPng(in ubyte[] data) @safe {
 	auto p = new PNG;
 
 	p.length = cast(int) data.length;
@@ -779,7 +807,7 @@ PNG* readPng(in ubyte[] data) {
 /++
 	Creates a new [PNG] object from the given header parameters, ready to receive data.
 +/
-PNG* blankPNG(PngHeader h) {
+PNG* blankPNG(PngHeader h) @safe {
 	auto p = new PNG;
 	p.magic = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
@@ -822,12 +850,10 @@ PNG* blankPNG(PngHeader h) {
 +/
 // should NOT have any idata already.
 // FIXME: doesn't handle palettes
-void addImageDatastreamToPng(const(ubyte)[] data, PNG* png, bool addIend = true) {
+void addImageDatastreamToPng(const(ubyte)[] data, PNG* png, bool addIend = true) @safe {
 	// we need to go through the lines and add the filter byte
 	// then compress it into an IDAT chunk
 	// then add the IEND chunk
-	import std.zlib;
-
 	PngHeader h = getHeader(png);
 
 	if(h.depth == 0)
@@ -871,8 +897,11 @@ void addImageDatastreamToPng(const(ubyte)[] data, PNG* png, bool addIend = true)
 		output ~= data[pos..pos+bytesPerLine];
 		pos += bytesPerLine;
 	}
-
-	auto com = cast(ubyte[]) compress(output);
+	// FIXME: is this actually memory-safe? probably not
+	static ubyte[] compressTrusted(const scope ubyte[] buf) @trusted {
+		return cast(ubyte[])compress(buf);
+	}
+	auto com = compressTrusted(output);
 	dat.size = cast(int) com.length;
 	dat.payload = com;
 	dat.checksum = crc("IDAT", dat.payload);
@@ -891,15 +920,12 @@ void addImageDatastreamToPng(const(ubyte)[] data, PNG* png, bool addIend = true)
 
 }
 
-deprecated alias PngHeader PNGHeader;
-
 // bKGD - palette entry for background or the RGB (16 bits each) for that. or 16 bits of grey
 
 /+
 	Uncompresses the raw datastream out of the file chunks, but does not continue processing it, so the scanlines are still filtered, etc.
 +/
 ubyte[] getDatastream(PNG* p) {
-	import std.zlib;
 	ubyte[] compressed;
 
 	foreach(c; p.chunks) {
@@ -1119,7 +1145,7 @@ RGBQUAD[] fetchPaletteWin32(PNG* p) {
 	See_Also:
 		[replacePalette]
 +/
-Color[] fetchPalette(PNG* p) {
+Color[] fetchPalette(PNG* p) @safe {
 	Color[] colors;
 
 	auto header = getHeader(p);
@@ -1203,8 +1229,8 @@ uint update_crc(in uint crc, in ubyte[] buf){
 
 	lol is just the chunk name
 +/
-uint crc(in string lol, in ubyte[] buf){
-	uint c = update_crc(0xffffffffL, cast(ubyte[]) lol);
+uint crc(in string lol, in ubyte[] buf) @safe {
+	uint c = update_crc(0xffffffffL, cast(const(ubyte)[]) lol);
 	return update_crc(c, buf) ^ 0xffffffffL;
 }
 
@@ -1484,107 +1510,54 @@ struct LazyPngFile(LazyPngChunksProvider)
 			chunkSize = bytesPerLine();
 
 		struct DatastreamByChunk(T) {
-			private import etc.c.zlib;
-			z_stream* zs; // we have to malloc this too, as dmd can move the struct, and zlib 1.2.10 is intolerant to that
+			std.zlib.UnCompress decompressor;
 			int chunkSize;
-			int bufpos;
-			int plpos; // bytes eaten in current chunk payload
 			T chunks;
-			bool eoz;
 
-			this(int cs, T chunks) {
-				import core.stdc.stdlib : malloc;
-				import core.stdc.string : memset;
+			this(int cs, T chunks) @trusted {
+				decompressor = new std.zlib.UnCompress();
 				this.chunkSize = cs;
 				this.chunks = chunks;
-				assert(chunkSize > 0);
-				buffer = (cast(ubyte*)malloc(chunkSize))[0..chunkSize];
-				pkbuf = (cast(ubyte*)malloc(32768))[0..32768]; // arbitrary number
-				zs = cast(z_stream*)malloc(z_stream.sizeof);
-				memset(zs, 0, z_stream.sizeof);
-				zs.avail_in = 0;
-				zs.avail_out = 0;
-				auto res = inflateInit2(zs, 15);
-				assert(res == Z_OK);
+
 				popFront(); // priming
 			}
 
-			~this () {
-				debug(justimages) { import core.stdc.stdio : printf; printf("destroying lazy PNG reader...\n"); }
-				import core.stdc.stdlib : free;
-				if (zs !is null) { inflateEnd(zs); free(zs); }
-				if (pkbuf.ptr !is null) free(pkbuf.ptr);
-				if (buffer.ptr !is null) free(buffer.ptr);
+			ubyte[] front() {
+				assert(current.length == chunkSize);
+				return current;
 			}
 
-			@disable this (this); // no copies!
-
-			ubyte[] front () { return (bufpos > 0 ? buffer[0..bufpos] : null); }
-
+			ubyte[] current;
 			ubyte[] buffer;
-			ubyte[] pkbuf; // we will keep some packed data here in case payload moves, lol
 
-			void popFront () {
-				bufpos = 0;
-				while (plpos != plpos.max && bufpos < chunkSize) {
-					// do we have some bytes in zstream?
-					if (zs.avail_in > 0) {
-						// just unpack
-						zs.next_out = cast(typeof(zs.next_out))(buffer.ptr+bufpos);
-						int rd = chunkSize-bufpos;
-						zs.avail_out = rd;
-						auto err = inflate(zs, Z_SYNC_FLUSH);
-						if (err != Z_STREAM_END && err != Z_OK) throw new Exception("PNG unpack error");
-						if (err == Z_STREAM_END) {
-							if(zs.avail_in != 0) {
-								// this thing is malformed..
-								// libpng would warn here "libpng warning: IDAT: Extra compressed data"
-								// i used to just throw with the assertion on the next line
-								// but now just gonna discard the extra data to be a bit more permissive
-								zs.avail_in = 0;
-							}
-							assert(zs.avail_in == 0);
-							eoz = true;
+			void popFront() @trusted {
+				while(buffer.length < chunkSize) {
+					if(chunks.front().stype != "IDAT") {
+						buffer ~= cast(ubyte[]) decompressor.flush();
+						if(buffer.length != 0) {
+							// FIXME why was this here?
+							//buffer ~= cast(ubyte[])
+								//decompressor.uncompress(chunks.front().payload);
+							continue;
 						}
-						bufpos += rd-zs.avail_out;
-						continue;
+						current = null;
+						buffer = null;
+						return;
 					}
-					// no more zstream bytes; do we have something in current chunk?
-					if (plpos == plpos.max || plpos >= chunks.front.payload.length) {
-						// current chunk is complete, do we have more chunks?
-						if (chunks.front.stype != "IDAT") break; // this chunk is not IDAT, that means that... alas
-						chunks.popFront(); // remove current IDAT
-						plpos = 0;
-						if (chunks.empty || chunks.front.stype != "IDAT") plpos = plpos.max; // special value
-						continue;
-					}
-					if (plpos < chunks.front.payload.length) {
-						// current chunk is not complete, get some more bytes from it
-						int rd = cast(int)(chunks.front.payload.length-plpos <= pkbuf.length ? chunks.front.payload.length-plpos : pkbuf.length);
-						assert(rd > 0);
-						pkbuf[0..rd] = chunks.front.payload[plpos..plpos+rd];
-						plpos += rd;
-						if (eoz) {
-							// we did hit end-of-stream, reinit zlib (well, well, i know that we can reset it... meh)
-							inflateEnd(zs);
-							zs.avail_in = 0;
-							zs.avail_out = 0;
-							auto res = inflateInit2(zs, 15);
-							assert(res == Z_OK);
-							eoz = false;
-						}
-						// setup read pointer
-						zs.next_in = cast(typeof(zs.next_in))pkbuf.ptr;
-						zs.avail_in = cast(uint)rd;
-						continue;
-					}
-					assert(0, "wtf?! we should not be here!");
+
+					buffer ~= cast(ubyte[])
+						decompressor.uncompress(chunks.front().payload);
+					chunks.popFront();
 				}
+				assert(chunkSize <= buffer.length, format("%s !<= %s remaining data: \n%s", chunkSize, buffer.length, buffer));
+				current = buffer[0 .. chunkSize];
+				buffer = buffer[chunkSize .. $];
 			}
 
-			bool empty () { return (bufpos == 0); }
+			bool empty() {
+				return (current.length == 0);
+			}
 		}
-
 		return DatastreamByChunk!(typeof(chunks))(chunkSize, chunks);
 	}
 
@@ -1696,11 +1669,11 @@ struct LazyPngFile(LazyPngChunksProvider)
 		return range;
 	}
 
-	int bytesPerPixel() {
+	int bytesPerPixel() @safe {
 		return .bytesPerPixel(header);
 	}
 
-	int bytesPerLine() {
+	int bytesPerLine() @safe {
 		return .bytesPerLineOfPng(header.depth, header.type, header.width);
 	}
 
@@ -1844,7 +1817,6 @@ struct BufferedInputRange(Range)
 
 /* PNG file format implementation */
 
-//import std.zlib;
 import std.math;
 
 /// All PNG files are supposed to open with these bytes according to the spec
@@ -1864,7 +1836,7 @@ struct Chunk {
 		return cast(const(char)[]) type;
 	}
 
-	@trusted nothrow pure /* trusted because of the cast of name to ubyte. It is copied into a new buffer anyway though so obviously harmless. */
+	@safe nothrow pure
 	static Chunk* create(string type, ubyte[] payload)
 		in {
 			assert(type.length == 4);
@@ -1872,7 +1844,7 @@ struct Chunk {
 	do {
 		Chunk* c = new Chunk;
 		c.size = cast(int) payload.length;
-		c.type[] = (cast(ubyte[]) type)[];
+		c.type[] = (cast(const(ubyte)[]) type)[];
 		c.payload = payload;
 
 		c.checksum = crcPng(type, payload);
@@ -2017,7 +1989,6 @@ void writePngLazy(OutputRange, InputRange)(ref OutputRange where, InputRange ima
 		isInputRange!(InputRange) &&
 		is(ElementType!InputRange == RgbaScanline))
 {
-	import std.zlib;
 	where.put(PNG_MAGIC_NUMBER);
 	PngHeader header;
 
@@ -2074,20 +2045,20 @@ void writePngLazy(OutputRange, InputRange)(ref OutputRange where, InputRange ima
 
 // bKGD - palette entry for background or the RGB (16 bits each) for that. or 16 bits of grey
 
-@trusted nothrow pure @nogc /* trusted because of the cast from char to ubyte */
+@safe nothrow pure @nogc
 uint crcPng(in char[] chunkName, in ubyte[] buf){
-	uint c = update_crc(0xffffffffL, cast(ubyte[]) chunkName);
+	uint c = update_crc(0xffffffffL, cast(const(ubyte)[]) chunkName);
 	return update_crc(c, buf) ^ 0xffffffffL;
 }
 
 /++
 	Png files apply a filter to each line in the datastream, hoping to aid in compression. This undoes that as you load.
 +/
-immutable(ubyte)[] unfilter(ubyte filterType, in ubyte[] data, in ubyte[] previousLine, int bpp) {
+const(ubyte)[] unfilter(ubyte filterType, in ubyte[] data, in ubyte[] previousLine, int bpp) @safe {
 	// Note: the overflow arithmetic on the ubytes in here is intentional
 	switch(filterType) {
 		case 0:
-			return data.idup; // FIXME is copying really necessary?
+			return data; // FIXME is copying really necessary?
 		case 1:
 			auto arr = data.dup;
 			// first byte gets zero added to it so nothing special
@@ -2095,7 +2066,7 @@ immutable(ubyte)[] unfilter(ubyte filterType, in ubyte[] data, in ubyte[] previo
 				arr[i] += arr[i - bpp];
 			}
 
-			return assumeUnique(arr);
+			return arr;
 		case 2:
 			auto arr = data.dup;
 			if(previousLine.length)
@@ -2103,7 +2074,7 @@ immutable(ubyte)[] unfilter(ubyte filterType, in ubyte[] data, in ubyte[] previo
 				arr[i] += previousLine[i];
 			}
 
-			return assumeUnique(arr);
+			return arr;
 		case 3:
 			auto arr = data.dup;
 			if(previousLine.length)
@@ -2113,7 +2084,7 @@ immutable(ubyte)[] unfilter(ubyte filterType, in ubyte[] data, in ubyte[] previo
 					/*std.math.floor*/( cast(int) (prev + (previousLine.length ? previousLine[i] : 0)) / 2);
 			}
 
-			return assumeUnique(arr);
+			return arr;
 		case 4:
 			auto arr = data.dup;
 			foreach(i; 0 .. arr.length) {
@@ -2123,13 +2094,13 @@ immutable(ubyte)[] unfilter(ubyte filterType, in ubyte[] data, in ubyte[] previo
 				arr[i] += PaethPredictor(prev, (i < previousLine.length ? previousLine[i] : 0), prevLL);
 			}
 
-			return assumeUnique(arr);
+			return arr;
 		default:
 			throw new Exception("invalid PNG file, bad filter type");
 	}
 }
 
-ubyte PaethPredictor(ubyte a, ubyte b, ubyte c) {
+ubyte PaethPredictor(ubyte a, ubyte b, ubyte c) @safe {
 	int p = cast(int) a + b - c;
 	auto pa = abs(p - a);
 	auto pb = abs(p - b);
@@ -2143,7 +2114,7 @@ ubyte PaethPredictor(ubyte a, ubyte b, ubyte c) {
 }
 
 ///
-int bytesPerPixel(PngHeader header) {
+int bytesPerPixel(PngHeader header) @safe {
 	immutable bitsPerChannel = header.depth;
 
 	int bitsPerPixel = bitsPerChannel;

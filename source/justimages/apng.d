@@ -242,7 +242,7 @@ class ApngFrame {
 			idata = i.imageData.bytes;
 		}
 
-		immutable(ubyte)[] previousLine;
+		const(ubyte)[] previousLine;
 		foreach(y; 0 .. height) {
 			auto filter = raw[0];
 			raw = raw[1 .. $];

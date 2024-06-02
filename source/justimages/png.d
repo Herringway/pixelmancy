@@ -606,85 +606,6 @@ struct PNG {
 }
 
 /++
-	this is just like writePng(filename, pngFromImage(image)), but it manages
-	its own memory and writes straight to the file instead of using intermediate buffers that might not get gc'd right
-+/
-void writeImageToPngFile(in char[] filename, TrueColorImage image) {
-	PNG* png;
-	ubyte[] com;
-{
-	PngHeader h;
-	h.width = image.width;
-	h.height = image.height;
-	png = blankPNG(h);
-
-	size_t bytesPerLine = cast(size_t)h.width * 4;
-	if(h.type == 3)
-		bytesPerLine = cast(size_t)h.width * 8 / h.depth;
-	Chunk dat;
-	dat.type = ['I', 'D', 'A', 'T'];
-	size_t pos = 0;
-
-	auto compressor = new Compress();
-
-	import core.stdc.stdlib;
-	auto lineBuffer = (cast(ubyte*)malloc(1 + bytesPerLine))[0 .. 1+bytesPerLine];
-	scope(exit) free(lineBuffer.ptr);
-
-	while(pos+bytesPerLine <= image.imageData.bytes.length) {
-		lineBuffer[0] = 0;
-		lineBuffer[1..1+bytesPerLine] = image.imageData.bytes[pos.. pos+bytesPerLine];
-		com ~= cast(ubyte[]) compressor.compress(lineBuffer);
-		pos += bytesPerLine;
-	}
-
-	com ~= cast(ubyte[]) compressor.flush();
-
-	assert(com.length <= uint.max);
-	dat.size = cast(uint) com.length;
-	dat.payload = com;
-	dat.checksum = crc("IDAT", dat.payload);
-
-	png.chunks ~= dat;
-
-	Chunk c;
-
-	c.size = 0;
-	c.type = ['I', 'E', 'N', 'D'];
-	c.checksum = crc("IEND", c.payload);
-
-	png.chunks ~= c;
-}
-	assert(png !is null);
-
-	import core.stdc.stdio;
-	import std.string;
-	FILE* fp = fopen(toStringz(filename), "wb");
-	if(fp is null)
-		throw new Exception("Couldn't open png file for writing.");
-	scope(exit) fclose(fp);
-
-	fwrite(png.magic.ptr, 1, 8, fp);
-	foreach(c; png.chunks) {
-		fputc((c.size & 0xff000000) >> 24, fp);
-		fputc((c.size & 0x00ff0000) >> 16, fp);
-		fputc((c.size & 0x0000ff00) >> 8, fp);
-		fputc((c.size & 0x000000ff) >> 0, fp);
-
-		fwrite(c.type.ptr, 1, 4, fp);
-		fwrite(c.payload.ptr, 1, c.size, fp);
-
-		fputc((c.checksum & 0xff000000) >> 24, fp);
-		fputc((c.checksum & 0x00ff0000) >> 16, fp);
-		fputc((c.checksum & 0x0000ff00) >> 8, fp);
-		fputc((c.checksum & 0x000000ff) >> 0, fp);
-	}
-
-	{ import core.memory : GC; GC.free(com.ptr); } // there is a reference to this in the PNG struct, but it is going out of scope here too, so who cares
-	// just wanna make sure this crap doesn't stick around
-}
-
-/++
 	Turns a [PNG] structure into an array of bytes, ready to be written to a file.
 +/
 ubyte[] writePng(PNG* p) @safe {
@@ -726,11 +647,14 @@ ubyte[] writePng(PNG* p) @safe {
 	This might be useful when you're only interested in getting a file's image size or
 	other basic metainfo without loading the whole thing.
 +/
-PngHeader getHeaderFromFile(string filename) {
-	import std.stdio;
+PngHeader getHeaderFromFile(string filename) @safe {
+	import std.stdio : File;
+	static ubyte[] trustedRead(scope File file, scope return ubyte[] buffer) @trusted {
+		return file.rawRead(buffer);
+	}
 	auto file = File(filename, "rb");
 	ubyte[12] initialBuffer; // file header + size of first chunk (should be IHDR)
-	auto data = file.rawRead(initialBuffer[]);
+	auto data = trustedRead(file, initialBuffer);
 	if(data.length != 12)
 		throw new Exception("couldn't get png file header off " ~ filename);
 
@@ -750,7 +674,7 @@ PngHeader getHeaderFromFile(string filename) {
 	ubyte[] more;
 	more.length = size;
 
-	auto chunk = file.rawRead(more);
+	auto chunk = trustedRead(file, more);
 	if(chunk.length != size)
 		throw new Exception("couldn't get png image header off " ~ filename);
 
@@ -1545,7 +1469,7 @@ struct LazyPngFile(LazyPngChunksProvider)
 						return;
 					}
 
-					buffer ~= cast(ubyte[])
+					buffer ~= cast(const(ubyte)[])
 						decompressor.uncompress(chunks.front().payload);
 					chunks.popFront();
 				}
@@ -1582,7 +1506,7 @@ struct LazyPngFile(LazyPngChunksProvider)
 			}
 
 			// This is needed for the filter algorithms
-			immutable(ubyte)[] previousLine;
+			const(ubyte)[] previousLine;
 
 			// FIXME: I think my range logic got screwed somewhere
 			// in the stack... this is messed up.

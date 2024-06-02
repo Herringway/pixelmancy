@@ -79,7 +79,7 @@ public enum ImageResizeMaxDimension = 65536; /// Maximum image width/height for 
 
 // ////////////////////////////////////////////////////////////////////////// //
 /// Number of known image resizer filters.
-public @property int imageResizeFilterCount () { pragma(inline, true); return NumFilters; }
+public int imageResizeFilterCount () { pragma(inline, true); return NumFilters; }
 
 /// Get filter name. Will return `null` for invalid index.
 public string imageResizeFilterName (long idx) { pragma(inline, true); return (idx >= 0 && idx < NumFilters ? gFilters.ptr[cast(uint)idx].name : null); }
@@ -816,7 +816,7 @@ public:
     return mPdstBuf;
   }
 
-  @property Status status () const { pragma(inline, true); return mStatus; }
+  Status status () const { pragma(inline, true); return mStatus; }
 
   // returned contributor lists can be shared with another ImageResampleWorker
   void getClists (ContribList** ptrClistX, ContribList** ptrClistY) {
@@ -824,16 +824,16 @@ public:
     if (ptrClistY !is null) *ptrClistY = mPclistY;
   }
 
-  @property ContribList* getClistX () { pragma(inline, true); return mPclistX; }
-  @property ContribList* getClistY () { pragma(inline, true); return mPclistY; }
+  ContribList* getClistX () { pragma(inline, true); return mPclistX; }
+  ContribList* getClistY () { pragma(inline, true); return mPclistY; }
 
   // filter accessors
-  static @property auto filters () {
+  static auto filters () {
     static struct FilterRange {
     pure nothrow @trusted @nogc:
       int idx;
-      @property bool empty () const { pragma(inline, true); return (idx >= NumFilters); }
-      @property string front () const { pragma(inline, true); return (idx < NumFilters ? gFilters[idx].name : null); }
+      bool empty () const { pragma(inline, true); return (idx >= NumFilters); }
+      string front () const { pragma(inline, true); return (idx < NumFilters ? gFilters[idx].name : null); }
       void popFront () { if (idx < NumFilters) ++idx; }
       int length () const { return cast(int)NumFilters; }
       alias opDollar = length;

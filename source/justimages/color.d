@@ -1463,7 +1463,7 @@ class TrueColorImage : MemoryImage {
 		/// the same data as Color structs
 		@trusted // the cast here is typically unsafe, but it is ok
 		// here because I guarantee the layout, note the static assert below
-		@property inout(Color)[] colors() inout pure nothrow @nogc {
+		inout(Color)[] colors() inout pure nothrow @nogc {
 			return cast(inout(Color)[]) bytes;
 		}
 
@@ -1991,42 +1991,42 @@ struct Rectangle {
 	}
 
 	///
-	@property Point upperLeft() {
+	Point upperLeft() {
 		return Point(left, top);
 	}
 
 	///
-	@property Point upperRight() {
+	Point upperRight() {
 		return Point(right, top);
 	}
 
 	///
-	@property Point lowerLeft() {
+	Point lowerLeft() {
 		return Point(left, bottom);
 	}
 
 	///
-	@property Point lowerRight() {
+	Point lowerRight() {
 		return Point(right, bottom);
 	}
 
 	///
-	@property Point center() {
+	Point center() {
 		return Point((right + left) / 2, (bottom + top) / 2);
 	}
 
 	///
-	@property Size size() {
+	Size size() {
 		return Size(width, height);
 	}
 
 	///
-	@property int width() {
+	int width() {
 		return right - left;
 	}
 
 	///
-	@property int height() {
+	int height() {
 		return bottom - top;
 	}
 

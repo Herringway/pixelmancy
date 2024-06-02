@@ -204,7 +204,7 @@ struct NSVG {
       Gradient* gradient; ///
     }
     static uint rgb (ubyte r, ubyte g, ubyte b) { pragma(inline, true); return (r|(g<<8)|(b<<16)); } ///
-    @property const {
+    const {
       bool isNone () { pragma(inline, true); return (type == PaintType.None); } ///
       bool isColor () { pragma(inline, true); return (type == PaintType.Color); } ///
       // gradient types
@@ -228,7 +228,7 @@ struct NSVG {
     NSVG.Path* next; /// Pointer to next path, or null if last element.
 
     ///
-    @property bool empty () const pure nothrow @safe @nogc { pragma(inline, true); return (nsflts == 0); }
+    bool empty () const pure nothrow @safe @nogc { pragma(inline, true); return (nsflts == 0); }
 
     ///
     float startX () const nothrow @trusted @nogc {
@@ -412,7 +412,7 @@ struct NSVG {
     NSVG.Path* paths;         /// Linked list of paths in the image.
     NSVG.Shape* next;         /// Pointer to next shape, or null if last element.
 
-    @property bool visible () const pure nothrow @safe @nogc { pragma(inline, true); return ((flags&Visible) != 0); } ///
+    bool visible () const pure nothrow @safe @nogc { pragma(inline, true); return ((flags&Visible) != 0); } ///
 
     /// delegate can accept:
     ///   NSVG.Path*

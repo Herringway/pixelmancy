@@ -14,8 +14,8 @@ public MemoryImage loadPcxMem (const(void)[] buf, const(char)[] filename=null) {
 
     this (const(void)[] abuf) { data = cast(const(ubyte)[])abuf; }
 
-    @property long tell () { return pos; }
-    @property long size () { return data.length; }
+    long tell () { return pos; }
+    long size () { return data.length; }
 
     void seek (long offset, int whence=Seek.Set) {
       switch (whence) {

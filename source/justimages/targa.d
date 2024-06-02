@@ -13,10 +13,10 @@ public MemoryImage loadTgaMem (const(void)[] buf, const(char)[] filename=null) {
 
     this (const(void)[] abuf) { data = cast(const(ubyte)[])abuf; }
 
-    @property long tell () { return pos; }
-    @property long size () { return data.length; }
+    long tell () @safe { return pos; }
+    long size () @safe { return data.length; }
 
-    void seek (long offset, int whence=Seek.Set) {
+    void seek (long offset, int whence=Seek.Set) @safe {
       switch (whence) {
         case Seek.Set:
           if (offset < 0 || offset > data.length) throw new Exception("invalid offset");
@@ -87,9 +87,9 @@ static struct TGAHeader {
   ubyte bpp;
   ubyte imgdsc;
 
-  @property bool zeroBits () const pure nothrow @safe @nogc { return ((imgdsc&0xc0) == 0); }
-  @property bool xflip () const pure nothrow @safe @nogc { return ((imgdsc&0b010000) != 0); }
-  @property bool yflip () const pure nothrow @safe @nogc { return ((imgdsc&0b100000) == 0); }
+  bool zeroBits () const pure nothrow @safe @nogc { return ((imgdsc&0xc0) == 0); }
+  bool xflip () const pure nothrow @safe @nogc { return ((imgdsc&0b010000) != 0); }
+  bool yflip () const pure nothrow @safe @nogc { return ((imgdsc&0b100000) == 0); }
 }
 private MemoryImage loadTgaImpl(ST) (auto ref ST fl, const(char)[] filename) {
   enum TGAFILESIGNATURE = "TRUEVISION-XFILE.\x00";

@@ -1499,7 +1499,7 @@ struct LazyPngFile(LazyPngChunksProvider)
 				return isEmpty;
 			}
 
-			@property int length() {
+			int length() {
 				return header.height;
 			}
 

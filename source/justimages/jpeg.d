@@ -556,7 +556,7 @@ public:
     return JPGD_FAILED;
   }
 
-  @property const pure nothrow @trusted @nogc {
+  const pure nothrow @trusted @nogc {
     jpgd_status error_code () { pragma(inline, true); return m_error_code; }
 
     int width () { pragma(inline, true); return m_image_x_size; }
@@ -749,8 +749,8 @@ private:
         foreach (immutable r; 0..NUM_ROWS) v[r][] = m.v[r][];
       }
 
-      //@property int rows () const { pragma(inline, true); return NUM_ROWS; }
-      //@property int cols () const { pragma(inline, true); return NUM_COLS; }
+      //int rows () const { pragma(inline, true); return NUM_ROWS; }
+      //int cols () const { pragma(inline, true); return NUM_COLS; }
 
       ref inout(Element_Type) at (int r, int c) inout { pragma(inline, true); return v.ptr[r].ptr[c]; }
 
@@ -4445,7 +4445,7 @@ public:
 
   bool setup() (WriteFunc pStream, int width, int height, int src_channels) { return setup(pStream, width, height, src_channels, JpegParams()); }
 
-  @property ref inout(JpegParams) params () return inout pure nothrow @trusted @nogc { pragma(inline, true); return m_params; }
+  ref inout(JpegParams) params () return inout pure nothrow @trusted @nogc { pragma(inline, true); return m_params; }
 
   // Deinitializes the compressor, freeing any allocated memory. May be called at any time.
   void deinit () {
@@ -4453,8 +4453,8 @@ public:
     clear();
   }
 
-  @property uint total_passes () const pure nothrow @trusted @nogc { pragma(inline, true); return (m_params.twoPass ? 2 : 1); }
-  @property uint cur_pass () const pure nothrow @trusted @nogc { pragma(inline, true); return m_pass_num; }
+  uint total_passes () const pure nothrow @trusted @nogc { pragma(inline, true); return (m_params.twoPass ? 2 : 1); }
+  uint cur_pass () const pure nothrow @trusted @nogc { pragma(inline, true); return m_pass_num; }
 
   // Call this method with each source scanline.
   // width*src_channels bytes per scanline is expected (RGB or Y format).

@@ -35,14 +35,13 @@ public MemoryImage loadTgaMem (const(void)[] buf, const(char)[] filename=null) {
       }
     }
 
-    ptrdiff_t read (void* buf, size_t count) @system {
+    ptrdiff_t read (ubyte[] buf) @safe {
       if (pos >= data.length) return 0;
-      if (count > 0) {
-        import core.stdc.string : memcpy;
+      if (buf.length > 0) {
         long rlen = data.length-pos;
-        if (rlen >= count) rlen = count;
+        if (rlen >= buf.length) rlen = buf.length;
         assert(rlen != 0);
-        memcpy(buf, data.ptr+pos, cast(size_t)rlen);
+        buf[0 .. rlen] = data[pos .. pos + rlen];
         pos += rlen;
         return cast(ptrdiff_t)rlen;
       } else {
@@ -56,7 +55,7 @@ public MemoryImage loadTgaMem (const(void)[] buf, const(char)[] filename=null) {
 }
 
 public MemoryImage loadTga (File fl) { return loadTgaImpl(fl, fl.name); }
-public MemoryImage loadTga(T:const(char)[]) (T fname) {
+public MemoryImage loadTga(const(char)[] fname) {
   static if (is(T == typeof(null))) {
     throw new Exception("cannot load nameless tga");
   } else {
@@ -425,7 +424,7 @@ enum Seek : int {
 enum isLowLevelStreamR(T) = is(typeof((inout int=0) {
   auto t = T.init;
   ubyte[1] b;
-  ptrdiff_t r = t.read(b.ptr, 1);
+  ptrdiff_t r = t.read(b[]);
 }));
 
 // is this "low-level" stream that can be written?
@@ -447,7 +446,7 @@ enum isLowLevelStreamS(T) = is(typeof((inout int=0) {
 // augment low-level streams with `rawRead`
 T[] rawRead(ST, T) (auto ref ST st, T[] buf) if (isLowLevelStreamR!ST && !is(T == const) && !is(T == immutable)) {
   if (buf.length > 0) {
-    auto res = st.read(buf.ptr, buf.length*T.sizeof);
+    auto res = st.read(cast(ubyte[])buf);
     if (res == -1 || res%T.sizeof != 0) throw new Exception("read error");
     return buf[0..res/T.sizeof];
   } else {
@@ -522,8 +521,7 @@ enum streamHasSize(T) = is(typeof((inout int=0) {
 enum isReadableStream(T) = is(typeof((inout int=0) {
   auto t = T.init;
   ubyte[1] b;
-  auto v = cast(void[])b;
-  t.rawRead(v);
+  t.rawRead(b[]);
 }));
 
 // check if a given stream supports `rawWrite()`.

@@ -1,7 +1,7 @@
-module pixelatrix.bpp3;
+module tilemagic.tiles.bpp3;
 
-import pixelatrix.bpp1;
-import pixelatrix.common;
+import tilemagic.tiles.bpp1;
+import tilemagic.tiles.common;
 
 import std.format;
 

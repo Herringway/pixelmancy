@@ -1,6 +1,0 @@
-{
-	"name": "serializable",
-	"dependencies": {
-		"siryul": "~>0.6"
-	}
-}

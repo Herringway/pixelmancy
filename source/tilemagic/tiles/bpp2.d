@@ -1,7 +1,7 @@
-module pixelatrix.bpp2;
+module tilemagic.tiles.bpp2;
 
-import pixelatrix.bpp1;
-import pixelatrix.common;
+import tilemagic.tiles.bpp1;
+import tilemagic.tiles.common;
 
 /++
 + 2 bit per pixel tile format with palette. Consists of two bitplanes stored

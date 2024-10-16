@@ -1,6 +1,6 @@
-module pixelatrix.bpp8;
+module tilemagic.tiles.bpp8;
 
-import pixelatrix.common;
+import tilemagic.tiles.common;
 
 /++
 + 8 bit per pixel tile format with palette. Each row has its bitplanes stored

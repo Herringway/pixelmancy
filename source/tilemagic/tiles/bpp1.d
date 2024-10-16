@@ -1,6 +1,6 @@
-module pixelatrix.bpp1;
+module tilemagic.tiles.bpp1;
 
-import pixelatrix.common;
+import tilemagic.tiles.common;
 
 /++
 + 1 bit per pixel tile format. Commonly used by many platforms.

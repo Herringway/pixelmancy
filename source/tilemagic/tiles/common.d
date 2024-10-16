@@ -1,4 +1,4 @@
-module pixelatrix.common;
+module tilemagic.tiles.common;
 
 package bool isValidBitmap(size_t size)(const ubyte[8][8] input) {
 	foreach (row; input) {
@@ -91,7 +91,7 @@ align(1) struct Intertwined(size_t inBPP) {
 
 align(1) struct Linear(size_t inBPP) {
 	import std.format : format;
-	import pixelatrix.bpp1 : Simple1BPP;
+	import tilemagic.tiles.bpp1 : Simple1BPP;
 	enum width = 8;
 	enum height = 8;
 	enum bpp = inBPP;
@@ -271,11 +271,11 @@ class TileClass(T) : Tile {
 }
 
 Tile getTile(const ubyte[] data, TileFormat format) @safe pure {
-	import pixelatrix.bpp1 : Simple1BPP;
-	import pixelatrix.bpp2 : Linear2BPP, Intertwined2BPP;
-	import pixelatrix.bpp3 : Intertwined3BPP;
-	import pixelatrix.bpp4 : Intertwined4BPP, Packed4BPP;
-	import pixelatrix.bpp8 : Intertwined8BPP, Packed8BPP;
+	import tilemagic.tiles.bpp1 : Simple1BPP;
+	import tilemagic.tiles.bpp2 : Linear2BPP, Intertwined2BPP;
+	import tilemagic.tiles.bpp3 : Intertwined3BPP;
+	import tilemagic.tiles.bpp4 : Intertwined4BPP, Packed4BPP;
+	import tilemagic.tiles.bpp8 : Intertwined8BPP, Packed8BPP;
 	static Tile getType(T)(const ubyte[] data) {
 		return new TileClass!T(data[0 .. T.sizeof]);
 	}
@@ -300,11 +300,11 @@ Tile getTile(const ubyte[] data, TileFormat format) @safe pure {
 }
 
 Tile[] getTiles(const ubyte[] data, TileFormat format) @safe pure {
-	import pixelatrix.bpp1 : Simple1BPP;
-	import pixelatrix.bpp2 : Linear2BPP, Intertwined2BPP;
-	import pixelatrix.bpp3 : Intertwined3BPP;
-	import pixelatrix.bpp4 : Intertwined4BPP, Packed4BPP;
-	import pixelatrix.bpp8 : Intertwined8BPP, Packed8BPP;
+	import tilemagic.tiles.bpp1 : Simple1BPP;
+	import tilemagic.tiles.bpp2 : Linear2BPP, Intertwined2BPP;
+	import tilemagic.tiles.bpp3 : Intertwined3BPP;
+	import tilemagic.tiles.bpp4 : Intertwined4BPP, Packed4BPP;
+	import tilemagic.tiles.bpp8 : Intertwined8BPP, Packed8BPP;
 	static Tile[] getType(T)(const ubyte[] data)
 		in((data.length % T.sizeof) == 0, "Provided data is not an even multiple of the tile size")
 	{

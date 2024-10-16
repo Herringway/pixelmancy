@@ -9,9 +9,8 @@ import std.stdio;
 
 import arsd.png;
 import siryul;
-import tilecon;
+import tilemagic;
 import pixelatrix;
-import magicalrainbows;
 
 void main(string[] args) {
 	string palettePath;

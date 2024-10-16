@@ -1,4 +1,4 @@
-module tilecon.arrangement;
+module tilemagic.arrangement;
 
 import std.algorithm;
 import std.bitmanip;

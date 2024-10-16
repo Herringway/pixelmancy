@@ -2,13 +2,6 @@
 docs.json
 __dummy.html
 docs/
-/tiledump
-tiledump.so
-tiledump.dylib
-tiledump.dll
-tiledump.a
-tiledump.lib
-tiledump-test-*
 *.exe
 *.o
 *.obj

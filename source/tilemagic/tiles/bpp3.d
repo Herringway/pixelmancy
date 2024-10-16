@@ -16,13 +16,13 @@ align(1) struct Intertwined3BPP {
 	align(1):
 	Intertwined!2 planes01;
 	Simple1BPP plane2;
-	ubyte opIndex(size_t x, size_t y) const @safe pure
+	ubyte opIndexBase(size_t x, size_t y) const @safe pure
 		in(x < width, format!"index [%s, %s] is out of bounds for array of length [%s, %s]"(x, y, width, height))
 		in(y < height, format!"index [%s, %s] is out of bounds for array of length [%s, %s]"(x, y, width, height))
 	{
 		return cast(ubyte)(planes01[x, y] + (plane2[x, y] << 2));
 	}
-	ubyte opIndexAssign(ubyte val, size_t x, size_t y) @safe pure
+	ubyte opIndexAssignBase(ubyte val, size_t x, size_t y) @safe pure
 		in(x < width, format!"index [%s, %s] is out of bounds for array of length [%s, %s]"(x, y, width, height))
 		in(y < height, format!"index [%s, %s] is out of bounds for array of length [%s, %s]"(x, y, width, height))
 		in(val < 1 << bpp, "Value out of range")
@@ -31,6 +31,7 @@ align(1) struct Intertwined3BPP {
 		plane2[x, y] = (val & 4) >> 2;
 		return val;
 	}
+	mixin Common2DOps;
 }
 ///
 @safe pure unittest {

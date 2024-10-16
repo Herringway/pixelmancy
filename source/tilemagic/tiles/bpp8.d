@@ -53,6 +53,16 @@ alias Packed8BPP = Packed!8;
 		assert(data2[4, 6] == 0x77);
 		assert(data2[$ - 1, $ - 1] == 0x77);
 		assert(data2[2, 0] == 0x44);
+		assert(data2[4 .. $, 0 .. $][0, 0] == 0x77);
+		assert(data2[4 .. $, 0][0, 0] == 0x77);
+		assert(data2[4, 0 .. $][0, 0] == 0x77);
+		foreach (x, y, p; data2[4 .. $, 0 .. $]) {
+			assert(p == 0x77);
+		}
+		const d3 = data2;
+		foreach (x, y, p; d3[4 .. $, 0 .. $]) {
+			assert(p == 0x77);
+		}
 	}
 }
 /++

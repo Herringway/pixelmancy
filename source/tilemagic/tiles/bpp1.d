@@ -25,13 +25,13 @@ align(1) struct Simple1BPP {
 			}
 		}
 	}
-	ubyte opIndex(size_t x, size_t y) const @safe pure
+	ubyte opIndexBase(size_t x, size_t y) const @safe pure
 		in(x < width, format!"index [%s, %s] is out of bounds for array of length [%s, %s]"(x, y, width, height))
 		in(y < height, format!"index [%s, %s] is out of bounds for array of length [%s, %s]"(x, y, width, height))
 	{
 		return getBit(raw[], y * 8 + x);
 	}
-	ubyte opIndexAssign(ubyte val, size_t x, size_t y) @safe pure
+	ubyte opIndexAssignBase(ubyte val, size_t x, size_t y) @safe pure
 		in(x < width, format!"index [%s, %s] is out of bounds for array of length [%s, %s]"(x, y, width, height))
 		in(y < height, format!"index [%s, %s] is out of bounds for array of length [%s, %s]"(x, y, width, height))
 		in(val < 1 << bpp, "Value out of range")
@@ -39,6 +39,7 @@ align(1) struct Simple1BPP {
 		setBit(raw[], y * 8 + x, !!val);
 		return val;
 	}
+	mixin Common2DOps;
 }
 ///
 @safe pure unittest {

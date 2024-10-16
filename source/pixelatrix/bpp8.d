@@ -29,6 +29,31 @@ alias Packed8BPP = Packed!8;
 		assert(data2[1, 0] == 0x42);
 		assert(data2.raw[1] == 0x42);
 	}
+	{
+		Packed8BPP data2;
+		data2[] = 0x52;
+		assert(data2[0, 0] == 0x52);
+		assert(data2[4, 0] == 0x52);
+		assert(data2[0, 4] == 0x52);
+		assert(data2[7, 7] == 0x52);
+	}
+	{
+		Packed8BPP data2;
+		data2[] = 0x11;
+		data2[1 .. 4, 0] = 0x52;
+		assert(data2[1, 0] == 0x52);
+		assert(data2[3, 0] == 0x52);
+		assert(data2[4, 0] == 0x11);
+	}
+	{
+		Packed8BPP data2;
+		data2[] = 0x44;
+		data2[4 .. $, 0 .. $] = 0x77;
+		assert(data2[4, 0] == 0x77);
+		assert(data2[4, 6] == 0x77);
+		assert(data2[$ - 1, $ - 1] == 0x77);
+		assert(data2[2, 0] == 0x44);
+	}
 }
 /++
 + 8 bit per pixel tile format with palette. Each row has its bitplanes stored

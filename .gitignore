@@ -1,5 +1,6 @@
 .dub
 docs.json
+docs/
 __dummy.html
 *.o
 *.obj
@@ -8,3 +9,7 @@ dub.selections.json
 *.lib
 *.lst
 *.pdb
+*.png
+.vs
+*.bin
+*.pal

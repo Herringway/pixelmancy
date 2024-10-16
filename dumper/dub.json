@@ -1,0 +1,9 @@
+{
+	"name": "dumper",
+	"dependencies": {
+		"tilecon": "*",
+		"siryul": "~>0.8.0",
+		"arsd-official:png": "~>10.6.0",
+		"unexpected": "*"
+	}
+}

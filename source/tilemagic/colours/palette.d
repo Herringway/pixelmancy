@@ -1,6 +1,6 @@
-module magicalrainbows.palette;
+module tilemagic.colours.palette;
 
-import magicalrainbows.formats;
+import tilemagic.colours.formats;
 
 enum GameBoy = [
 	RGB888(155, 188, 15),

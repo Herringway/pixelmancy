@@ -1,9 +1,9 @@
-module magicalrainbows.raw;
+module tilemagic.colours.raw;
 
 import std.conv;
 
-import magicalrainbows.formats;
-import magicalrainbows.utils;
+import tilemagic.colours.formats;
+import tilemagic.colours.utils;
 
 enum SupportedFormat { bgr555, bgr565, rgb888, rgba8888, bgr222, bgr333md }
 

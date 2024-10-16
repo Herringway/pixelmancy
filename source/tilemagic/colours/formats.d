@@ -1,6 +1,6 @@
-module magicalrainbows.formats;
+module tilemagic.colours.formats;
 
-import magicalrainbows.utils;
+import tilemagic.colours.utils;
 
 import std.algorithm;
 import std.bitmanip;
@@ -458,7 +458,7 @@ struct ColourPair(Foreground, Background) if (isColourFormat!Foreground && isCol
 	Foreground foreground;
 	Background background;
 	Precision contrast(Precision = double)() const @safe pure {
-		import magicalrainbows.properties : contrast;
+		import tilemagic.colours.properties : contrast;
 		return contrast!Precision(foreground, background);
 	}
 	bool meetsWCAGAACriteria() const @safe pure {

@@ -1,6 +1,6 @@
-module magicalrainbows.properties;
+module tilemagic.colours.properties;
 
-import magicalrainbows.utils;
+import tilemagic.colours.utils;
 
 Precision relativeLuminosity(Precision = double, Colour)(const Colour colour) if(isColourFormat!Colour) {
 	const linear = colour.asLinearRGB!Precision;
@@ -10,7 +10,7 @@ Precision relativeLuminosity(Precision = double, Colour)(const Colour colour) if
 }
 ///
 @safe pure unittest {
-	import magicalrainbows.formats : BGR555, RGB888;
+	import tilemagic.colours.formats : BGR555, RGB888;
 	import std.math : isClose;
 	assert(RGB888(0, 0, 0).relativeLuminosity.isClose(0.0));
 	assert(RGB888(255, 255, 255).relativeLuminosity.isClose(1.0));
@@ -26,7 +26,7 @@ Precision contrast(Precision = double, Colour1, Colour2)(const Colour1 colour1, 
 }
 ///
 @safe pure unittest {
-	import magicalrainbows.formats : RGB888;
+	import tilemagic.colours.formats : RGB888;
 	import std.math : isClose;
 	assert(contrast(RGB888(0, 0, 0), RGB888(0, 0, 0)).isClose(1.0));
 	assert(contrast(RGB888(0, 0, 0), RGB888(255, 255, 255)).isClose(21.0));
@@ -49,7 +49,7 @@ Colour complementary(Colour)(const Colour colour) if (isColourFormat!Colour) {
 }
 ///
 @safe pure unittest {
-	import magicalrainbows.formats : RGB888;
+	import tilemagic.colours.formats : RGB888;
 	assert(RGB888(0, 0, 0).complementary == RGB888(255, 255, 255));
 	assert(RGB888(255, 255, 255).complementary == RGB888(0, 0, 0));
 	assert(RGB888(0, 255, 255).complementary == RGB888(255, 0, 0));

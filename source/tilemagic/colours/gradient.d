@@ -1,7 +1,7 @@
-module magicalrainbows.gradient;
+module tilemagic.colours.gradient;
 
-import magicalrainbows.formats;
-import magicalrainbows.utils;
+import tilemagic.colours.formats;
+import tilemagic.colours.utils;
 
 struct Gradient {
 	ulong index;

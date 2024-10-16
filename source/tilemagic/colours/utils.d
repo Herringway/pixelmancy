@@ -1,4 +1,4 @@
-module magicalrainbows.utils;
+module tilemagic.colours.utils;
 
 import std.traits;
 
@@ -69,7 +69,7 @@ void alphaFP(Precision, Colour)(ref Colour colour, Precision value) if (hasAlpha
 }
 
 @safe pure unittest {
-	import magicalrainbows.formats : RGB888;
+	import tilemagic.colours.formats : RGB888;
 	import std.math : isClose;
 	assert(RGB888(255, 128, 0).redFP() == 1.0);
 	assert(RGB888(255, 128, 0).greenFP().isClose(0.5019607843137254));
@@ -84,10 +84,10 @@ void alphaFP(Precision, Colour)(ref Colour colour, Precision value) if (hasAlpha
 
 template LinearFormatOf(ColourFormat, Precision) {
 	static if (hasAlpha!ColourFormat) {
-		import magicalrainbows.formats : AnalogRGBA;
+		import tilemagic.colours.formats : AnalogRGBA;
 		alias LinearFormatOf = AnalogRGBA!Precision;
 	} else {
-		import magicalrainbows.formats : AnalogRGB;
+		import tilemagic.colours.formats : AnalogRGB;
 		alias LinearFormatOf = AnalogRGB!Precision;
 	}
 }

@@ -1,0 +1,14 @@
+{
+	"name": "tilemagic",
+	"authors": [
+		"Cameron \"Herringway\" Ross"
+	],
+	"description": "Library for misc tile functions",
+	"copyright": "Copyright © 2024, Cameron",
+	"license": "BSL-1.0",
+	"stringImportPaths": ["testdata"],
+	"subPackages": [
+		"dumper",
+		"fromimage"
+	]
+}

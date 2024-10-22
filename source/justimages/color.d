@@ -34,13 +34,6 @@ struct Color {
 		pragma(inline, true) ref inout(ubyte) b() inout scope return { return components[2]; } /// blue
 		pragma(inline, true) ref inout(ubyte) a() inout scope return { return components[3]; } /// alpha. 255 == opaque
 
-		/*
-		pragma(inline, true) void r(ubyte value) { components[0] = value; } /// red
-		pragma(inline, true) void g(ubyte value) { components[1] = value; } /// green
-		pragma(inline, true) void b(ubyte value) { components[2] = value; } /// blue
-		pragma(inline, true) void a(ubyte value) { components[3] = value; } /// alpha. 255 == opaque
-		*/
-
 		/// The components as a single 32 bit value (beware of endian issues!)
 		uint asUint() inout {
 			if (__ctfe) {
@@ -231,13 +224,6 @@ struct Color {
 		g = cast(ubyte)(g * 255 / a);
 		b = cast(ubyte)(b * 255 / a);
 	}
-
-
-	/*
-	ubyte[4] toRgbaArray() {
-		return [r,g,b,a];
-	}
-	*/
 
 	/// Return black-and-white color
 	Color toBW() () nothrow pure @safe @nogc {

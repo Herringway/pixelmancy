@@ -41,17 +41,19 @@ MemoryImage readPng(string filename) @safe {
 }
 
 @safe unittest {
-	with(readPng("samples/test.png")) {
-		assert(getPixel(0, 0) == Color(0, 0, 255, 255));
-		assert(getPixel(128, 0) == Color(0, 255, 0, 255));
-		assert(getPixel(0, 128) == Color(255, 0, 0, 255));
-		assert(getPixel(128, 128) == Color(0, 0, 0, 0));
+	{
+		const png = readPng("samples/test.png");
+		assert(png[0, 0] == Color(0, 0, 255, 255));
+		assert(png[128, 0] == Color(0, 255, 0, 255));
+		assert(png[0, 128] == Color(255, 0, 0, 255));
+		assert(png[128, 128] == Color(0, 0, 0, 0));
 	}
-	with(readPng("samples/test8.png")) {
-		assert(getPixel(0, 0) == Color(0, 0, 255, 255));
-		assert(getPixel(128, 0) == Color(0, 255, 0, 255));
-		assert(getPixel(0, 128) == Color(255, 0, 0, 255));
-		assert(getPixel(128, 128) == Color(0, 0, 0, 0));
+	{
+		const png = readPng("samples/test8.png");
+		assert(png[0, 0] == Color(0, 0, 255, 255));
+		assert(png[128, 0] == Color(0, 255, 0, 255));
+		assert(png[0, 128] == Color(255, 0, 0, 255));
+		assert(png[128, 128] == Color(0, 0, 0, 0));
 	}
 }
 
@@ -99,7 +101,7 @@ ubyte[] writePngToArray(MemoryImage mi) @safe {
 	auto roundTripped = readPngFromBytes(writePngToArray(orig));
 	foreach (x; 0 .. orig.width) {
 		foreach (y; 0 .. orig.height) {
-			assert(roundTripped.getPixel(x, y) == orig.getPixel(x, y));
+			assert(roundTripped[x, y] == orig[x, y]);
 		}
 	}
 }

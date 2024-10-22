@@ -10,115 +10,13 @@ import justimages.core;
 
 @safe:
 
-// importing phobos explodes the size of this code 10x, so not doing it.
-
-private {
-	double toInternal(T)(scope const(char)[] s) {
-		double accumulator = 0.0;
-		size_t i = s.length;
-		foreach(idx, c; s) {
-			if(c >= '0' && c <= '9') {
-				accumulator *= 10;
-				accumulator += c - '0';
-			} else if(c == '.') {
-				i = idx + 1;
-				break;
-			} else {
-				string wtfIsWrongWithThisStupidLanguageWithItsBrokenSafeAttribute = "bad char to make double from ";
-				wtfIsWrongWithThisStupidLanguageWithItsBrokenSafeAttribute ~= s;
-				throw new Exception(wtfIsWrongWithThisStupidLanguageWithItsBrokenSafeAttribute);
-			}
-		}
-
-		double accumulator2 = 0.0;
-		double count = 1;
-		foreach(c; s[i .. $]) {
-			if(c >= '0' && c <= '9') {
-				accumulator2 *= 10;
-				accumulator2 += c - '0';
-				count *= 10;
-			} else {
-				string wtfIsWrongWithThisStupidLanguageWithItsBrokenSafeAttribute = "bad char to make double from ";
-				wtfIsWrongWithThisStupidLanguageWithItsBrokenSafeAttribute ~= s;
-				throw new Exception(wtfIsWrongWithThisStupidLanguageWithItsBrokenSafeAttribute);
-			}
-		}
-
-		return accumulator + accumulator2 / count;
-	}
-
-	package(justimages) @trusted
-	string toInternal(T)(long a) {
-		if(a == 0)
-			return "0";
-		char[] ret;
-		bool neg;
-		if(a < 0) {
-			neg = true;
-			a = -a;
-		}
-		while(a) {
-			ret ~= (a % 10) + '0';
-			a /= 10;
-		}
-		for(int i = 0; i < ret.length / 2; i++) {
-			char c = ret[i];
-			ret[i] = ret[$ - i - 1];
-			ret[$ - i - 1] = c;
-		}
-		if(neg)
-			ret = "-" ~ ret;
-
-		return cast(string) ret;
-	}
-	string toInternal(T)(double a) {
-		// a simplifying assumption here is the fact that we only use this in one place: toInternal!string(cast(double) a / 255)
-		// thus we know this will always be between 0.0 and 1.0, inclusive.
-		if(a <= 0.0)
-			return "0.0";
-		if(a >= 1.0)
-			return "1.0";
-		string ret = "0.";
-		// I wonder if I can handle round off error any better. Phobos does, but that isn't worth 100 KB of code.
-		int amt = cast(int)(a * 1000);
-		return ret ~ toInternal!string(amt);
-	}
-
-	nothrow @safe @nogc pure
-	double absInternal(double a) { return a < 0 ? -a : a; }
-	nothrow @safe @nogc pure
-	double minInternal(double a, double b, double c) {
-		auto m = a;
-		if(b < m) m = b;
-		if(c < m) m = c;
-		return m;
-	}
-	nothrow @safe @nogc pure
-	double maxInternal(double a, double b, double c) {
-		auto m = a;
-		if(b > m) m = b;
-		if(c > m) m = c;
-		return m;
-	}
-	nothrow @safe @nogc pure
-	bool startsWithInternal(in char[] a, in char[] b) {
-		return (a.length >= b.length && a[0 .. b.length] == b);
-	}
-	void splitInternal(scope inout(char)[] a, char c, scope void delegate(int, scope inout(char)[]) @safe dg) {
-		int count;
-		size_t previous = 0;
-		foreach(i, char ch; a) {
-			if(ch == c) {
-				dg(count++, a[previous .. i]);
-				previous = i + 1;
-			}
-		}
-		if(previous != a.length)
-			dg(count++, a[previous .. $]);
-	}
-}
-
-// done with mini-phobos
+import std.algorithm.comparison;
+import std.algorithm.iteration;
+import std.algorithm.searching;
+import std.algorithm.sorting;
+import std.conv;
+import std.math;
+import std.range;
 
 /// Represents an RGBA color
 struct Color {
@@ -353,7 +251,7 @@ struct Color {
 		if(a == 255)
 			return "#" ~ toHexInternal(r) ~ toHexInternal(g) ~ toHexInternal(b);
 		else {
-			return "rgba("~toInternal!string(r)~", "~toInternal!string(g)~", "~toInternal!string(b)~", "~toInternal!string(cast(double)a / 255.0)~")";
+			return "rgba("~to!string(r)~", "~to!string(g)~", "~to!string(b)~", "~to!string(cast(double)a / 255.0)~")";
 		}
 	}
 
@@ -405,19 +303,19 @@ struct Color {
 		// try various notations borrowed from CSS (though a little extended)
 
 		// hsl(h,s,l,a) where h is degrees and s,l,a are 0 >= x <= 1.0
-		if(s.startsWithInternal("hsl(") || s.startsWithInternal("hsla(")) {
+		if(s.startsWith("hsl(") || s.startsWith("hsla(")) {
 			assert(s[$-1] == ')');
-			s = s[s.startsWithInternal("hsl(") ? 4 : 5  .. $ - 1]; // the closing paren
+			s = s[s.startsWith("hsl(") ? 4 : 5  .. $ - 1]; // the closing paren
 
 			double[3] hsl;
 			ubyte a = 255;
 
-			s.splitInternal(',', (int i, scope const(char)[] part) {
+			foreach (i, part; s.splitter(',').enumerate) {
 				if(i < 3)
-					hsl[i] = toInternal!double(part.stripInternal);
+					hsl[i] = to!double(part.stripInternal);
 				else
-					a = clampToByte(cast(int) (toInternal!double(part.stripInternal) * 255));
-			});
+					a = clampToByte(cast(int) (to!double(part.stripInternal) * 255));
+			}
 
 			c = .fromHsl(hsl);
 			c.a = a;
@@ -426,13 +324,13 @@ struct Color {
 		}
 
 		// rgb(r,g,b,a) where r,g,b are 0-255 and a is 0-1.0
-		if(s.startsWithInternal("rgb(") || s.startsWithInternal("rgba(")) {
+		if(s.startsWith("rgb(") || s.startsWith("rgba(")) {
 			assert(s[$-1] == ')');
-			s = s[s.startsWithInternal("rgb(") ? 4 : 5  .. $ - 1]; // the closing paren
+			s = s[s.startsWith("rgb(") ? 4 : 5  .. $ - 1]; // the closing paren
 
-			s.splitInternal(',', (int i, scope const(char)[] part) {
+			foreach(i, part; s.splitter(',').enumerate) {
 				// lol the loop-switch pattern
-				auto v = toInternal!double(part.stripInternal);
+				auto v = to!double(part.stripInternal);
 				switch(i) {
 					case 0: // red
 						c.r = clampToByte(cast(int) v);
@@ -448,7 +346,7 @@ struct Color {
 					break;
 					default: // ignore
 				}
-			});
+			}
 
 			return c;
 		}
@@ -546,7 +444,7 @@ struct Color {
 
 	/// Perform alpha-blending of `fore` to this color, return new color.
 	/// WARNING! This function does blending in RGB space, and RGB space is not linear!
-	Color alphaBlend (Color fore) const pure nothrow @trusted @nogc {
+	Color alphaBlend (Color fore) const pure nothrow @safe @nogc {
 		version(LittleEndian) {
 			static if (__VERSION__ > 2067) pragma(inline, true);
 			Color res;
@@ -913,11 +811,11 @@ Color fromHsl(double[3] hsl) nothrow pure @safe @nogc {
 Color fromHsl(double h, double s, double l, double a = 255) nothrow pure @safe @nogc {
 	h = h % 360;
 
-	double C = (1 - absInternal(2 * l - 1)) * s;
+	double C = (1 - abs(2 * l - 1)) * s;
 
 	double hPrime = h / 60;
 
-	double X = C * (1 - absInternal(hPrime % 2 - 1));
+	double X = C * (1 - abs(hPrime % 2 - 1));
 
 	double r, g, b;
 
@@ -978,13 +876,13 @@ double srgbToLinearRgb(double u) {
 private extern(C) nothrow pure @safe @nogc double pow(double, double);
 
 /// Converts an RGB color into an HSL triplet. useWeightedLightness will try to get a better value for luminosity for the human eye, which is more sensitive to green than red and more to red than blue. If it is false, it just does average of the rgb.
-double[3] toHsl(Color c, bool useWeightedLightness = false) nothrow pure @trusted @nogc {
+double[3] toHsl(Color c, bool useWeightedLightness = false) nothrow pure @safe @nogc {
 	double r1 = cast(double) c.r / 255;
 	double g1 = cast(double) c.g / 255;
 	double b1 = cast(double) c.b / 255;
 
-	double maxColor = maxInternal(r1, g1, b1);
-	double minColor = minInternal(r1, g1, b1);
+	double maxColor = max(r1, g1, b1);
+	double minColor = min(r1, g1, b1);
 
 	double L = (maxColor + minColor) / 2 ;
 	if(useWeightedLightness) {
@@ -1246,9 +1144,9 @@ void main() {
 	import browser.document;
 	foreach(ele; document.querySelectorAll("input")) {
 		ele.addEventListener("change", {
-			auto h = toInternal!double(document.querySelector("input[name=h]").value);
-			auto s = toInternal!double(document.querySelector("input[name=s]").value);
-			auto l = toInternal!double(document.querySelector("input[name=l]").value);
+			auto h = to!double(document.querySelector("input[name=h]").value);
+			auto s = to!double(document.querySelector("input[name=s]").value);
+			auto l = to!double(document.querySelector("input[name=l]").value);
 
 			Color c = Color.fromHsl(h, s, l);
 
@@ -1298,10 +1196,17 @@ interface MemoryImage {
 	int height() const pure nothrow @safe @nogc;
 
 	/// Get image pixel. Slow, but returns valid RGBA color (completely transparent for off-image pixels).
-	Color getPixel(int x, int y) const pure nothrow @safe @nogc;
+	deprecated final Color getPixel(int x, int y) const pure @safe {
+		return this[x, y];
+	}
 
   /// Set image pixel.
-	void setPixel(int x, int y, in Color clr) nothrow @safe;
+	deprecated final void setPixel(int x, int y, in Color clr) @safe {
+		this[x, y] = clr;
+	}
+	Color opIndex(size_t x, size_t y) const @safe pure;
+
+	void opIndexAssign(in Color clr, size_t x, size_t y) @safe pure;
 
 	/// Returns a copy of the image
 	MemoryImage clone() const pure nothrow @safe;
@@ -1321,7 +1226,7 @@ interface MemoryImage {
 	// tl;dr: IF YOU HAVE *ANY* QUESTIONS REGARDING THIS COMMENT, DON'T USE THIS!
 	// Note to implementors: it is safe to simply do nothing in this method.
 	// Also, it should be safe to call this method twice or more.
-	void clearInternal () nothrow @system;// @nogc; // nogc is commented right now just because GC.free is only @nogc in newest dmd and i want to stay compatible a few versions back too. it can be added later
+	void clearInternal () nothrow @safe;
 
 	/// Convenient alias for `fromImage`
 	alias fromImageFile = fromImage;
@@ -1336,11 +1241,9 @@ class IndexedImage : MemoryImage {
 	/// the data as indexes into the palette. Stored left to right, top to bottom, no padding.
 	ubyte[] data;
 
-	override void clearInternal () nothrow @system {// @nogc {
-		import core.memory : GC;
-		// it is safe to call [GC.free] with `null` pointer.
-		GC.free(GC.addrOf(palette.ptr)); palette = null;
-		GC.free(GC.addrOf(data.ptr)); data = null;
+	override void clearInternal () nothrow @safe {
+		palette = null;
+		data = null;
 		_width = _height = 0;
 	}
 
@@ -1355,7 +1258,7 @@ class IndexedImage : MemoryImage {
 	}
 
 	/// .
-	override IndexedImage clone() const pure nothrow @trusted {
+	override IndexedImage clone() const pure nothrow @safe {
 		auto n = new IndexedImage(width, height);
 		n.data[] = this.data[]; // the data member is already there, so array copy
 		n.palette = this.palette.dup; // and here we need to allocate too, so dup
@@ -1363,29 +1266,29 @@ class IndexedImage : MemoryImage {
 		return n;
 	}
 
-	override Color getPixel(int x, int y) const pure nothrow @trusted @nogc {
+	override Color opIndex(size_t x, size_t y) const pure nothrow @safe @nogc {
 		if (x >= 0 && y >= 0 && x < _width && y < _height) {
 			size_t pos = cast(size_t)y*_width+x;
 			if (pos >= data.length) return Color(0, 0, 0, 0);
-			ubyte b = data.ptr[pos];
+			ubyte b = data[pos];
 			if (b >= palette.length) return Color(0, 0, 0, 0);
-			return palette.ptr[b];
+			return palette[b];
 		} else {
 			return Color(0, 0, 0, 0);
 		}
 	}
 
-	override void setPixel(int x, int y, in Color clr) nothrow @trusted {
+	override void opIndexAssign(in Color clr, size_t x, size_t y) nothrow @safe {
 		if (x >= 0 && y >= 0 && x < _width && y < _height) {
 			size_t pos = cast(size_t)y*_width+x;
 			if (pos >= data.length) return;
 			ubyte pidx = findNearestColor(palette, clr);
 			if (palette.length < 255 &&
-				 (palette.ptr[pidx].r != clr.r || palette.ptr[pidx].g != clr.g || palette.ptr[pidx].b != clr.b || palette.ptr[pidx].a != clr.a)) {
+				 (palette[pidx].r != clr.r || palette[pidx].g != clr.g || palette[pidx].b != clr.b || palette[pidx].a != clr.a)) {
 				// add new color
 				pidx = addColor(clr);
 			}
-			data.ptr[pos] = pidx;
+			data[pos] = pidx;
 		}
 	}
 
@@ -1415,7 +1318,7 @@ class IndexedImage : MemoryImage {
 	}
 
 	/// Creates a new TrueColorImage based on this data
-	TrueColorImage convertToTrueColor() const pure nothrow @trusted {
+	TrueColorImage convertToTrueColor() const pure nothrow @safe {
 		auto tci = new TrueColorImage(width, height);
 		foreach(i, b; data) {
 			tci.imageData.colors[i] = palette[b];
@@ -1424,7 +1327,7 @@ class IndexedImage : MemoryImage {
 	}
 
 	/// Gets an exact match, if possible, adds if not. See also: the findNearestColor free function.
-	ubyte getOrAddColor(Color c) nothrow @trusted {
+	ubyte getOrAddColor(Color c) nothrow @safe {
 		foreach(i, co; palette) {
 			if(c == co)
 				return cast(ubyte) i;
@@ -1434,12 +1337,12 @@ class IndexedImage : MemoryImage {
 	}
 
 	/// Number of colors currently in the palette (note: palette entries are not necessarily used in the image data)
-	int numColors() const pure nothrow @trusted @nogc {
+	int numColors() const pure nothrow @safe @nogc {
 		return cast(int) palette.length;
 	}
 
 	/// Adds an entry to the palette, returning its index
-	ubyte addColor(Color c) nothrow @trusted {
+	ubyte addColor(Color c) nothrow @safe pure {
 		assert(palette.length < 256);
 		if(c.a != 255)
 			hasAlpha = true;
@@ -1461,7 +1364,7 @@ class TrueColorImage : MemoryImage {
 		// the union is no good because the length of the struct is wrong!
 
 		/// the same data as Color structs
-		@trusted // the cast here is typically unsafe, but it is ok
+		@safe
 		// here because I guarantee the layout, note the static assert below
 		inout(Color)[] colors() inout pure nothrow @nogc {
 			return cast(inout(Color)[]) bytes;
@@ -1477,38 +1380,36 @@ class TrueColorImage : MemoryImage {
 	int _width;
 	int _height;
 
-	override void clearInternal () nothrow @system {// @nogc {
-		import core.memory : GC;
-		// it is safe to call [GC.free] with `null` pointer.
-		GC.free(GC.addrOf(imageData.bytes.ptr)); imageData.bytes = null;
+	override void clearInternal () nothrow @safe {// @nogc {
+		imageData.bytes = null;
 		_width = _height = 0;
 	}
 
 	/// .
-	override TrueColorImage clone() const pure nothrow @trusted {
+	override TrueColorImage clone() const pure nothrow @safe {
 		auto n = new TrueColorImage(width, height);
 		n.imageData.bytes[] = this.imageData.bytes[]; // copy into existing array ctor allocated
 		return n;
 	}
 
 	/// .
-	override int width() const pure nothrow @trusted @nogc { return _width; }
+	override int width() const pure nothrow @safe @nogc { return _width; }
 	///.
-	override int height() const pure nothrow @trusted @nogc { return _height; }
+	override int height() const pure nothrow @safe @nogc { return _height; }
 
-	override Color getPixel(int x, int y) const pure nothrow @trusted @nogc {
+	override Color opIndex(size_t x, size_t y) const pure nothrow @safe @nogc {
 		if (x >= 0 && y >= 0 && x < _width && y < _height) {
 			size_t pos = cast(size_t)y*_width+x;
-			return imageData.colors.ptr[pos];
+			return imageData.colors[pos];
 		} else {
 			return Color(0, 0, 0, 0);
 		}
 	}
 
-	override void setPixel(int x, int y, in Color clr) nothrow @trusted {
+	override void opIndexAssign(in Color clr, size_t x, size_t y) nothrow @safe {
 		if (x >= 0 && y >= 0 && x < _width && y < _height) {
 			size_t pos = cast(size_t)y*_width+x;
-			if (pos < imageData.bytes.length/4) imageData.colors.ptr[pos] = clr;
+			if (pos < imageData.bytes.length/4) imageData.colors[pos] = clr;
 		}
 	}
 
@@ -1610,13 +1511,6 @@ class TrueColorImageWithoutAlpha : MemoryImage {
 }
 +/
 
-
-alias extern(C) int function(scope const void*, scope const void*) @system Comparator;
-@trusted void nonPhobosSort(T)(T[] obj,  Comparator comparator) {
-	import core.stdc.stdlib;
-	qsort(obj.ptr, obj.length, typeof(obj[0]).sizeof, comparator);
-}
-
 /// Converts true color to an indexed image. It uses palette as the starting point, adding entries
 /// until maxColors as needed. If palette is null, it creates a whole new palette.
 ///
@@ -1655,10 +1549,7 @@ do {
 
 	uses = null;
 
-	nonPhobosSort(sorted, &ColorUse.comparator);
-	// or, with phobos, but that adds 70ms to compile time
-	//import std.algorithm.sorting : sort;
-	//sort(sorted);
+	sort(sorted);
 
 	ubyte[Color] paletteAssignments;
 	foreach(idx, entry; palette)
@@ -1727,7 +1618,7 @@ do {
 }
 
 /// Finds the best match for pixel in palette (currently by checking for minimum euclidean distance in rgb colorspace)
-ubyte findNearestColor(in Color[] palette, in Color pixel) nothrow pure @trusted @nogc {
+ubyte findNearestColor(in Color[] palette, in Color pixel) nothrow pure @safe @nogc {
 	int best = 0;
 	int bestDistance = int.max;
 	foreach(pe, co; palette) {
@@ -1832,7 +1723,7 @@ void reducePaletteSize(IndexedImage img, int maxColors = 16) {
 
 // I think I did this wrong... but the results aren't too bad so the bug can't be awful.
 /// Dithers img in place to look more like original.
-void floydSteinbergDither(IndexedImage img, in TrueColorImage original) nothrow @trusted {
+void floydSteinbergDither(IndexedImage img, in TrueColorImage original) nothrow @safe {
 	assert(img.width == original.width);
 	assert(img.height == original.height);
 
@@ -2126,13 +2017,6 @@ struct Angle {
 	}
 
 	// maybe sin, cos, tan but meh you can .radians on them too.
-}
-
-private int max(int a, int b) @nogc nothrow pure @safe {
-	return a >= b ? a : b;
-}
-private int min(int a, int b) @nogc nothrow pure @safe {
-	return a <= b ? a : b;
 }
 
 /++

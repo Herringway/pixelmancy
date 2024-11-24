@@ -292,8 +292,12 @@ auto pixelMatrix(Tile)(const Tile tile)
 }
 
 interface Tile {
+	enum width = 8;
+	enum height = 8;
 	ubyte bpp() const @safe pure;
 	size_t size() const @safe pure;
+	int opApply(int delegate(size_t x, size_t y, ubyte element)) const;
+	int opApply(int delegate(size_t x, size_t y, ref ubyte element));
 	uint opIndex(size_t x, size_t y) const @safe pure;
 	uint opIndexAssign(uint val, size_t x, size_t y) @safe pure;
 	const(ubyte)[] raw() const @safe pure;
@@ -301,6 +305,7 @@ interface Tile {
 
 class TileClass(T) : Tile {
 	T[1] tile;
+	this() @safe pure {}
 	this(const ubyte[T.sizeof] data) @safe pure {
 		tile = (cast(const(T)[])(data[]))[0];
 	}
@@ -318,6 +323,38 @@ class TileClass(T) : Tile {
 	}
 	const(ubyte)[] raw() const @safe pure {
 		return cast(const(ubyte)[])tile;
+	}
+	int opApply(int delegate(size_t x, size_t y, ubyte element) dg) const {
+		return tile[0].opApply(dg);
+	}
+	int opApply(int delegate(size_t x, size_t y, ref ubyte element) dg) {
+		return tile[0].opApply(dg);
+	}
+}
+
+Tile newTile(TileFormat format) @safe pure {
+	import tilemagic.tiles.bpp1 : Simple1BPP;
+	import tilemagic.tiles.bpp2 : Linear2BPP, Intertwined2BPP;
+	import tilemagic.tiles.bpp3 : Intertwined3BPP;
+	import tilemagic.tiles.bpp4 : Intertwined4BPP, Packed4BPP;
+	import tilemagic.tiles.bpp8 : Intertwined8BPP, Packed8BPP;
+	final switch (format) {
+		case TileFormat.simple1BPP:
+			return new TileClass!Simple1BPP();
+		case TileFormat.linear2BPP:
+			return new TileClass!Linear2BPP();
+		case TileFormat.intertwined2BPP:
+			return new TileClass!Intertwined2BPP();
+		case TileFormat.intertwined3BPP:
+			return new TileClass!Intertwined3BPP();
+		case TileFormat.intertwined4BPP:
+			return new TileClass!Intertwined4BPP();
+		case TileFormat.packed4BPP:
+			return new TileClass!Packed4BPP();
+		case TileFormat.intertwined8BPP:
+			return new TileClass!Intertwined8BPP();
+		case TileFormat.packed8BPP:
+			return new TileClass!Packed8BPP();
 	}
 }
 

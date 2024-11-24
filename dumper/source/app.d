@@ -5,17 +5,16 @@ import std.format;
 import std.getopt;
 import std.meta;
 import std.range;
-import std.random;
 import std.stdio;
 import std.string;
 import std.traits;
 
 import tilemagic.arrangement;
+import tilemagic.colours;
 import tilemagic.imagesaver;
-import pixelatrix;
+import tilemagic.tiles;
+import arsd.png;
 import siryul;
-import magicalrainbows;
-import rando.palette;
 
 const(Arrangement) getArrangement(const string path, ArrangementFormat format, size_t defaultWidth, const Arrangement defaultArrangement) @safe {
 	if (path != "") {
@@ -66,8 +65,6 @@ void main(string[] args) @system {
 	string paletteFile;
 	size_t forceWidth;
 	string arrangementDoc;
-	bool randomize;
-	ColourRandomizationLevel randomizationLevel = ColourRandomizationLevel.randomHue;
 	PalettePreset palettePreset;
 	bool firstColourNotTransparent;
 	TileFormat tileFormat = TileFormat.intertwined4BPP;
@@ -84,8 +81,6 @@ void main(string[] args) @system {
 		"output|o", "Write to file", &outFile,
 		"preset-palette|P", "Use a preset palette", &palettePreset,
 		"width|w", "Force image width", &forceWidth,
-		"randomize|r", "Randomize palette", &randomize,
-		"randomization-level|R", "Palette randomization level", &randomizationLevel,
 		"first-colour-not-transparent", "First colour in palette isn't transparent", &firstColourNotTransparent,
 		"tileformat|f", &tileFormat
 	);
@@ -94,16 +89,12 @@ void main(string[] args) @system {
 		defaultGetoptPrinter(format!"Usage: %s <tiles>"(args[0]), helpInformation.options);
 		return;
 	}
-	const tiles = pixelMatrices(readData(args[1]), tileFormat);
+	const tiles = getTiles(readData(args[1]), tileFormat);
 	const arrangement = arrangementDoc ? fromFile!(Arrangement, YAML, DeSiryulize.optionalByDefault)(arrangementDoc) : getArrangement(arrangementFile, arrangementFormat, forceWidth, Arrangement.generate(arrangementStyle, tiles.length, forceWidth));
 	auto palettes = getPalette(paletteFile, paletteFormat, tileFormat.colours, !firstColourNotTransparent, getPalette(palettePreset));
-	if (randomize) {
-		foreach (ref palette; palettes) {
-			palette = randomizePalette(palette, randomizationLevel, rndGen.front);
-		}
-	}
 	writeln("Saving '", outFile, "'");
-	saveImage(outFile, tiles, arrangement, palettes);
+	auto pixels = toPixelArray(tiles, arrangement, palettes).toTrueColour;
+	writePng(outFile, new TrueColorImage(cast(int)pixels.width, cast(int)pixels.height, cast(ubyte[])pixels[]));
 }
 
 ubyte[] readData(string filename) @trusted {

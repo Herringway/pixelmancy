@@ -23,6 +23,8 @@ jobs:
     - name: 'Test'
       run: |
         dub test
+        dub build :fromimage
+        dub build :dumper
   coverage:
     runs-on: ubuntu-latest
     steps:

@@ -25,6 +25,7 @@ struct Arrangement {
 		}
 		return Arrangement(iota(0, defaultSize).map!(x => TileAttributes(dg(x), 0, false, false)).array, width > 0 ? width : defaultSize);
 	}
+	auto ref opIndex(size_t x, size_t y)  => tiles[y * width + x];
 }
 
 enum ArrangementStyle {
@@ -43,6 +44,7 @@ align(1) struct SNESScreenTileArrangement {
 		}
 		return Arrangement(arr, 32);
 	}
+	auto ref opIndex(size_t x, size_t y)  => tiles[y * width + x];
 }
 align(1) struct ConsoleFullTileArrangement {
 	align(1):
@@ -55,6 +57,7 @@ align(1) struct ConsoleFullTileArrangement {
 		}
 		return Arrangement(arr, 32);
 	}
+	auto ref opIndex(size_t x, size_t y)  => tiles[y * width + x];
 }
 struct SNESTileArrangement {
 	SNESTileAttributes[] tiles;
@@ -66,6 +69,7 @@ struct SNESTileArrangement {
 		}
 		return Arrangement(arr, width);
 	}
+	auto ref opIndex(size_t x, size_t y)  => tiles[y * width + x];
 }
 align(1) struct SGBBorderTileArrangement {
 	align(1):
@@ -96,11 +100,13 @@ align(1) struct SGBBorderTileArrangement {
 			idxOffset++;
 		}
 	}
+	auto ref opIndex(size_t x, size_t y)  => tiles[y * width + x];
 }
 
 @safe pure unittest {
 	auto arr = SGBBorderTileArrangement(generateSampleArrangement(32*28, SGBBorderTileArrangement.width));
 	assert(arr == SGBBorderTileArrangement(cast(Arrangement)arr));
+	assert(arr[2, 3].tile == 98);
 }
 
 align(1) struct SNESTileAttributes {

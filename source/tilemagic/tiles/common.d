@@ -178,6 +178,7 @@ package mixin template Common2DOps() {
 	alias opApply = opApplyImplR!(int delegate(size_t x, size_t y, ref ubyte element));
 	int opApplyImpl(DG)(scope DG dg) const => (const TileView2D)(&this, 0, 0, width, height).opApplyImpl(dg);
 	int opApplyImplR(DG)(scope DG dg) => TileView2D(&this, 0, 0, width, height).opApplyImplR(dg);
+	void toString(R)(ref R sink) const => (const TileView2D)(&this, 0, 0, width, height).toString(sink);
 	private static struct TileView2D {
 		import std.format : format;
 		import std.traits : isMutable;

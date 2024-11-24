@@ -128,7 +128,20 @@ struct Array2D(E) {
 		}
 		return 0;
 	}
+	alias opApply = opApplyImplC!(int delegate(size_t x, size_t y, const E element));
+	int opApplyImplC(DG)(scope DG dg) const {
+		foreach (iterY; 0 .. height) {
+			foreach (iterX, ref elem; this[0 .. $, iterY][]) {
+				auto result = dg(iterX, iterY, elem);
+				if (result) {
+					return result;
+				}
+			}
+		}
+		return 0;
+	}
 }
+
 
 @safe pure unittest {
 	import std.array : array;

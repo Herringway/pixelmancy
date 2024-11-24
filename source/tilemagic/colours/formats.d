@@ -498,7 +498,7 @@ ColourPair!(Foreground, Background) colourPair(Foreground, Background)(Foregroun
 }
 
 Target convert(Target, Source)(Source from) if (isColourFormat!Source && isColourFormat!Target) {
-	static if (is(Target == Source)) {
+	static if (is(Source : Target)) {
 		return from;
 	} else {
 		Target output;
@@ -521,6 +521,7 @@ Target convert(Target, Source)(Source from) if (isColourFormat!Source && isColou
 }
 ///
 @safe pure unittest {
+	assert((const BGR555)(31,31,31).convert!BGR555 == BGR555(31, 31, 31));
 	assert(BGR555(31,31,31).convert!RGB888 == RGB888(248, 248, 248));
 	assert(BGR555(0, 0, 0).convert!RGB888 == RGB888(0, 0, 0));
 	assert(RGB888(248, 248, 248).convert!BGR555 == BGR555(31,31,31));

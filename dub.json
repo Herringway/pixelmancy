@@ -8,7 +8,7 @@
 	"license": "BSL-1.0",
 	"stringImportPaths": ["testdata"],
 	"subPackages": [
-		"dumper",
+		"toimage",
 		"fromimage"
 	]
 }

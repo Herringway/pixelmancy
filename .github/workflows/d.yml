@@ -24,7 +24,7 @@ jobs:
       run: |
         dub test
         dub build :fromimage
-        dub build :dumper
+        dub build :toimage
   coverage:
     runs-on: ubuntu-latest
     steps:

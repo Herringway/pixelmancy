@@ -1,5 +1,5 @@
 {
-	"name": "dumper",
+	"name": "toimage",
 	"dependencies": {
 		"tilemagic": "*",
 		"reversineer": "~>0.1",

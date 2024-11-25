@@ -5,96 +5,51 @@ import std.bitmanip;
 import std.exception;
 import std.range;
 
+import tilemagic.util;
+
 enum ArrangementFormat {
 	snes
 }
 
-struct Arrangement {
-	TileAttributes[] tiles;
-	size_t width;
-	static Arrangement generate(ArrangementStyle style, size_t defaultSize, size_t width) @safe pure {
-		size_t delegate(size_t) @safe pure dg;
-		final switch (style) {
-			case ArrangementStyle.horizontal:
-				dg = (size_t x) => x;
-				break;
-			case ArrangementStyle.vertical:
-				enforce(width > 0, "Must specify width!");
-				dg = (size_t x) => ((x % width) * width) + (x/width);
-				break;
-		}
-		return Arrangement(iota(0, defaultSize).map!(x => TileAttributes(dg(x), 0, false, false)).array, width > 0 ? width : defaultSize);
+Array2D!T generateArrangement(T = TileAttributes)(ArrangementStyle style, size_t width, size_t height) @safe pure {
+	size_t delegate(size_t) @safe pure dg;
+	final switch (style) {
+		case ArrangementStyle.rowMajor:
+			dg = (size_t x) => x;
+			break;
+		case ArrangementStyle.columnMajor:
+			enforce(width > 0, "Must specify width!");
+			dg = (size_t x) => ((x % width) * width) + (x/width);
+			break;
 	}
-	auto ref opIndex(size_t x, size_t y)  => tiles[y * width + x];
+	return Array2D!T(width, height, width, iota(0, width * height).map!(x => T(tile: cast(typeof(T.tile))dg(x))).array);
 }
 
 enum ArrangementStyle {
-	horizontal,
-	vertical
+	rowMajor,
+	columnMajor,
 }
 
-align(1) struct SNESScreenTileArrangement {
+alias SNESScreenTileArrangement = StaticArray2D!(SNESTileAttributes, 32, 28);
+alias SNESTileArrangement = Array2D!SNESTileAttributes;
+alias ConsoleFullTileArrangement = StaticArray2D!(SNESTileAttributes, 32, 32);
+
+alias SGBBorderTileArrangement = RowMajorFrameArrangement!(SNESTileAttributes, 32, 28, 20, 18);
+align(1) struct RowMajorFrameArrangement(Tile, size_t inWidth, size_t inHeight, size_t innerWidth, size_t innerHeight) {
 	align(1):
-	SNESTileAttributes[(256/8)*(224/8)] tiles;
-	enum width = 32;
-	auto opCast(T: Arrangement)() const {
-		auto arr = new TileAttributes[](tiles.length);
-		foreach (idx, tile; tiles) {
-			arr[idx] = cast(TileAttributes)tile;
-		}
-		return Arrangement(arr, 32);
-	}
-	auto ref opIndex(size_t x, size_t y)  => tiles[y * width + x];
-}
-align(1) struct ConsoleFullTileArrangement {
-	align(1):
-	SNESTileAttributes[(256/8)*(256/8)] tiles;
-	enum width = 32;
-	auto opCast(T: Arrangement)() const {
-		auto arr = new TileAttributes[](tiles.length);
-		foreach (idx, tile; tiles) {
-			arr[idx] = cast(TileAttributes)tile;
-		}
-		return Arrangement(arr, 32);
-	}
-	auto ref opIndex(size_t x, size_t y)  => tiles[y * width + x];
-}
-struct SNESTileArrangement {
-	SNESTileAttributes[] tiles;
-	size_t width;
-	auto opCast(T: Arrangement)() const {
-		auto arr = new TileAttributes[](tiles.length);
-		foreach (idx, tile; tiles) {
-			arr[idx] = cast(TileAttributes)tile;
-		}
-		return Arrangement(arr, width);
-	}
-	auto ref opIndex(size_t x, size_t y)  => tiles[y * width + x];
-}
-align(1) struct SGBBorderTileArrangement {
-	align(1):
-	SNESTileAttributes[536] tiles;
-	enum width = 32;
-	auto opCast(T: Arrangement)() const {
-		auto arr = new TileAttributes[](32*28);
-		ushort idxOffset;
-		foreach (idx, tile; tiles) {
-			const tilePosition = idx + idxOffset;
-			arr[tilePosition] = cast(TileAttributes)tile;
-			if ((tilePosition > 160) && (tilePosition < 736) && (tilePosition%32 == 5)) {
-				idxOffset += 20;
-			}
-		}
-		//arr[166 .. 186] = TileAttributes(0, 0);
-		return Arrangement(arr, 32);
-	}
-	this(const Arrangement arrangement) @safe pure
-		in(arrangement.tiles.length == 32*28)
+	enum width = inWidth;
+	enum height = inHeight;
+	enum borderWidth = (width - innerWidth) / 2;
+	enum borderHeight = (height - innerHeight) / 2;
+	Tile[width * height - innerWidth * innerHeight] tiles;
+	this(const Array2D!Tile arrangement) @safe pure
+		in(arrangement.width == width)
+		in(arrangement.height == height)
 	{
 		ushort idxOffset;
-		foreach (idx, tile; arrangement.tiles) {
-			tiles[idxOffset] = SNESTileAttributes(tile);
-			if ((idx > 5 * 32) && (idx < 23 * 32) && ((idx % 32) > 5) && ((idx % 32) < 26)) {
+		foreach (idx, tile; arrangement[]) {
+			tiles[idxOffset] = tile;
+			if ((idx > borderHeight * width) && (idx < (borderHeight + innerHeight) * width) && ((idx % width) > borderWidth - 1) && ((idx % width) < innerWidth + borderWidth)) {
 				continue;
 			}
 			idxOffset++;
@@ -104,8 +59,7 @@ align(1) struct SGBBorderTileArrangement {
 }
 
 @safe pure unittest {
-	auto arr = SGBBorderTileArrangement(generateSampleArrangement(32*28, SGBBorderTileArrangement.width));
-	assert(arr == SGBBorderTileArrangement(cast(Arrangement)arr));
+	auto arr = SGBBorderTileArrangement(generateArrangement!SNESTileAttributes(ArrangementStyle.rowMajor, 32, 28));
 	assert(arr[2, 3].tile == 98);
 }
 
@@ -118,25 +72,26 @@ align(1) struct SNESTileAttributes {
 		bool, "horizontalFlip", 1,
 		bool, "verticalFlip", 1
 	));
+	this(ushort tile, ubyte palette = 0, bool priority = false, bool horizontalFlip = false, bool verticalFlip = false) @safe pure {
+		this.tile = tile;
+		this.palette = palette;
+		this.priority = priority;
+		this.horizontalFlip = horizontalFlip;
+		this.verticalFlip = verticalFlip;
+	}
 	auto opCast(T: TileAttributes)() const {
 		return TileAttributes(tile, palette, verticalFlip, horizontalFlip);
 	}
 	this(const TileAttributes attr) @safe pure {
 		tile = attr.tile & 0x3FF;
 		palette = attr.palette & 7;
-		horizontalFlip = attr.flipX;
-		verticalFlip = attr.flipY;
+		horizontalFlip = attr.horizontalFlip;
+		verticalFlip = attr.verticalFlip;
 	}
 }
 struct TileAttributes {
 	size_t tile;
-	size_t palette;
-	bool flipX;
-	bool flipY;
-}
-
-version(unittest) {
-	private auto generateSampleArrangement(uint size, uint width) pure @safe {
-		return Arrangement(iota(0, size).map!(x => TileAttributes(x)).array, width);
-	}
+	size_t palette = 0;
+	bool horizontalFlip = false;
+	bool verticalFlip = false;
 }

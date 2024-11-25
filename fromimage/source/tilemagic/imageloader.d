@@ -13,13 +13,14 @@ import tilemagic;
 import tilemagic.util;
 
 struct ParsedImage {
-	ConsoleFullTileArrangement[1] arrangement;
+	Array2D!TileAttributes arrangement;
 	RGBA8888[] palette;
 	Tile[] tiles;
 }
 
-ParsedImage loadImageFile(const(ubyte)[] image, TileFormat tileFormat, const Arrangement arrangement) @safe {
+ParsedImage loadImageFile(T)(const(ubyte)[] image, TileFormat tileFormat, const Array2D!T arrangement) @safe {
 	ParsedImage result;
+	result.arrangement = Array2D!TileAttributes(arrangement.width, arrangement.height);
 	auto img = cast(IndexedImage)readPngFromBytes(image);
 	enforce(img, "Invalid image");
 	if (((img.width % 8) != 0) || ((img.height % 8) != 0)) {
@@ -41,10 +42,8 @@ ParsedImage loadImageFile(const(ubyte)[] image, TileFormat tileFormat, const Arr
 			tiles ~= tile;
 		}
 	}
-	auto arrangement2D = array2D(result.arrangement[0].tiles, result.arrangement[0].width, result.arrangement[0].tiles.length / result.arrangement[0].width);
 	const(ubyte)[][] seenTiles;
-	ConsoleFullTileArrangement[1] arrangementToWrite;
-	foreach (x, y, tileAttributes; array2D(arrangement.tiles, tileWidth, tileHeight)) {
+	foreach (x, y, tileAttributes; arrangement) {
 		const data = getBytes(tiles[tileAttributes.tile]);
 		const found = seenTiles.countUntil(data);
 		if (found == -1) {
@@ -52,9 +51,7 @@ ParsedImage loadImageFile(const(ubyte)[] image, TileFormat tileFormat, const Arr
 			seenTiles ~= data;
 		}
 		auto newTile = (found == -1) ? (seenTiles.length - 1) : found;
-		if ((x < arrangement2D.width) && (y < arrangement2D.height)) {
-			arrangement2D[x, y] = SNESTileAttributes(TileAttributes(newTile, tileAttributes.palette, tileAttributes.flipX, tileAttributes.flipY));
-		}
+		result.arrangement[x, y] = TileAttributes(newTile, tileAttributes.palette, tileAttributes.horizontalFlip, tileAttributes.verticalFlip);
 	}
 	result.palette = img.palette.map!(x => RGBA8888(x.r, x.g, x.b, x.a)).array;
 	auto roundUp(size_t v) {
@@ -65,5 +62,5 @@ ParsedImage loadImageFile(const(ubyte)[] image, TileFormat tileFormat, const Arr
 }
 
 @safe unittest {
-	const result = loadImageFile(cast(immutable(ubyte)[])import("testsmile.png"), TileFormat.intertwined4BPP, Arrangement.generate(ArrangementStyle.horizontal, 32 * 32, 32));
+	const result = loadImageFile(cast(immutable(ubyte)[])import("testsmile.png"), TileFormat.intertwined4BPP, generateArrangement(ArrangementStyle.rowMajor, 32, 32));
 }

@@ -2,7 +2,7 @@
 	"name": "fromimage",
 	"dependencies": {
 		"tilemagic": "*",
-		"siryul": "~>0.7.0",
+		"siryul": "~>0.8.0",
 		"justimages": "*"
 	}
 }

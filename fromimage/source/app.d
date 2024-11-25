@@ -10,6 +10,7 @@ import std.stdio;
 
 import siryul;
 import tilemagic;
+import tilemagic.util;
 import tilemagic.imageloader;
 
 void main(string[] args) {
@@ -37,16 +38,16 @@ void main(string[] args) {
 		defaultGetoptPrinter(format!"Usage: %s <image> <tile file>"(args[0]), helpInformation.options);
 		return;
 	}
-	const arrangement = arrangementFile ? fromFile!(Arrangement,YAML, DeSiryulize.optionalByDefault)(arrangementFile) : Arrangement.generate(arrangementStyle, 32 * 32, 32);
+	const arrangement = arrangementFile ? fromFile!(Array2D!TileAttributes, YAML, DeSiryulize.optionalByDefault)(arrangementFile) : generateArrangement(arrangementStyle, 32, 32);
 	const result = loadImageFile(cast(ubyte[])read(args[1]), tileFormat, arrangement);
-	//infof("Tiles: %sx%s", tileWidth, tileHeight);
+	infof("Tiles: %sx%s", arrangement.width, arrangement.height);
 
 	auto file = File(args[2], "wb");
-	foreach (idx, tileAttributes; result.arrangement[0].tiles) {
-		file.rawWrite(getBytes(result.tiles[tileAttributes.tile]));
+	foreach (tile; result.tiles) {
+		file.rawWrite(getBytes(tile));
 	}
 	if (writeArrangementFile) {
-		File(writeArrangementFile, "w").rawWrite(result.arrangement[]);
+		File(writeArrangementFile, "w").rawWrite(result.arrangement[].map!(x => cast(SNESTileAttributes)x).array);
 	}
 	if (palettePath) {
 		auto paletteFile = File(palettePath, "wb");

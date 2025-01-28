@@ -1,8 +1,100 @@
 module tilemagic.colours.utils;
 
+import std.algorithm;
 import std.traits;
 
 package:
+
+enum Channel {
+	red,
+	green,
+	blue,
+	alpha,
+	padding,
+}
+
+struct RGBChannel {
+	Channel channel;
+	ubyte bits;
+}
+
+private auto countTotalBits(RGBChannel[] channels) => channels.map!(x => x.bits).sum;
+
+template generateChannelMixin(RGBChannel[] channels) {
+	import std.meta : AliasSeq;
+	alias generateChannelMixin = AliasSeq!();
+	static foreach (channel; channels) {
+		generateChannelMixin = AliasSeq!(generateChannelMixin, uint, ["red", "green", "blue", "alpha", ""][channel.channel], channel.bits);
+	}
+	enum totalBits = countTotalBits(channels);
+	generateChannelMixin = AliasSeq!(generateChannelMixin, uint, "", ((totalBits + 7) / 8) * 8 - totalBits);
+}
+
+struct RGBGeneric(RGBChannel[] channels) {
+	import std.bitmanip : bitfields;
+	import std.meta : AliasSeq;
+	alias fields = generateChannelMixin!channels;
+	static foreach (channel; channels) {
+		static if (channel.channel == Channel.red) {
+			enum redSize = channel.bits;
+		} else static if (channel.channel == Channel.green) {
+			enum greenSize = channel.bits;
+		} else static if (channel.channel == Channel.blue) {
+			enum blueSize = channel.bits;
+		} else static if (channel.channel == Channel.alpha) {
+			enum alphaSize = channel.bits;
+		} else static if (channel.channel == Channel.padding) {
+		} else {
+			static assert(0, "Unknown channel");
+		}
+	}
+	void toString(S)(S sink) const {
+		import std.format : formattedWrite;
+		sink.formattedWrite("RGBA(%s, %s, %s, %s)", red, green, blue, alpha);
+	}
+	mixin colourConstructors;
+	mixin(bitfields!(fields));
+}
+
+struct RGBGeneric(T, Channel[] channels) {
+	import std.bitmanip : bitfields;
+	static foreach (channel; channels) {
+		static if (channel == Channel.red) {
+			T red;
+			enum redSize = T.sizeof * 8;
+		} else static if (channel == Channel.green) {
+			T green;
+			enum greenSize = T.sizeof * 8;
+		} else static if (channel == Channel.blue) {
+			T blue;
+			enum blueSize = T.sizeof * 8;
+		} else static if (channel == Channel.alpha) {
+			T alpha;
+			enum alphaSize = T.sizeof * 8;
+		} else {
+			static assert(0, "Unknown channel");
+		}
+	}
+	void toString(S)(S sink) const {
+		import std.format : formattedWrite;
+		sink.formattedWrite("RGBA(%s, %s, %s, %s)", red, green, blue, alpha);
+	}
+	mixin colourConstructors;
+}
+
+public auto rawInteger(Colour)(const Colour c) if (isColourFormat!Colour) {
+	union Raw {
+		import std.meta : AliasSeq;
+		Colour colour;
+		static foreach (T; AliasSeq!(ubyte, ushort, uint, ulong)) {
+			// find smallest integer type this'll fit in
+			static if (!is(typeof(value)) && (Colour.sizeof <= T.sizeof)) {
+				T value;
+			}
+		}
+	}
+	return Raw(c).value;
+}
 
 T read(T)(const ubyte[] input) if (isMutable!T)
 	in(input.length == T.sizeof, "Mismatch between input buffer size and expected value size")
@@ -136,6 +228,7 @@ T colourConvert(T, size_t Size1, size_t Size2, Source)(Source val ) {
 }
 
 mixin template colourConstructors() {
+	import tilemagic.colours.formats : AnalogRGB, AnalogRGBA;
 	this(uint red, uint green, uint blue) pure @safe
 		in(red < (1<<redSize), "Red value out of range")
 		in(green < (1<<greenSize), "Green value out of range")
@@ -144,6 +237,9 @@ mixin template colourConstructors() {
 		this.red = cast(typeof(this.red))red;
 		this.green = cast(typeof(this.green))green;
 		this.blue = cast(typeof(this.blue))blue;
+		static if(hasAlpha!(typeof(this))) {
+			this.alpha = maxAlpha!(typeof(this));
+		}
 	}
 	this(Precision)(const AnalogRGB!Precision analog) pure @safe
 		in(analog.red <= 1.0, "Red value out of range")

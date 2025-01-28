@@ -7,19 +7,7 @@ import std.bitmanip;
 import std.conv;
 import std.range;
 
-
-struct BGR555 { //XBBBBBGG GGGRRRRR
-	enum redSize = 5;
-	enum greenSize = 5;
-	enum blueSize = 5;
-	enum alphaSize = 0;
-	mixin colourConstructors;
-	mixin(bitfields!(
-		uint, "red", redSize,
-		uint, "green", greenSize,
-		uint, "blue", blueSize,
-		bool, "padding", 1));
-}
+alias BGR555 = RGBGeneric!([RGBChannel(Channel.red, 5), RGBChannel(Channel.green, 5), RGBChannel(Channel.blue, 5)]); // 0BBBBBGG GGGRRRRR
 static assert(BGR555.sizeof == 2);
 
 @safe pure unittest {
@@ -28,101 +16,35 @@ static assert(BGR555.sizeof == 2);
 		assert(green == 15);
 		assert(blue == 0);
 	}
+	assert(BGR555(red: 31, green: 31, blue: 31).rawInteger == 0x7FFF);
+	assert(BGR555(red: 31, green: 31, blue: 0).rawInteger == 0x3FF);
+	assert(BGR555(red: 0, green: 31, blue: 31).rawInteger == 0x7FE0);
 }
 
-struct RGB555 { //XRRRRRGG GGGBBBBB
-	enum redSize = 5;
-	enum greenSize = 5;
-	enum blueSize = 5;
-	enum alphaSize = 0;
-	mixin colourConstructors;
-	mixin(bitfields!(
-		uint, "blue", blueSize,
-		uint, "green", greenSize,
-		uint, "red", redSize,
-		bool, "padding", 1));
-}
+alias RGB555 = RGBGeneric!([RGBChannel(Channel.blue, 5), RGBChannel(Channel.green, 5), RGBChannel(Channel.red, 5)]); // 0RRRRRGG GGGBBBBB
 static assert(RGB555.sizeof == 2);
 
-struct BGR565 { //BBBBBGGG GGGRRRRR
-	enum redSize = 5;
-	enum greenSize = 6;
-	enum blueSize = 5;
-	enum alphaSize = 0;
-	mixin colourConstructors;
-	mixin(bitfields!(
-		uint, "red", redSize,
-		uint, "green", greenSize,
-		uint, "blue", blueSize));
-}
+alias BGR565 = RGBGeneric!([RGBChannel(Channel.red, 5), RGBChannel(Channel.green, 6), RGBChannel(Channel.blue, 5)]); // BBBBBGGGGGGRRRRR
 static assert(BGR565.sizeof == 2);
 
-struct BGR222 { //00BBGGRR
-	enum redSize = 2;
-	enum greenSize = 2;
-	enum blueSize = 2;
-	enum alphaSize = 0;
-	mixin colourConstructors;
-	mixin(bitfields!(
-		uint, "red", redSize,
-		uint, "green", greenSize,
-		uint, "blue", blueSize,
-		ubyte, "padding", 2));
-}
+alias BGR222 = RGBGeneric!([RGBChannel(Channel.red, 2), RGBChannel(Channel.green, 2), RGBChannel(Channel.blue, 2)]); // 00BBGGRR
 static assert(BGR222.sizeof == 1);
-struct BGR333MD { //0000BBB0 GGG0RRR0
-	enum redSize = 3;
-	enum greenSize = 3;
-	enum blueSize = 3;
-	enum alphaSize = 0;
-	mixin colourConstructors;
-	mixin(bitfields!(
-		ubyte, "padding0", 1,
-		uint, "red", redSize,
-		ubyte, "padding1", 1,
-		uint, "green", greenSize,
-		ubyte, "padding2", 1,
-		uint, "blue", blueSize,
-		ubyte, "padding3", 4));
-}
+
+alias BGR333MD = RGBGeneric!([RGBChannel(Channel.red, 3), RGBChannel(Channel.padding, 1), RGBChannel(Channel.green, 3), RGBChannel(Channel.padding, 1), RGBChannel(Channel.blue, 3)]); // 0000BBB0 GGG0RRR0
 static assert(BGR333MD.sizeof == 2);
 
-struct RGB888 { //RRRRRRRR GGGGGGGG BBBBBBBB
-	enum redSize = 8;
-	enum greenSize = 8;
-	enum blueSize = 8;
-	enum alphaSize = 0;
-	mixin colourConstructors;
-	ubyte red;
-	ubyte green;
-	ubyte blue;
-}
+alias RGB888 = RGBGeneric!(ubyte, [Channel.red, Channel.green, Channel.blue]); // RRRRRRRR GGGGGGGG BBBBBBBB
 static assert(RGB888.sizeof == 3);
 
-struct BGR888 { //BBBBBBBB GGGGGGGG RRRRRRRR
-	enum redSize = 8;
-	enum greenSize = 8;
-	enum blueSize = 8;
-	enum alphaSize = 0;
-	mixin colourConstructors;
-	ubyte blue;
-	ubyte green;
-	ubyte red;
-}
+alias BGR888 = RGBGeneric!(ubyte, [Channel.blue, Channel.green, Channel.red]); // BBBBBBBB GGGGGGGG RRRRRRRR
 static assert(BGR888.sizeof == 3);
 
-struct RGBA8888 { //RRRRRRRR GGGGGGGG BBBBBBBB AAAAAAAA
-	enum redSize = 8;
-	enum greenSize = 8;
-	enum blueSize = 8;
-	enum alphaSize = 8;
-	mixin colourConstructors;
-	ubyte red;
-	ubyte green;
-	ubyte blue;
-	ubyte alpha;
-}
+alias RGBA8888 = RGBGeneric!(ubyte, [Channel.red, Channel.green, Channel.blue, Channel.alpha]); // RRRRRRRR GGGGGGGG BBBBBBBB AAAAAAAA
 static assert(RGBA8888.sizeof == 4);
+
+alias ARGB8888 = RGBGeneric!(ubyte, [Channel.alpha, Channel.red, Channel.green, Channel.blue]); // AAAAAAAA RRRRRRRR GGGGGGGG BBBBBBBB
+static assert(RGBA8888.sizeof == 4);
+
 @safe pure unittest {
 	with(RGBA8888(AnalogRGBAD(1.0, 0.5, 0.0, 0.0))) {
 		assert(red == 255);
@@ -137,19 +59,12 @@ static assert(RGBA8888.sizeof == 4);
 		assert(alpha == 0);
 	}
 }
-struct BGRA8888 { // BBBBBBBB GGGGGGGG RRRRRRRR AAAAAAAA
-	enum redSize = 8;
-	enum greenSize = 8;
-	enum blueSize = 8;
-	enum alphaSize = 8;
-	mixin colourConstructors;
-	ubyte blue;
-	ubyte green;
-	ubyte red;
-	ubyte alpha;
-}
 
+alias BGRA8888 = RGBGeneric!(ubyte, [Channel.blue, Channel.green, Channel.red, Channel.alpha]); // BBBBBBBB GGGGGGGG RRRRRRRR AAAAAAAA
 static assert(BGRA8888.sizeof == 4);
+
+alias ABGR8888 = RGBGeneric!(ubyte, [Channel.alpha, Channel.blue, Channel.green, Channel.red]); // AAAAAAAA BBBBBBBB GGGGGGGG RRRRRRRR
+static assert(ABGR8888.sizeof == 4);
 
 alias AnalogRGBF = AnalogRGB!float;
 alias AnalogRGBD = AnalogRGB!double;

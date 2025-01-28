@@ -116,7 +116,10 @@ struct Array2D(E) {
 			sink.formattedWrite!"%s\n"(this[0 .. $, row]);
 		}
 	}
-	alias opApply = opApplyImpl!(int delegate(size_t x, size_t y, ref E element));
+	alias opApply = opApplyImpl!(int delegate(size_t x, size_t y, ref E element) @system);
+	alias opApply = opApplyImpl!(int delegate(size_t x, size_t y, ref E element) @system pure);
+	alias opApply = opApplyImpl!(int delegate(size_t x, size_t y, ref E element) @safe);
+	alias opApply = opApplyImpl!(int delegate(size_t x, size_t y, ref E element) @safe pure);
 	int opApplyImpl(DG)(scope DG dg) {
 		foreach (iterY; 0 .. height) {
 			foreach (iterX, ref elem; this[0 .. $, iterY][]) {
@@ -128,7 +131,10 @@ struct Array2D(E) {
 		}
 		return 0;
 	}
-	alias opApply = opApplyImplC!(int delegate(size_t x, size_t y, const E element));
+	alias opApply = opApplyImplC!(int delegate(size_t x, size_t y, const E element) @system);
+	alias opApply = opApplyImplC!(int delegate(size_t x, size_t y, const E element) @system pure);
+	alias opApply = opApplyImplC!(int delegate(size_t x, size_t y, const E element) @safe);
+	alias opApply = opApplyImplC!(int delegate(size_t x, size_t y, const E element) @safe pure);
 	int opApplyImplC(DG)(scope DG dg) const {
 		foreach (iterY; 0 .. height) {
 			foreach (iterX, ref elem; this[0 .. $, iterY][]) {

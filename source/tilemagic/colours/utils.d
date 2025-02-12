@@ -77,22 +77,32 @@ struct RGBGeneric(T, Channel[] channels) {
 		import std.format : formattedWrite;
 		sink.formattedWrite("RGBA(%s, %s, %s, %s)", red, green, blue, alpha);
 	}
-	mixin colourConstructors;
+	mixin colourCommon;
 }
 
 public auto rawInteger(Colour)(const Colour c) if (isColourFormat!Colour) {
 	union Raw {
-		import std.meta : AliasSeq;
 		Colour colour;
-		static foreach (T; AliasSeq!(ubyte, ushort, uint, ulong)) {
-			// find smallest integer type this'll fit in
-			static if (!is(typeof(value)) && (Colour.sizeof <= T.sizeof)) {
-				T value;
-			}
-		}
+		ClosestInteger!(Colour.sizeof) value;
 	}
 	return Raw(c).value;
 }
+
+template ClosestInteger(size_t bytes) {
+	import std.meta : AliasSeq;
+	static foreach (T; AliasSeq!(ubyte, ushort, uint, ulong)) {
+		// find smallest integer type this'll fit in
+		static if (!is(ClosestInteger) && (bytes <= T.sizeof)) {
+			alias ClosestInteger = T;
+		}
+	}
+}
+
+static assert(is(ClosestInteger!1 == ubyte));
+static assert(is(ClosestInteger!2 == ushort));
+static assert(is(ClosestInteger!3 == uint));
+static assert(is(ClosestInteger!4 == uint));
+static assert(is(ClosestInteger!8 == ulong));
 
 T read(T)(const ubyte[] input) if (isMutable!T)
 	in(input.length == T.sizeof, "Mismatch between input buffer size and expected value size")
@@ -106,12 +116,19 @@ T read(T)(const ubyte[] input) if (isMutable!T)
 	return result.val;
 }
 
-ubyte[T.sizeof] asBytes(T)(T input) if (isMutable!T) {
+ubyte[T.sizeof] asBytes(T)(T input) {
 	union Result {
 		T val;
 		ubyte[T.sizeof] raw;
 	}
 	return Result(input).raw;
+}
+
+@safe pure unittest {
+	import tilemagic.colours.formats : BGR555;
+	assert(BGR555(31, 31, 31).asBytes == [0xFF, 0x7F]);
+	assert((const BGR555)(31, 31, 31).asBytes == [0xFF, 0x7F]);
+	assert(BGR555(30, 31, 31).asBytes == [0xFE, 0x7F]);
 }
 
 enum isColourFormat(T) = hasRed!T && hasGreen!T && hasBlue!T;
@@ -293,4 +310,48 @@ mixin template colourCommon() {
 			return AnalogRGBA(this.redFP, this.greenFP, this.blueFP, 1.0);
 		}
 	}
+	bool opEquals(typeof(this) other) const @safe pure {
+		bool result = true;
+		static if (hasAlpha!(typeof(this))) {
+			result ^= this.alpha != other.alpha;
+		}
+		result ^= this.red != other.red;
+		result ^= this.green != other.green;
+		result ^= this.blue != other.blue;
+		return result;
+	}
+	/++ isSimilar compares two colours for similarity.
+	+ Since precision isn't always equal, this function treats colour channels of greater precision as if they were
+	+ ranges and tests if the channel of lesser precision falls within it. If channels have equal precision, this is
+	+ identical to equality.
+	+/
+	bool isSimilar(Colour)(Colour other) const @safe pure if (isColourFormat!Colour) {
+		bool channelSimilar(size_t thisSize, size_t otherSize)(uint thisValue, uint otherValue) {
+			static if (thisSize > otherSize) {
+				thisValue >>= thisSize - otherSize;
+			} else static if (thisSize < otherSize) {
+				otherValue >>= otherSize - thisSize;
+			}
+			return thisValue == otherValue;
+		}
+		bool result = true;
+		static if (hasAlpha!(typeof(this)) && hasAlpha!Colour) {
+			result ^= !channelSimilar!(this.alphaSize, other.alphaSize)(this.alpha, other.alpha);
+		}
+		result ^= !channelSimilar!(this.redSize, other.redSize)(this.red, other.red);
+		result ^= !channelSimilar!(this.greenSize, other.greenSize)(this.green, other.green);
+		result ^= !channelSimilar!(this.blueSize, other.blueSize)(this.blue, other.blue);
+		return result;
+	}
+}
+
+@safe pure unittest {
+	import tilemagic.colours.formats : BGR555, RGB888, RGBA8888;
+	assert(RGB888(255, 255, 255).isSimilar(RGB888(255, 255, 255)));
+	assert(RGB888(255, 255, 255).isSimilar(RGBA8888(255, 255, 255)));
+	assert(RGBA8888(255, 255, 255).isSimilar(RGB888(255, 255, 255)));
+	assert(!RGBA8888(255, 255, 255, 72).isSimilar(RGBA8888(255, 255, 255, 0)));
+	assert(RGB888(255, 255, 255).isSimilar(BGR555(31, 31, 31)));
+	assert(RGB888(248, 248, 248).isSimilar(BGR555(31, 31, 31)));
+	assert(RGB888(247, 58, 16).isSimilar(BGR555(31, 31, 31)));
 }

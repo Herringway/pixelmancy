@@ -50,7 +50,7 @@ struct RGBGeneric(RGBChannel[] channels) {
 		import std.format : formattedWrite;
 		sink.formattedWrite("RGBA(%s, %s, %s, %s)", red, green, blue, alpha);
 	}
-	mixin colourConstructors;
+	mixin colourCommon;
 	mixin(bitfields!(fields));
 }
 
@@ -225,7 +225,7 @@ T colourConvert(T, size_t Size1, size_t Size2, Source)(Source val ) {
 	}
 }
 
-mixin template colourConstructors() {
+mixin template colourCommon() {
 	import tilemagic.colours.formats : AnalogRGB, AnalogRGBA;
 	this(uint red, uint green, uint blue) pure @safe
 		in(red < (1<<redSize), "Red value out of range")

@@ -353,5 +353,5 @@ mixin template colourCommon() {
 	assert(!RGBA8888(255, 255, 255, 72).isSimilar(RGBA8888(255, 255, 255, 0)));
 	assert(RGB888(255, 255, 255).isSimilar(BGR555(31, 31, 31)));
 	assert(RGB888(248, 248, 248).isSimilar(BGR555(31, 31, 31)));
-	assert(RGB888(247, 58, 16).isSimilar(BGR555(31, 31, 31)));
+	assert(RGB888(247, 58, 16).isSimilar(BGR555(30, 31, 31)));
 }

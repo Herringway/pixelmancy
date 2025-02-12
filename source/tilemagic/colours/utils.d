@@ -3,8 +3,6 @@ module tilemagic.colours.utils;
 import std.algorithm;
 import std.traits;
 
-package:
-
 enum Channel {
 	red,
 	green,

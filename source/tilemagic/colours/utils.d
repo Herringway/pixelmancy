@@ -313,11 +313,11 @@ mixin template colourCommon() {
 	bool opEquals(typeof(this) other) const @safe pure {
 		bool result = true;
 		static if (hasAlpha!(typeof(this))) {
-			result ^= this.alpha != other.alpha;
+			result &= this.alpha == other.alpha;
 		}
-		result ^= this.red != other.red;
-		result ^= this.green != other.green;
-		result ^= this.blue != other.blue;
+		result &= this.red == other.red;
+		result &= this.green == other.green;
+		result &= this.blue == other.blue;
 		return result;
 	}
 	/++ isSimilar compares two colours for similarity.
@@ -336,11 +336,11 @@ mixin template colourCommon() {
 		}
 		bool result = true;
 		static if (hasAlpha!(typeof(this)) && hasAlpha!Colour) {
-			result ^= !channelSimilar!(this.alphaSize, other.alphaSize)(this.alpha, other.alpha);
+			result &= channelSimilar!(this.alphaSize, other.alphaSize)(this.alpha, other.alpha);
 		}
-		result ^= !channelSimilar!(this.redSize, other.redSize)(this.red, other.red);
-		result ^= !channelSimilar!(this.greenSize, other.greenSize)(this.green, other.green);
-		result ^= !channelSimilar!(this.blueSize, other.blueSize)(this.blue, other.blue);
+		result &= channelSimilar!(this.redSize, other.redSize)(this.red, other.red);
+		result &= channelSimilar!(this.greenSize, other.greenSize)(this.green, other.green);
+		result &= channelSimilar!(this.blueSize, other.blueSize)(this.blue, other.blue);
 		return result;
 	}
 }
@@ -353,5 +353,6 @@ mixin template colourCommon() {
 	assert(!RGBA8888(255, 255, 255, 72).isSimilar(RGBA8888(255, 255, 255, 0)));
 	assert(RGB888(255, 255, 255).isSimilar(BGR555(31, 31, 31)));
 	assert(RGB888(248, 248, 248).isSimilar(BGR555(31, 31, 31)));
-	assert(RGB888(247, 58, 16).isSimilar(BGR555(30, 31, 31)));
+	assert(RGB888(247, 58, 16).isSimilar(BGR555(30, 7, 2)));
+	assert(!RGB888(247, 58, 16).isSimilar(BGR555(30, 31, 31)));
 }

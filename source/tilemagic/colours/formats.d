@@ -1,3 +1,4 @@
+///
 module tilemagic.colours.formats;
 
 import tilemagic.colours.utils;
@@ -7,6 +8,7 @@ import std.bitmanip;
 import std.conv;
 import std.range;
 
+///
 alias BGR555 = RGBGeneric!([RGBChannel(Channel.red, 5), RGBChannel(Channel.green, 5), RGBChannel(Channel.blue, 5)]); // 0BBBBBGG GGGRRRRR
 static assert(BGR555.sizeof == 2);
 
@@ -21,27 +23,35 @@ static assert(BGR555.sizeof == 2);
 	assert(BGR555(red: 0, green: 31, blue: 31).rawInteger == 0x7FE0);
 }
 
+///
 alias RGB555 = RGBGeneric!([RGBChannel(Channel.blue, 5), RGBChannel(Channel.green, 5), RGBChannel(Channel.red, 5)]); // 0RRRRRGG GGGBBBBB
 static assert(RGB555.sizeof == 2);
 
-alias BGR565 = RGBGeneric!([RGBChannel(Channel.red, 5), RGBChannel(Channel.green, 6), RGBChannel(Channel.blue, 5)]); // BBBBBGGGGGGRRRRR
+///
+alias BGR565 = RGBGeneric!([RGBChannel(Channel.red, 5), RGBChannel(Channel.green, 6), RGBChannel(Channel.blue, 5)]); // BBBBBGGG GGGRRRRR
 static assert(BGR565.sizeof == 2);
 
+///
 alias BGR222 = RGBGeneric!([RGBChannel(Channel.red, 2), RGBChannel(Channel.green, 2), RGBChannel(Channel.blue, 2)]); // 00BBGGRR
 static assert(BGR222.sizeof == 1);
 
+///
 alias BGR333MD = RGBGeneric!([RGBChannel(Channel.red, 3), RGBChannel(Channel.padding, 1), RGBChannel(Channel.green, 3), RGBChannel(Channel.padding, 1), RGBChannel(Channel.blue, 3)]); // 0000BBB0 GGG0RRR0
 static assert(BGR333MD.sizeof == 2);
 
+///
 alias RGB888 = RGBGeneric!(ubyte, [Channel.red, Channel.green, Channel.blue]); // RRRRRRRR GGGGGGGG BBBBBBBB
 static assert(RGB888.sizeof == 3);
 
+///
 alias BGR888 = RGBGeneric!(ubyte, [Channel.blue, Channel.green, Channel.red]); // BBBBBBBB GGGGGGGG RRRRRRRR
 static assert(BGR888.sizeof == 3);
 
+///
 alias RGBA8888 = RGBGeneric!(ubyte, [Channel.red, Channel.green, Channel.blue, Channel.alpha]); // RRRRRRRR GGGGGGGG BBBBBBBB AAAAAAAA
 static assert(RGBA8888.sizeof == 4);
 
+///
 alias ARGB8888 = RGBGeneric!(ubyte, [Channel.alpha, Channel.red, Channel.green, Channel.blue]); // AAAAAAAA RRRRRRRR GGGGGGGG BBBBBBBB
 static assert(RGBA8888.sizeof == 4);
 
@@ -60,24 +70,33 @@ static assert(RGBA8888.sizeof == 4);
 	}
 }
 
+///
 alias BGRA8888 = RGBGeneric!(ubyte, [Channel.blue, Channel.green, Channel.red, Channel.alpha]); // BBBBBBBB GGGGGGGG RRRRRRRR AAAAAAAA
 static assert(BGRA8888.sizeof == 4);
 
+///
 alias ABGR8888 = RGBGeneric!(ubyte, [Channel.alpha, Channel.blue, Channel.green, Channel.red]); // AAAAAAAA BBBBBBBB GGGGGGGG RRRRRRRR
 static assert(ABGR8888.sizeof == 4);
 
+///
 alias AnalogRGBF = AnalogRGB!float;
+///
 alias AnalogRGBD = AnalogRGB!double;
+///
 alias AnalogRGBR = AnalogRGB!real;
 
+///
 struct AnalogRGB(Precision) {
 	Precision red;
 	Precision green;
 	Precision blue;
 }
 
+///
 alias AnalogRGBAF = AnalogRGBA!float;
+///
 alias AnalogRGBAD = AnalogRGBA!double;
+///
 alias AnalogRGBAR = AnalogRGBA!real;
 struct AnalogRGBA(Precision) {
 	Precision red;
@@ -86,9 +105,13 @@ struct AnalogRGBA(Precision) {
 	Precision alpha;
 }
 
+///
 alias HSVF = HSV!float;
+///
 alias HSVD = HSV!double;
+///
 alias HSVR = HSV!real;
+///
 struct HSV(Precision) {
 	Precision hue;
 	Precision saturation;
@@ -102,6 +125,7 @@ struct HSV(Precision) {
 		assert(value <= 1.0);
 	}
 }
+///
 struct HSVA(Precision) {
 	Precision hue;
 	Precision saturation;
@@ -369,6 +393,7 @@ Format toRGB(Format = RGB888, Precision = double)(HSVA!Precision input) @safe if
 	}
 }
 
+///
 struct ColourPair(Foreground, Background) if (isColourFormat!Foreground && isColourFormat!Background) {
 	Foreground foreground;
 	Background background;
@@ -384,6 +409,7 @@ struct ColourPair(Foreground, Background) if (isColourFormat!Foreground && isCol
 	}
 }
 
+///
 ColourPair!(Foreground, Background) colourPair(Foreground, Background)(Foreground foreground, Background background) if (isColourFormat!Foreground && isColourFormat!Background) {
 	return ColourPair!(Foreground, Background)(foreground, background);
 }
@@ -412,6 +438,7 @@ ColourPair!(Foreground, Background) colourPair(Foreground, Background)(Foregroun
 	}
 }
 
+///
 Target convert(Target, Source)(Source from) if (isColourFormat!Source && isColourFormat!Target) {
 	static if (is(Source : Target)) {
 		return from;
@@ -443,6 +470,7 @@ Target convert(Target, Source)(Source from) if (isColourFormat!Source && isColou
 	assert(RGB888(0, 0, 0).convert!BGR555 == BGR555(0, 0, 0));
 }
 
+///
 Format fromHex(Format = RGB888)(const string colour) @safe pure if (isColourFormat!Format) {
 	Format output;
 	string tmpStr = colour[];
@@ -539,6 +567,7 @@ enum RGBToYPbPrHDTVMatrix = [
 	[0.5, -0.454, -0.046],
 ];
 
+///
 struct YPbPr {
 	double Y;
 	double Pb;
@@ -565,6 +594,7 @@ enum YUVToRGBMatrix = [
 	[1.0, 2.032, 0.0],
 ];
 
+///
 struct YUV {
 	double Y;
 	double Cb;
@@ -631,6 +661,7 @@ enum RGBToYCbCrFullRangeMatrix = [
 	[0.500, -0.419, -0.081],
 ];
 
+///
 struct YCbCr {
 	double Y;
 	double Cb;

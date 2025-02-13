@@ -1,3 +1,4 @@
+///
 module tilemagic.colours;
 
 public import tilemagic.colours.formats;

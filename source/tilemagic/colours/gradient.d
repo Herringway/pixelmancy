@@ -1,8 +1,10 @@
+///
 module tilemagic.colours.gradient;
 
 import tilemagic.colours.formats;
 import tilemagic.colours.utils;
 
+///
 struct Gradient {
 	ulong index;
 	ulong count;

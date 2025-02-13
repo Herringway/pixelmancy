@@ -1,3 +1,4 @@
+///
 module tilemagic.colours.raw;
 
 import std.conv;

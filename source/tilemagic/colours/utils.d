@@ -1,3 +1,4 @@
+///
 module tilemagic.colours.utils;
 
 import std.algorithm;

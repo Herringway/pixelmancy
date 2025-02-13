@@ -78,6 +78,9 @@ struct RGBGeneric(T, Channel[] channels) {
 		import std.format : formattedWrite;
 		sink.formattedWrite("RGBA(%s, %s, %s, %s)", red, green, blue, alpha);
 	}
+	size_t toHash() const @safe nothrow {
+		return this.rawInteger;
+	}
 	mixin colourCommon;
 }
 

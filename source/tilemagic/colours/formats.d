@@ -453,7 +453,7 @@ Format fromHex(Format = RGB888)(const string colour) @safe pure if (isColourForm
 		tmpStr.popFront();
 	}
 	enum alphaAdjustment = hasAlpha!Format ? 1 : 0;
-	if (tmpStr.length == 3 + alphaAdjustment) {
+	if ((tmpStr.length == 3 + alphaAdjustment) || (tmpStr.length == 3)) {
 		auto tmp = tmpStr[0].repeat(2);
 		output.red = tmp.parse!ubyte(16);
 		tmp = tmpStr[1].repeat(2);
@@ -461,10 +461,14 @@ Format fromHex(Format = RGB888)(const string colour) @safe pure if (isColourForm
 		tmp = tmpStr[2].repeat(2);
 		output.blue = tmp.parse!ubyte(16);
 		static if (hasAlpha!Format) {
-			tmp = tmpStr[3].repeat(2);
-			output.alpha = tmp.parse!ubyte(16);
+			if (tmpStr.length > 3) {
+				tmp = tmpStr[3].repeat(2);
+				output.alpha = tmp.parse!ubyte(16);
+			} else {
+				output.alpha = 255;
+			}
 		}
-	} else if (tmpStr.length == (3 + alphaAdjustment) * 2) {
+	} else if ((tmpStr.length == (3 + alphaAdjustment) * 2) || (tmpStr.length == 6)) {
 		auto tmp = tmpStr[0..2];
 		output.red = tmp.parse!ubyte(16);
 		tmp = tmpStr[2..4];
@@ -472,8 +476,12 @@ Format fromHex(Format = RGB888)(const string colour) @safe pure if (isColourForm
 		tmp = tmpStr[4..6];
 		output.blue = tmp.parse!ubyte(16);
 		static if (hasAlpha!Format) {
-			tmp = tmpStr[6..8];
-			output.alpha = tmp.parse!ubyte(16);
+			if (tmpStr.length > 6) {
+				tmp = tmpStr[6..8];
+				output.alpha = tmp.parse!ubyte(16);
+			} else {
+				output.alpha = 255;
+			}
 		}
 	}
 	return output;
@@ -481,9 +489,13 @@ Format fromHex(Format = RGB888)(const string colour) @safe pure if (isColourForm
 ///
 @safe pure unittest {
 	assert("#000000".fromHex == RGB888(0, 0, 0));
+	assert("#000000".fromHex!RGBA8888 == RGBA8888(0, 0, 0, 255));
 	assert("#FFFFFF".fromHex == RGB888(255, 255, 255));
+	assert("#FFFFFF".fromHex!RGBA8888 == RGBA8888(255, 255, 255, 255));
 	assert("FFFFFF".fromHex == RGB888(255, 255, 255));
 	assert("#FFF".fromHex == RGB888(255, 255, 255));
+	assert("#FFF".fromHex!RGBA8888 == RGBA8888(255, 255, 255, 255));
+	assert("#000".fromHex!RGBA8888 == RGBA8888(0, 0, 0, 255));
 	assert("#888".fromHex == RGB888(0x88, 0x88, 0x88));
 	assert("888".fromHex == RGB888(0x88, 0x88, 0x88));
 	assert("#FFFFFFFF".fromHex!RGBA8888 == RGBA8888(255, 255, 255, 255));

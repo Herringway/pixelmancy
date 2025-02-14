@@ -95,7 +95,7 @@
 	    // Allocate memory for image
 	    auto img = new TrueColorImage(w, h);
 	    // Rasterize
-	    rasterize(rast, image, 0, 0, 1, img.imageData.bytes.ptr, w, h, w*4);
+	    rasterize(rast, image, 0, 0, 1, img.bytes.ptr, w, h, w*4);
 
 	    // Delete
 	    image.kill();
@@ -107,6 +107,8 @@
   ---
  */
 module justimages.svg;
+
+import tilemagic.colours.formats;
 
 private import core.stdc.math : fabs, fabsf, atan2f, acosf, cosf, sinf, tanf, sqrt, sqrtf, floorf, ceilf, fmodf;
 
@@ -3770,7 +3772,7 @@ struct NSVGrasterizerS {
   ubyte* scanline;
   int cscanline;
 
-  ubyte* bitmap;
+  RGBA8888* bitmap;
   int width, height, stride;
 }
 
@@ -4713,7 +4715,7 @@ uint nsvg__applyOpacity (uint c, float u) {
 
 int nsvg__div255() (int x) { pragma(inline, true); return ((x+1)*257)>>16; }
 
-void nsvg__scanlineSolid (ubyte* dst, int count, ubyte* cover, int x, int y, float tx, float ty, float scale, const(NSVGcachedPaint)* cache) {
+void nsvg__scanlineSolid (RGBA8888* dst, int count, ubyte* cover, int x, int y, float tx, float ty, float scale, const(NSVGcachedPaint)* cache) {
   if (cache.type == NSVG.PaintType.Color) {
     int cr = cache.colors[0]&0xff;
     int cg = (cache.colors[0]>>8)&0xff;
@@ -4730,18 +4732,18 @@ void nsvg__scanlineSolid (ubyte* dst, int count, ubyte* cover, int x, int y, flo
       b = nsvg__div255(cb*a);
 
       // Blend over
-      r += nsvg__div255(ia*cast(int)dst[0]);
-      g += nsvg__div255(ia*cast(int)dst[1]);
-      b += nsvg__div255(ia*cast(int)dst[2]);
-      a += nsvg__div255(ia*cast(int)dst[3]);
+      r += nsvg__div255(ia*cast(int)dst.red);
+      g += nsvg__div255(ia*cast(int)dst.green);
+      b += nsvg__div255(ia*cast(int)dst.blue);
+      a += nsvg__div255(ia*cast(int)dst.alpha);
 
-      dst[0] = cast(ubyte)r;
-      dst[1] = cast(ubyte)g;
-      dst[2] = cast(ubyte)b;
-      dst[3] = cast(ubyte)a;
+      dst.red = cast(ubyte)r;
+      dst.green = cast(ubyte)g;
+      dst.blue = cast(ubyte)b;
+      dst.alpha = cast(ubyte)a;
 
       ++cover;
-      dst += 4;
+      dst++;
     }
   } else if (cache.type == NSVG.PaintType.LinearGradient) {
     // TODO: spread modes.
@@ -4772,18 +4774,18 @@ void nsvg__scanlineSolid (ubyte* dst, int count, ubyte* cover, int x, int y, flo
       int b = nsvg__div255(cb*a);
 
       // Blend over
-      r += nsvg__div255(ia*cast(int)dst[0]);
-      g += nsvg__div255(ia*cast(int)dst[1]);
-      b += nsvg__div255(ia*cast(int)dst[2]);
-      a += nsvg__div255(ia*cast(int)dst[3]);
+      r += nsvg__div255(ia*cast(int)dst.red);
+      g += nsvg__div255(ia*cast(int)dst.green);
+      b += nsvg__div255(ia*cast(int)dst.blue);
+      a += nsvg__div255(ia*cast(int)dst.alpha);
 
-      dst[0] = cast(ubyte)r;
-      dst[1] = cast(ubyte)g;
-      dst[2] = cast(ubyte)b;
-      dst[3] = cast(ubyte)a;
+      dst.red = cast(ubyte)r;
+      dst.green = cast(ubyte)g;
+      dst.blue = cast(ubyte)b;
+      dst.alpha = cast(ubyte)a;
 
       ++cover;
-      dst += 4;
+      dst++;
       fx += dx;
     }
   } else if (cache.type == NSVG.PaintType.RadialGradient) {
@@ -4819,18 +4821,18 @@ void nsvg__scanlineSolid (ubyte* dst, int count, ubyte* cover, int x, int y, flo
       int b = nsvg__div255(cb*a);
 
       // Blend over
-      r += nsvg__div255(ia*cast(int)dst[0]);
-      g += nsvg__div255(ia*cast(int)dst[1]);
-      b += nsvg__div255(ia*cast(int)dst[2]);
-      a += nsvg__div255(ia*cast(int)dst[3]);
+      r += nsvg__div255(ia*cast(int)dst.red);
+      g += nsvg__div255(ia*cast(int)dst.green);
+      b += nsvg__div255(ia*cast(int)dst.blue);
+      a += nsvg__div255(ia*cast(int)dst.alpha);
 
-      dst[0] = cast(ubyte)r;
-      dst[1] = cast(ubyte)g;
-      dst[2] = cast(ubyte)b;
-      dst[3] = cast(ubyte)a;
+      dst.red = cast(ubyte)r;
+      dst.green = cast(ubyte)g;
+      dst.blue = cast(ubyte)b;
+      dst.alpha = cast(ubyte)a;
 
       ++cover;
-      dst += 4;
+      dst++;
       fx += dx;
     }
   }
@@ -4918,64 +4920,64 @@ void nsvg__rasterizeSortedEdges (NSVGRasterizer r, float tx, float ty, float sca
     if (xmin < 0) xmin = 0;
     if (xmax > r.width-1) xmax = r.width-1;
     if (xmin <= xmax) {
-      nsvg__scanlineSolid(&r.bitmap[y*r.stride]+xmin*4, xmax-xmin+1, &r.scanline[xmin], xmin, y, tx, ty, scale, cache);
+      nsvg__scanlineSolid(&r.bitmap[y*r.stride / 4]+xmin, xmax-xmin+1, &r.scanline[xmin], xmin, y, tx, ty, scale, cache);
     }
   }
 
 }
 
-void nsvg__unpremultiplyAlpha (ubyte* image, int w, int h, int stride) {
+void nsvg__unpremultiplyAlpha (RGBA8888* image, int w, int h, int stride) {
   // Unpremultiply
   foreach (int y; 0..h) {
-    ubyte *row = &image[y*stride];
+    RGBA8888 *row = &image[y*stride / 4];
     foreach (int x; 0..w) {
-      int r = row[0], g = row[1], b = row[2], a = row[3];
+      int r = row.red, g = row.green, b = row.blue, a = row.alpha;
       if (a != 0) {
-        row[0] = cast(ubyte)(r*255/a);
-        row[1] = cast(ubyte)(g*255/a);
-        row[2] = cast(ubyte)(b*255/a);
+        row.red = cast(ubyte)(r*255/a);
+        row.green = cast(ubyte)(g*255/a);
+        row.blue = cast(ubyte)(b*255/a);
       }
-      row += 4;
+      row++;
     }
   }
 
   // Defringe
   foreach (int y; 0..h) {
-    ubyte *row = &image[y*stride];
+    RGBA8888 *row = &image[y*stride / 4];
     foreach (int x; 0..w) {
-      int r = 0, g = 0, b = 0, a = row[3], n = 0;
+      int r = 0, g = 0, b = 0, a = row.alpha, n = 0;
       if (a == 0) {
-        if (x-1 > 0 && row[-1] != 0) {
-          r += row[-4];
-          g += row[-3];
-          b += row[-2];
+        if (x-1 > 0 && row[-1].alpha != 0) {
+          r += row[-1].red;
+          g += row[-1].green;
+          b += row[-1].blue;
           n++;
         }
-        if (x+1 < w && row[7] != 0) {
-          r += row[4];
-          g += row[5];
-          b += row[6];
+        if (x+1 < w && row[1].alpha != 0) {
+          r += row[1].red;
+          g += row[1].green;
+          b += row[1].blue;
           n++;
         }
-        if (y-1 > 0 && row[-stride+3] != 0) {
-          r += row[-stride];
-          g += row[-stride+1];
-          b += row[-stride+2];
+        if (y-1 > 0 && row[-stride / 4].alpha != 0) {
+          r += row[-stride / 4].red;
+          g += row[-stride / 4].green;
+          b += row[-stride / 4].blue;
           n++;
         }
-        if (y+1 < h && row[stride+3] != 0) {
-          r += row[stride];
-          g += row[stride+1];
-          b += row[stride+2];
+        if (y+1 < h && row[stride / 4].alpha != 0) {
+          r += row[stride / 4].red;
+          g += row[stride / 4].green;
+          b += row[stride / 4].blue;
           n++;
         }
         if (n > 0) {
-          row[0] = cast(ubyte)(r/n);
-          row[1] = cast(ubyte)(g/n);
-          row[2] = cast(ubyte)(b/n);
+          row.red = cast(ubyte)(r/n);
+          row.green = cast(ubyte)(g/n);
+          row.blue = cast(ubyte)(b/n);
         }
       }
-      row += 4;
+      row++;
     }
   }
 }
@@ -5056,7 +5058,7 @@ extern(C) {
  *   h = height of the image to render
  *   stride = number of bytes per scaleline in the destination buffer
  */
-public void rasterize (NSVGRasterizer r, const(NSVG)* image, float tx, float ty, float scale, ubyte* dst, int w, int h, int stride=-1) {
+public void rasterize (NSVGRasterizer r, const(NSVG)* image, float tx, float ty, float scale, RGBA8888* dst, int w, int h, int stride=-1) {
   const(NSVG.Shape)* shape = null;
   NSVGedge* e = null;
   NSVGcachedPaint cache;

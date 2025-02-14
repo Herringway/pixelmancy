@@ -17,6 +17,8 @@
 module justimages.png;
 
 import core.memory;
+import tilemagic.colours.formats;
+import tilemagic.util;
 
 private ubyte[] readTrusted(string filename) @trusted {
 	import std.file : read;
@@ -43,17 +45,17 @@ MemoryImage readPng(string filename) @safe {
 @safe unittest {
 	{
 		const png = readPng("samples/test.png");
-		assert(png[0, 0] == Color(0, 0, 255, 255));
-		assert(png[128, 0] == Color(0, 255, 0, 255));
-		assert(png[0, 128] == Color(255, 0, 0, 255));
-		assert(png[128, 128] == Color(0, 0, 0, 0));
+		assert(png[0, 0] == RGBA8888(0, 0, 255, 255));
+		assert(png[128, 0] == RGBA8888(0, 255, 0, 255));
+		assert(png[0, 128] == RGBA8888(255, 0, 0, 255));
+		assert(png[128, 128] == RGBA8888(0, 0, 0, 0));
 	}
 	{
 		const png = readPng("samples/test8.png");
-		assert(png[0, 0] == Color(0, 0, 255, 255));
-		assert(png[128, 0] == Color(0, 255, 0, 255));
-		assert(png[0, 128] == Color(255, 0, 0, 255));
-		assert(png[128, 128] == Color(0, 0, 0, 0));
+		assert(png[0, 0] == RGBA8888(0, 0, 255, 255));
+		assert(png[128, 0] == RGBA8888(0, 255, 0, 255));
+		assert(png[0, 128] == RGBA8888(255, 0, 0, 255));
+		assert(png[128, 128] == RGBA8888(0, 0, 0, 0));
 	}
 }
 
@@ -121,14 +123,17 @@ enum PngType {
 	Saves an image from an existing array of pixel data. Note that depth other than 8 may not be implemented yet. Also note depth of 16 must be stored big endian
 +/
 void writePng(string filename, const ubyte[] data, int width, int height, PngType type, ubyte depth = 8) @safe {
+	writePng(filename, Array2D!(const ubyte)(width, height, data), type, depth);
+}
+void writePng(string filename, Array2D!(const ubyte) data, PngType type, ubyte depth = 8) @safe {
 	PngHeader h;
-	h.width = width;
-	h.height = height;
+	h.width = cast(uint)data.width;
+	h.height = cast(uint)data.height;
 	h.type = cast(ubyte) type;
 	h.depth = depth;
 
 	auto png = blankPNG(h);
-	addImageDatastreamToPng(data, png);
+	addImageDatastreamToPng(data[], png);
 
 	import std.file;
 	std.file.write(filename, writePng(png));
@@ -198,13 +203,13 @@ MemoryImage imageFromPng(PNG* png) @safe {
 		case 4: // greyscale with alpha
 			// this might be a different class eventually...
 			auto a = new TrueColorImage(h.width, h.height);
-			idata = a.imageData.bytes;
+			idata = cast(ubyte[])a.colours;
 			i = a;
 		break;
 		case 2: // truecolor
 		case 6: // truecolor with alpha
 			auto a = new TrueColorImage(h.width, h.height);
-			idata = a.imageData.bytes;
+			idata = cast(ubyte[])a.colours;
 			i = a;
 		break;
 		case 3: // indexed
@@ -403,11 +408,11 @@ PNG* pngFromImage(IndexedImage i) @safe {
 	}
 
 	for(int a = 0; a < i.palette.length; a++) {
-		palette.payload[a*3+0] = i.palette[a].r;
-		palette.payload[a*3+1] = i.palette[a].g;
-		palette.payload[a*3+2] = i.palette[a].b;
+		palette.payload[a*3+0] = i.palette[a].red;
+		palette.payload[a*3+1] = i.palette[a].green;
+		palette.payload[a*3+2] = i.palette[a].blue;
 		if(i.hasAlpha)
-			alpha.payload[a] = i.palette[a].a;
+			alpha.payload[a] = i.palette[a].alpha;
 	}
 
 	palette.checksum = crc("PLTE", palette.payload);
@@ -498,7 +503,7 @@ PNG* pngFromImage(TrueColorImage i) @safe {
 	// FIXME: optimize it if it is greyscale or doesn't use alpha alpha
 
 	auto png = blankPNG(h);
-	addImageDatastreamToPng(i.imageData.bytes, png);
+	addImageDatastreamToPng(cast(ubyte[])i.colours, png);
 
 	return png;
 }
@@ -940,7 +945,7 @@ ubyte[] getANDMask(PNG* p) {
 	ubyte[] data = getDatastream(p);
 	ubyte[] ufdata = new ubyte[h.height*((((h.width+7)/8)+3)&~3)]; // gotta pad to DWORDs...
 
-	Color[] colors = fetchPalette(p);
+	RGBA8888[] colors = fetchPalette(p);
 
 	int pos = 0, pos2 = (h.width/((h.depth == 8) ? 1 : 2)+1)*(h.height-1);
 	bool bits = false;
@@ -948,9 +953,9 @@ ubyte[] getANDMask(PNG* p) {
 		assert(data[pos2++] == 0);
 		for(int b = 0; b < h.width; b++) {
 			if(h.depth == 4) {
-				ufdata[pos/8] |= ((colors[bits? getLowNybble(data[pos2]) : getHighNybble(data[pos2])].a <= 30) << (7-(pos%8)));
+				ufdata[pos/8] |= ((colors[bits? getLowNybble(data[pos2]) : getHighNybble(data[pos2])].alpha <= 30) << (7-(pos%8)));
 			} else
-				ufdata[pos/8] |= ((colors[data[pos2]].a == 0) << (7-(pos%8)));
+				ufdata[pos/8] |= ((colors[data[pos2]].alpha == 0) << (7-(pos%8)));
 			pos++;
 			if(h.depth == 4) {
 				if(bits) {
@@ -1071,14 +1076,14 @@ RGBQUAD[] fetchPaletteWin32(PNG* p) {
 	See_Also:
 		[replacePalette]
 +/
-Color[] fetchPalette(PNG* p) @safe {
-	Color[] colors;
+RGBA8888[] fetchPalette(PNG* p) @safe {
+	RGBA8888[] colors;
 
 	auto header = getHeader(p);
 	if(header.type == 0) { // greyscale
 		colors.length = 256;
 		foreach(i; 0..256)
-			colors[i] = Color(cast(ubyte) i, cast(ubyte) i, cast(ubyte) i);
+			colors[i] = RGBA8888(cast(ubyte) i, cast(ubyte) i, cast(ubyte) i);
 		return colors;
 	}
 
@@ -1092,13 +1097,13 @@ Color[] fetchPalette(PNG* p) @safe {
 	colors.length = palette.size / 3;
 
 	for(int i = 0; i < colors.length; i++) {
-		colors[i].r = palette.payload[i*3+0];
-		colors[i].g = palette.payload[i*3+1];
-		colors[i].b = palette.payload[i*3+2];
+		colors[i].red = palette.payload[i*3+0];
+		colors[i].green = palette.payload[i*3+1];
+		colors[i].blue = palette.payload[i*3+2];
 		if(alpha !is null && i < alpha.size)
-			colors[i].a = alpha.payload[i];
+			colors[i].alpha = alpha.payload[i];
 		else
-			colors[i].a = 255;
+			colors[i].alpha = 255;
 
 		//writefln("%2d: %3d %3d %3d %3d", i, colors[i].r, colors[i].g, colors[i].b, colors[i].a);
 	}
@@ -1112,7 +1117,7 @@ Color[] fetchPalette(PNG* p) @safe {
 	See_Also:
 		[fetchPalette]
 +/
-void replacePalette(PNG* p, Color[] colors) {
+void replacePalette(PNG* p, RGBA8888[] colors) {
 	auto palette = p.getChunk("PLTE");
 	auto alpha = p.getChunkNullable("tRNS");
 
@@ -1126,11 +1131,11 @@ void replacePalette(PNG* p, Color[] colors) {
 	p.length = 0; // so write will recalculate
 
 	for(int i = 0; i < colors.length; i++) {
-		palette.payload[i*3+0] = colors[i].r;
-		palette.payload[i*3+1] = colors[i].g;
-		palette.payload[i*3+2] = colors[i].b;
+		palette.payload[i*3+0] = colors[i].red;
+		palette.payload[i*3+1] = colors[i].green;
+		palette.payload[i*3+2] = colors[i].blue;
 		if(alpha)
-			alpha.payload[i] = colors[i].a;
+			alpha.payload[i] = colors[i].alpha;
 	}
 
 	palette.checksum = crc("PLTE", palette.payload);
@@ -1180,23 +1185,8 @@ import std.exception;
 import std.string;
 //import std.conv;
 
-/*
-struct Color {
-	ubyte r;
-	ubyte g;
-	ubyte b;
-	ubyte a;
-
-	string toString() {
-		return format("#%2x%2x%2x %2x", r, g, b, a);
-	}
-}
-*/
-
-//import justimages.simpledisplay;
-
 struct RgbaScanline {
-	Color[] pixels;
+	RGBA8888[] pixels;
 }
 
 
@@ -1238,7 +1228,7 @@ auto convertToGreyscale(ImageLines)(ImageLines lines)
 					cast(int) c.r * 0.30 +
 					cast(int) c.g * 0.59 +
 					cast(int) c.b * 0.11);
-				current.pixels[i] = Color(v, v, v, c.a);
+				current.pixels[i] = RGBA8888(v, v, v, c.a);
 			}
 			lines.popFront;
 		}
@@ -1393,7 +1383,7 @@ struct LazyPngFile(LazyPngChunksProvider)
 
 					auto offset = 0;
 					foreach(i; 0 .. palette.length) {
-						palette[i] = Color(
+						palette[i] = RGBA8888(
 							chunk.payload[offset+0],
 							chunk.payload[offset+1],
 							chunk.payload[offset+2],
@@ -1409,7 +1399,7 @@ struct LazyPngFile(LazyPngChunksProvider)
 						palette.length = chunk.size;
 
 					foreach(i, a; chunk.payload)
-						palette[i].a = a;
+						palette[i].alpha = a;
 				break;
 				case "IDAT":
 					// leave the datastream for later
@@ -1493,7 +1483,7 @@ struct LazyPngFile(LazyPngChunksProvider)
 			RgbaScanline current;
 			PngHeader header;
 			int bpp;
-			Color[] palette;
+			RGBA8888[] palette;
 
 			bool isEmpty = false;
 
@@ -1545,7 +1535,7 @@ struct LazyPngFile(LazyPngChunksProvider)
 						case 0: // greyscale
 						case 4: // grey with alpha
 							auto value = data[offset++];
-							current.pixels[i] = Color(
+							current.pixels[i] = RGBA8888(
 								value,
 								value,
 								value,
@@ -1558,7 +1548,7 @@ struct LazyPngFile(LazyPngChunksProvider)
 						break;
 						case 2: // truecolor
 						case 6: // true with alpha
-							current.pixels[i] = Color(
+							current.pixels[i] = RGBA8888(
 								data[offset++],
 								data[offset++],
 								data[offset++],
@@ -1602,7 +1592,7 @@ struct LazyPngFile(LazyPngChunksProvider)
 	}
 
 	PngHeader header;
-	Color[] palette;
+	RGBA8888[] palette;
 }
 
 // FIXME: doesn't handle interlacing... I think

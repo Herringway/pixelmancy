@@ -92,6 +92,16 @@ MemoryImage[] loadIco(string filename) {
 	import std.file;
 	return loadIcoFromMemory(cast(const(ubyte)[]) std.file.read(filename));
 }
+/*@safe*/ unittest {
+	import tilemagic.colours.formats : RGBA8888;
+	{
+		const ico = loadIco("samples/test.ico")[0];
+		assert(ico[0, 0] == RGBA8888(0, 0, 255, 255));
+		assert(ico[64, 0] == RGBA8888(0, 255, 0, 255));
+		assert(ico[0, 64] == RGBA8888(255, 0, 0, 255));
+		assert(ico[64, 64] == RGBA8888(0, 0, 0, 0));
+	}
+}
 
 /// ditto
 MemoryImage[] loadIcoFromMemory(const(ubyte)[] data) {
@@ -235,16 +245,37 @@ void loadIcoOrCurFromMemoryCallback(
 void writeIco(string filename, MemoryImage[] images) {
 	writeIcoOrCur(filename, false, cast(int) images.length, (int idx) { return IcoCursor(images[idx]); });
 }
+/// ditto
+ubyte[] writeIco(MemoryImage[] images) {
+	return encodeIcoOrCur(false, cast(int) images.length, (int idx) { return IcoCursor(images[idx]); });
+}
+/*@safe*/ unittest {
+	import tilemagic.colours.formats : RGBA8888;
+	// round-tripping...
+	{
+		const ico = loadIcoFromMemory(writeIco(loadIco("samples/test.ico")))[0];
+		assert(ico[0, 0] == RGBA8888(0, 0, 255, 255));
+		assert(ico[64, 0] == RGBA8888(0, 255, 0, 255));
+		assert(ico[0, 64] == RGBA8888(255, 0, 0, 255));
+		assert(ico[64, 64] == RGBA8888(0, 0, 0, 0));
+	}
+}
+
 
 /// ditto
 void writeCur(string filename, IcoCursor[] images) {
 	writeIcoOrCur(filename, true, cast(int) images.length, (int idx) { return images[idx]; });
 }
 
+/// ditto
+ubyte[] encodeCur(IcoCursor[] images) {
+	return encodeIcoOrCur(true, cast(int) images.length, (int idx) { return images[idx]; });
+}
+
 /++
 	Save implementation. Api subject to change.
 +/
-void writeIcoOrCur(string filename, bool isCursor, int count, scope IcoCursor delegate(int) getImageAndHotspots) {
+ubyte[] encodeIcoOrCur(bool isCursor, int count, scope IcoCursor delegate(int) getImageAndHotspots) {
 	IcoHeader header;
 	header.reserved = 0;
 	header.imageType = isCursor ? 2 : 1;
@@ -318,7 +349,9 @@ void writeIcoOrCur(string filename, bool isCursor, int count, scope IcoCursor de
 	}
 
 	assert(pos == dataFilePos);
-
+	return data;
+}
+void writeIcoOrCur(string filename, bool isCursor, int count, scope IcoCursor delegate(int) getImageAndHotspots) {
 	import std.file;
-	std.file.write(filename, data);
+	std.file.write(filename, encodeIcoOrCur(isCursor, count, getImageAndHotspots));
 }

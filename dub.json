@@ -2,6 +2,9 @@
 	"name": "justimages",
 	"targetType": "library",
 	"description": "Image reading/writing library",
-	"authors": ["Adam D. Ruppe"],
+	"authors": ["Adam D. Ruppe", "Herringway"],
+	"dependencies": {
+		"tilemagic": "*"
+	},
 	"license":"BSL-1.0"
 }

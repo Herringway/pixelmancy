@@ -137,14 +137,14 @@ public TrueColorImage imageResize(int Components=4) (MemoryImage msrcimg, int ds
   scope(failure) .destroy(resimg);
   if (auto tc = cast(TrueColorImage)msrcimg) {
     imageResize!Components(
-      delegate (Color[] destrow, int y) { destrow[] = tc.imageData.colors[y*tc.width..(y+1)*tc.width]; },
-      delegate (int y, const(Color)[] row) { resimg.imageData.colors[y*resimg.width..(y+1)*resimg.width] = row[]; },
+      delegate (Color[] destrow, int y) { destrow[] = tc.colors[y*tc.width..(y+1)*tc.width]; },
+      delegate (int y, const(Color)[] row) { resimg.colors[y*resimg.width..(y+1)*resimg.width] = row[]; },
       msrcimg.width, msrcimg.height, dstwdt, dsthgt, filter, gamma, filterScale
     );
   } else {
     imageResize!Components(
       delegate (Color[] destrow, int y) { foreach (immutable x, ref c; destrow) c = msrcimg.getPixel(cast(int)x, y); },
-      delegate (int y, const(Color)[] row) { resimg.imageData.colors[y*resimg.width..(y+1)*resimg.width] = row[]; },
+      delegate (int y, const(Color)[] row) { resimg.colors[y*resimg.width..(y+1)*resimg.width] = row[]; },
       msrcimg.width, msrcimg.height, dstwdt, dsthgt, filter, gamma, filterScale
     );
   }

@@ -5,6 +5,9 @@
 module justimages.bmp;
 
 import justimages.color;
+import tilemagic.colours.formats;
+
+import std.conv;
 
 /// Reads a .bmp file from the given `filename`
 MemoryImage readBmp(string filename) {
@@ -50,6 +53,15 @@ MemoryImage readBmp(in ubyte[] data, bool lookForFileHeader = true, bool hackAro
 	return readBmpIndirect(&specialFread, lookForFileHeader, hackAround64BitLongs, hasAndMask);
 }
 
+/*@safe*/ unittest {
+	{
+		const bmp = readBmp("samples/test24.bmp");
+		assert(bmp[0, 0] == RGBA8888(0, 0, 255, 255));
+		assert(bmp[128, 0] == RGBA8888(0, 255, 0, 255));
+		assert(bmp[0, 128] == RGBA8888(255, 0, 0, 255));
+		assert(bmp[128, 128] == RGBA8888(255, 255, 255, 255));
+	}
+}
 /++
 	Reads using a delegate to read instead of assuming a direct file. View the source of `readBmp`'s overloads for fairly simple examples of how you can use it
 
@@ -243,8 +255,8 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 
 			/+
 			this the algorithm btw
-			keep.imageData.bytes[] &= tci.imageData.bytes[andOffset .. $];
-			keep.imageData.bytes[] ^= tci.imageData.bytes[0 .. andOffset];
+			keep.bytes[] &= tci.bytes[andOffset .. $];
+			keep.bytes[] ^= tci.bytes[0 .. andOffset];
 			+/
 		} catch(Exception e) {
 			// discard; the and mask is optional in practice since using all 0's
@@ -269,9 +281,9 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 			auto r = read1();
 			auto reserved = read1();
 
-			img.palette ~= Color(r, g, b);
+			img.palette ~= RGBA8888(r, g, b);
 		}
-		while (img.palette.length < (1 << bitsPerPixel)) img.palette ~= Color.transparent;
+		while (img.palette.length < (1 << bitsPerPixel)) img.palette ~= RGBA8888(0, 0, 0, 0);
 
 		// and the data
 		int bytesPerPixel = 1;
@@ -386,14 +398,14 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 			auto tp = img.palette.length;
 			if(tp < 256) {
 				// easy, there's room, just add an entry.
-				img.palette ~= Color.transparent;
+				img.palette ~= RGBA8888(0, 0, 0, 0);
 				img.hasAlpha = true;
 			} else {
 				// not enough room, gotta try to find something unused to overwrite...
 				// FIXME: could prolly use more caution here
 				auto selection = 39;
 
-				img.palette[selection] = Color.transparent;
+				img.palette[selection] = RGBA8888(0, 0, 0, 0);
 				img.hasAlpha = true;
 				tp = selection;
 			}
@@ -402,7 +414,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 				processAndMask(delegate int(int x, int y, bool transparent) {
 					auto existing = img.data[y * img.width + x];
 
-					if(img.palette[existing] == Color.black && transparent) {
+					if(img.palette[existing] == RGBA8888(0, 0, 0, 255) && transparent) {
 						// import std.stdio; write("O");
 						img.data[y * img.width + x] = cast(ubyte) tp;
 					} else {
@@ -459,23 +471,21 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 					else
 						alpha = 255;
 
-					img.imageData.bytes[offset + 2] = cast(ubyte) blue;
-					img.imageData.bytes[offset + 1] = cast(ubyte) green;
-					img.imageData.bytes[offset + 0] = cast(ubyte) red;
-					img.imageData.bytes[offset + 3] = cast(ubyte) alpha;
+					img.colours[offset / 4] = RGBA8888(cast(ubyte) red, cast(ubyte) green, cast(ubyte) blue, cast(ubyte) alpha);
 				} else {
 					assert(compression == 0);
 
 					if(bitsPerPixel == 24 || bitsPerPixel == 32) {
-						img.imageData.bytes[offset + 2] = read1(); // b
-						img.imageData.bytes[offset + 1] = read1(); // g
-						img.imageData.bytes[offset + 0] = read1(); // r
+						ubyte blue = read1();
+						ubyte green = read1();
+						ubyte red = read1();
+						ubyte alpha = 255;
 						if(bitsPerPixel == 32) {
-							img.imageData.bytes[offset + 3] = read1(); // a
+							alpha = read1();
 							b++;
 						} else {
-							img.imageData.bytes[offset + 3] = 255; // a
 						}
+						img.colours[offset / 4] = RGBA8888(red, green, blue, alpha);
 						b += 3;
 					} else {
 						assert(bitsPerPixel == 16);
@@ -484,10 +494,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 						d |= cast(ushort)read1() << 8;
 							// we expect 8 bit numbers but these only give 5 bits of info,
 							// therefore we shift left 3 to get the right stuff.
-						img.imageData.bytes[offset + 0] = (d & 0b0111110000000000) >> (10-3);
-						img.imageData.bytes[offset + 1] = (d & 0b0000001111100000) >> (5-3);
-						img.imageData.bytes[offset + 2] = (d & 0b0000000000011111) << 3;
-						img.imageData.bytes[offset + 3] = 255; // r
+						img.colours[offset / 4] = RGBA8888((d & 0b0111110000000000) >> (10-3), (d & 0b0000001111100000) >> (5-3), (d & 0b0000000000011111) << 3, 255);
 						b += 2;
 					}
 				}
@@ -503,11 +510,11 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 
 		if(hasAndMask) {
 			processAndMask(delegate int(int x, int y, bool transparent) {
-				int offset = (y * img.width + x) * 4;
-				auto existing = img.imageData.bytes[offset + 3];
+				int offset = y * img.width + x;
+				auto existing = img.colours[offset].alpha;
 				// only use the and mask if the alpha channel appears unused
-				if(transparent && existing == 255)
-					img.imageData.bytes[offset + 3] = 0;
+				if(transparent && (existing == 255))
+					img.colours[offset].alpha = 0;
 				//import std.stdio; write(transparent ? "o":"x");
 
 				return 4;
@@ -538,6 +545,21 @@ void writeBmp(MemoryImage img, string filename) {
 
 	writeBmpIndirect(img, &my_fwrite, true);
 }
+ubyte[] encodeBmp(MemoryImage img) {
+	ubyte[] buffer;
+	writeBmpIndirect(img, (ubyte output) { buffer ~= output; }, true);
+	return buffer;
+}
+/*@safe*/ unittest {
+	// round tripping...
+	{
+		const bmp = readBmp(encodeBmp(readBmp("samples/test24.bmp")));
+		assert(bmp[0, 0] == RGBA8888(0, 0, 255, 255));
+		assert(bmp[128, 0] == RGBA8888(0, 255, 0, 255));
+		assert(bmp[0, 128] == RGBA8888(255, 0, 0, 255));
+		assert(bmp[128, 128] == RGBA8888(255, 255, 255, 255));
+	}
+}
 
 /++
 	Writes a bitmap file to a delegate, byte by byte, with data from the given image.
@@ -563,14 +585,14 @@ void writeBmpIndirect(MemoryImage img, scope void delegate(ubyte) fwrite, bool p
 	ushort bitsPerPixel;
 
 	ubyte[] data;
-	Color[] palette;
+	RGBA8888[] palette;
 
 	// FIXME we should be able to write RGBA bitmaps too, though it seems like not many
 	// programs correctly read them!
 
 	if(auto tci = cast(TrueColorImage) img) {
 		bitsPerPixel = 24;
-		data = tci.imageData.bytes;
+		data = cast(ubyte[])tci.colours[];
 		// we could also realistically do 16 but meh
 	} else if(auto pi = cast(IndexedImage) img) {
 		// FIXME: implement other bpps for more efficiency
@@ -628,9 +650,9 @@ void writeBmpIndirect(MemoryImage img, scope void delegate(ubyte) fwrite, bool p
 	// And here we write the palette
 	if(bitsPerPixel <= 8)
 		foreach(c; palette[0..(1 << bitsPerPixel)]){
-			write1(c.b);
-			write1(c.g);
-			write1(c.r);
+			write1(c.blue);
+			write1(c.green);
+			write1(c.red);
 			write1(0);
 		}
 

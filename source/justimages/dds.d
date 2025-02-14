@@ -33,7 +33,9 @@
 // D port and further changes by Ketmar // Invisible Vector
 module justimages.dds;
 
-import justimages.color : Color, TrueColorImage;
+import justimages.color : TrueColorImage;
+import tilemagic.colours;
+import std.algorithm.comparison : min;
 
 
 // ////////////////////////////////////////////////////////////////////////// //
@@ -87,11 +89,10 @@ public TrueColorImage ddsLoadFromMemory (const(void)[] buf) {
   auto tc = new TrueColorImage(w, h);
   scope(failure) .destroy(tc);
 
-  if (!DDSDecompress(dds, tc.imageData.colors)) throw new Exception("invalid dds image");
+  if (!DDSDecompress(dds, tc.colours)) throw new Exception("invalid dds image");
 
   return tc;
 }
-
 
 static import std.stdio;
 public TrueColorImage ddsLoadFromFile() (std.stdio.File fl) {
@@ -312,7 +313,7 @@ static assert(ddsAlphaBlock3BitLinear_t.sizeof == 8);
 
 
 // decompresses a dds texture into an rgba image buffer, returns 0 on success
-/*public*/ bool DDSDecompress (const(ddsBuffer_t)* dds, Color[] pixels) {
+/*public*/ bool DDSDecompress (const(ddsBuffer_t)* dds, RGBA8888[] pixels) {
   int width, height;
   DDSPixelFormat pf;
 
@@ -389,42 +390,42 @@ private void DDSDecodePixelFormat (const(ddsBuffer_t)* dds, DDSPixelFormat* pf) 
 
 
 // extracts colors from a dds color block
-private void DDSGetColorBlockColors (const(ddsColorBlock_t)* block, Color* colors) {
+private void DDSGetColorBlockColors (const(ddsColorBlock_t)* block, RGBA8888* colors) {
   ushort word;
 
   // color 0
   word = DDSLittleShort(block.colors.ptr[0]);
-  colors[0].a = 0xff;
+  colors[0].alpha = 0xff;
 
   // extract rgb bits
-  colors[0].b = cast(ubyte)word;
-  colors[0].b <<= 3;
-  colors[0].b |= (colors[0].b>>5);
+  colors[0].blue = cast(ubyte)word;
+  colors[0].blue <<= 3;
+  colors[0].blue |= (colors[0].blue>>5);
   word >>= 5;
-  colors[0].g = cast(ubyte)word;
-  colors[0].g <<= 2;
-  colors[0].g |= (colors[0].g>>5);
+  colors[0].green = cast(ubyte)word;
+  colors[0].green <<= 2;
+  colors[0].green |= (colors[0].green>>5);
   word >>= 6;
-  colors[0].r = cast(ubyte)word;
-  colors[0].r <<= 3;
-  colors[0].r |= (colors[0].r>>5);
+  colors[0].red = cast(ubyte)word;
+  colors[0].red <<= 3;
+  colors[0].red |= (colors[0].red>>5);
 
   // same for color 1
   word = DDSLittleShort(block.colors.ptr[1]);
-  colors[1].a = 0xff;
+  colors[1].alpha = 0xff;
 
   // extract rgb bits
-  colors[1].b = cast(ubyte)word;
-  colors[1].b <<= 3;
-  colors[1].b |= (colors[1].b>>5);
+  colors[1].blue = cast(ubyte)word;
+  colors[1].blue <<= 3;
+  colors[1].blue |= (colors[1].blue>>5);
   word >>= 5;
-  colors[1].g = cast(ubyte)word;
-  colors[1].g <<= 2;
-  colors[1].g |= (colors[1].g>>5);
+  colors[1].green = cast(ubyte)word;
+  colors[1].green <<= 2;
+  colors[1].green |= (colors[1].green>>5);
   word >>= 6;
-  colors[1].r = cast(ubyte)word;
-  colors[1].r <<= 3;
-  colors[1].r |= (colors[1].r>>5);
+  colors[1].red = cast(ubyte)word;
+  colors[1].red <<= 3;
+  colors[1].red |= (colors[1].red>>5);
 
   // use this for all but the super-freak math method
   if (block.colors.ptr[0] > block.colors.ptr[1]) {
@@ -432,49 +433,49 @@ private void DDSGetColorBlockColors (const(ddsColorBlock_t)* block, Color* color
        00 = color 0, 01 = color 1, 10 = color 2, 11 = color 3
        these two bit codes correspond to the 2-bit fields
        stored in the 64-bit block. */
-    word = (cast(ushort)colors[0].r*2+cast(ushort)colors[1].r)/3;
+    word = (cast(ushort)colors[0].red*2+cast(ushort)colors[1].red)/3;
                       // no +1 for rounding
                       // as bits have been shifted to 888
-    colors[2].r = cast(ubyte) word;
-    word = (cast(ushort)colors[0].g*2+cast(ushort)colors[1].g)/3;
-    colors[2].g = cast(ubyte) word;
-    word = (cast(ushort)colors[0].b*2+cast(ushort)colors[1].b)/3;
-    colors[2].b = cast(ubyte)word;
-    colors[2].a = 0xff;
+    colors[2].red = cast(ubyte) word;
+    word = (cast(ushort)colors[0].green*2+cast(ushort)colors[1].green)/3;
+    colors[2].green = cast(ubyte) word;
+    word = (cast(ushort)colors[0].blue*2+cast(ushort)colors[1].blue)/3;
+    colors[2].blue = cast(ubyte)word;
+    colors[2].alpha = 0xff;
 
-    word = (cast(ushort)colors[0].r+cast(ushort)colors[1].r*2)/3;
-    colors[3].r = cast(ubyte)word;
-    word = (cast(ushort)colors[0].g+cast(ushort)colors[1].g*2)/3;
-    colors[3].g = cast(ubyte)word;
-    word = (cast(ushort)colors[0].b+cast(ushort)colors[1].b*2)/3;
-    colors[3].b = cast(ubyte)word;
-    colors[3].a = 0xff;
+    word = (cast(ushort)colors[0].red+cast(ushort)colors[1].red*2)/3;
+    colors[3].red = cast(ubyte)word;
+    word = (cast(ushort)colors[0].green+cast(ushort)colors[1].green*2)/3;
+    colors[3].green = cast(ubyte)word;
+    word = (cast(ushort)colors[0].blue+cast(ushort)colors[1].blue*2)/3;
+    colors[3].blue = cast(ubyte)word;
+    colors[3].alpha = 0xff;
   } else {
     /* three-color block: derive the other color.
        00 = color 0, 01 = color 1, 10 = color 2,
        11 = transparent.
        These two bit codes correspond to the 2-bit fields
        stored in the 64-bit block */
-    word = (cast(ushort)colors[0].r+cast(ushort)colors[1].r)/2;
-    colors[2].r = cast(ubyte)word;
-    word = (cast(ushort)colors[0].g+cast(ushort)colors[1].g)/2;
-    colors[2].g = cast(ubyte)word;
-    word = (cast(ushort)colors[0].b+cast(ushort)colors[1].b)/2;
-    colors[2].b = cast(ubyte)word;
-    colors[2].a = 0xff;
+    word = (cast(ushort)colors[0].red+cast(ushort)colors[1].red)/2;
+    colors[2].red = cast(ubyte)word;
+    word = (cast(ushort)colors[0].green+cast(ushort)colors[1].green)/2;
+    colors[2].green = cast(ubyte)word;
+    word = (cast(ushort)colors[0].blue+cast(ushort)colors[1].blue)/2;
+    colors[2].blue = cast(ubyte)word;
+    colors[2].alpha = 0xff;
 
     // random color to indicate alpha
-    colors[3].r = 0x00;
-    colors[3].g = 0xff;
-    colors[3].b = 0xff;
-    colors[3].a = 0x00;
+    colors[3].red = 0x00;
+    colors[3].green = 0xff;
+    colors[3].blue = 0xff;
+    colors[3].alpha = 0x00;
   }
 }
 
 
 //decodes a dds color block
 //FIXME: make endian-safe
-private void DDSDecodeColorBlock (uint* pixel, const(ddsColorBlock_t)* block, int width, const(Color)* colors) {
+private void DDSDecodeColorBlock (uint* pixel, const(ddsColorBlock_t)* block, int width, const(RGBA8888)* colors) {
   int r, n;
   uint bits;
   static immutable uint[4] masks = [ 3, 12, 3<<4, 3<<6 ];  // bit masks = 00000011, 00001100, 00110000, 11000000
@@ -488,10 +489,10 @@ private void DDSDecodeColorBlock (uint* pixel, const(ddsColorBlock_t)* block, in
       bits = block.row.ptr[r]&masks.ptr[n];
       bits >>= shift.ptr[n];
       switch (bits) {
-        case 0: *pixel++ = colors[0].asUint; break;
-        case 1: *pixel++ = colors[1].asUint; break;
-        case 2: *pixel++ = colors[2].asUint; break;
-        case 3: *pixel++ = colors[3].asUint; break;
+        case 0: *pixel++ = colors[0].rawInteger; break;
+        case 1: *pixel++ = colors[1].rawInteger; break;
+        case 2: *pixel++ = colors[2].rawInteger; break;
+        case 3: *pixel++ = colors[3].rawInteger; break;
         default: ++pixel; break; // invalid
       }
     }
@@ -504,12 +505,12 @@ private void DDSDecodeColorBlock (uint* pixel, const(ddsColorBlock_t)* block, in
 private void DDSDecodeAlphaExplicit (uint* pixel, const(ddsAlphaBlockExplicit_t)* alphaBlock, int width, uint alphaZero) {
   int row, pix;
   ushort word;
-  Color color;
+  RGBA8888 color;
 
   // clear color
-  color.r = 0;
-  color.g = 0;
-  color.b = 0;
+  color.red = 0;
+  color.green = 0;
+  color.blue = 0;
 
   // walk rows
   for (row = 0; row < 4; ++row, pixel += width-4) {
@@ -518,8 +519,8 @@ private void DDSDecodeAlphaExplicit (uint* pixel, const(ddsAlphaBlockExplicit_t)
     for (pix = 0; pix < 4; ++pix) {
       // zero the alpha bits of image pixel
       *pixel &= alphaZero;
-      color.a = word&0x000F;
-      color.a = cast(ubyte)(color.a|(color.a<<4));
+      color.alpha = word&0x000F;
+      color.alpha = cast(ubyte)(color.alpha|(color.alpha<<4));
       *pixel |= *(cast(const(uint)*)&color);
       word >>= 4; // move next bits to lowest 4
       ++pixel; // move to next pixel in the row
@@ -534,7 +535,7 @@ private void DDSDecodeAlpha3BitLinear (uint* pixel, const(ddsAlphaBlock3BitLinea
   uint stuff;
   ubyte[4][4] bits;
   ushort[8] alphas;
-  Color[4][4] aColors;
+  RGBA8888[4][4] aColors;
 
   // get initial alphas
   alphas.ptr[0] = alphaBlock.alpha0;
@@ -603,10 +604,10 @@ private void DDSDecodeAlpha3BitLinear (uint* pixel, const(ddsAlphaBlock3BitLinea
   // decode the codes into alpha values
   for (row = 0; row < 4; ++row) {
     for (pix = 0; pix < 4; ++pix) {
-      aColors.ptr[row].ptr[pix].r = 0;
-      aColors.ptr[row].ptr[pix].g = 0;
-      aColors.ptr[row].ptr[pix].b = 0;
-      aColors.ptr[row].ptr[pix].a = cast(ubyte)alphas.ptr[bits.ptr[row].ptr[pix]];
+      aColors.ptr[row].ptr[pix].red = 0;
+      aColors.ptr[row].ptr[pix].green = 0;
+      aColors.ptr[row].ptr[pix].blue = 0;
+      aColors.ptr[row].ptr[pix].alpha = cast(ubyte)alphas.ptr[bits.ptr[row].ptr[pix]];
     }
   }
 
@@ -624,8 +625,8 @@ private void DDSDecodeAlpha3BitLinear (uint* pixel, const(ddsAlphaBlock3BitLinea
 
 
 // decompresses a dxt1 format texture
-private bool DDSDecompressDXT1 (const(ddsBuffer_t)* dds, int width, int height, Color* pixels) {
-  Color[4] colors;
+private bool DDSDecompressDXT1 (const(ddsBuffer_t)* dds, int width, int height, RGBA8888* pixels) {
+  RGBA8888[4] colors;
   immutable int xBlocks = width/4;
   immutable int yBlocks = height/4;
   // 8 bytes per block
@@ -644,19 +645,19 @@ private bool DDSDecompressDXT1 (const(ddsBuffer_t)* dds, int width, int height, 
 
 
 // decompresses a dxt3 format texture
-private bool DDSDecompressDXT3 (const(ddsBuffer_t)* dds, int width, int height, Color* pixels) {
-  Color[4] colors;
+private bool DDSDecompressDXT3 (const(ddsBuffer_t)* dds, int width, int height, RGBA8888* pixels) {
+  RGBA8888[4] colors;
 
   // setup
   immutable int xBlocks = width/4;
   immutable int yBlocks = height/4;
 
   // create zero alpha
-  colors.ptr[0].a = 0;
-  colors.ptr[0].r = 0xFF;
-  colors.ptr[0].g = 0xFF;
-  colors.ptr[0].b = 0xFF;
-  immutable uint alphaZero = colors.ptr[0].asUint;
+  colors.ptr[0].alpha = 0;
+  colors.ptr[0].red = 0xFF;
+  colors.ptr[0].green = 0xFF;
+  colors.ptr[0].blue = 0xFF;
+  immutable uint alphaZero = colors.ptr[0].rawInteger;
 
   // 8 bytes per block, 1 block for alpha, 1 block for color
   auto block = cast(const(ddsColorBlock_t)*)dds.data.ptr;
@@ -681,19 +682,19 @@ private bool DDSDecompressDXT3 (const(ddsBuffer_t)* dds, int width, int height, 
 
 
 // decompresses a dxt5 format texture
-private bool DDSDecompressDXT5 (const(ddsBuffer_t)* dds, int width, int height, Color* pixels) {
-  Color[4] colors;
+private bool DDSDecompressDXT5 (const(ddsBuffer_t)* dds, int width, int height, RGBA8888* pixels) {
+  RGBA8888[4] colors;
 
   // setup
   immutable int xBlocks = width/4;
   immutable int yBlocks = height/4;
 
   // create zero alpha
-  colors.ptr[0].a = 0;
-  colors.ptr[0].r = 0xFF;
-  colors.ptr[0].g = 0xFF;
-  colors.ptr[0].b = 0xFF;
-  immutable uint alphaZero = colors.ptr[0].asUint;
+  colors.ptr[0].alpha = 0;
+  colors.ptr[0].red = 0xFF;
+  colors.ptr[0].green = 0xFF;
+  colors.ptr[0].blue = 0xFF;
+  immutable uint alphaZero = colors.ptr[0].rawInteger;
 
   // 8 bytes per block, 1 block for alpha, 1 block for color
   auto block = cast(const(ddsColorBlock_t)*)dds.data.ptr;
@@ -718,20 +719,20 @@ private bool DDSDecompressDXT5 (const(ddsBuffer_t)* dds, int width, int height, 
 }
 
 
-private void unmultiply (Color[] pixels) {
+private void unmultiply (RGBA8888[] pixels) {
   // premultiplied alpha
-  foreach (ref Color clr; pixels) {
-    if (clr.a != 0) {
-      clr.r = Color.clampToByte(clr.r*255/clr.a);
-      clr.g = Color.clampToByte(clr.g*255/clr.a);
-      clr.b = Color.clampToByte(clr.b*255/clr.a);
+  foreach (ref RGBA8888 clr; pixels) {
+    if (clr.alpha != 0) {
+      clr.red = cast(ubyte)min(255, clr.red*255/clr.alpha);
+      clr.green = cast(ubyte)min(255, clr.green*255/clr.alpha);
+      clr.blue = cast(ubyte)min(255, clr.blue*255/clr.alpha);
     }
   }
 }
 
 
 // decompresses a dxt2 format texture (FIXME: un-premultiply alpha)
-private bool DDSDecompressDXT2 (const(ddsBuffer_t)* dds, int width, int height, Color* pixels) {
+private bool DDSDecompressDXT2 (const(ddsBuffer_t)* dds, int width, int height, RGBA8888* pixels) {
   // decompress dxt3 first
   if (!DDSDecompressDXT3(dds, width, height, pixels)) return false;
   //FIXME: is un-premultiply correct?
@@ -741,7 +742,7 @@ private bool DDSDecompressDXT2 (const(ddsBuffer_t)* dds, int width, int height, 
 
 
 // decompresses a dxt4 format texture (FIXME: un-premultiply alpha)
-private bool DDSDecompressDXT4 (const(ddsBuffer_t)* dds, int width, int height, Color* pixels) {
+private bool DDSDecompressDXT4 (const(ddsBuffer_t)* dds, int width, int height, RGBA8888* pixels) {
   // decompress dxt5 first
   if (!DDSDecompressDXT5(dds, width, height, pixels)) return false;
   //FIXME: is un-premultiply correct?
@@ -751,14 +752,14 @@ private bool DDSDecompressDXT4 (const(ddsBuffer_t)* dds, int width, int height, 
 
 
 // decompresses an argb 8888 format texture
-private bool DDSDecompressARGB8888 (const(ddsBuffer_t)* dds, int width, int height, Color* pixels) {
-  auto zin = cast(const(Color)*)dds.data.ptr;
+private bool DDSDecompressARGB8888 (const(ddsBuffer_t)* dds, int width, int height, RGBA8888* pixels) {
+  auto zin = cast(const(RGBA8888)*)dds.data.ptr;
   //pixels[0..width*height] = zin[0..width*height];
   foreach (immutable idx; 0..width*height) {
-    pixels.r = zin.b;
-    pixels.g = zin.g;
-    pixels.b = zin.r;
-    pixels.a = zin.a;
+    pixels.red = zin.blue;
+    pixels.green = zin.green;
+    pixels.blue = zin.red;
+    pixels.alpha = zin.alpha;
     ++pixels;
     ++zin;
   }
@@ -767,14 +768,14 @@ private bool DDSDecompressARGB8888 (const(ddsBuffer_t)* dds, int width, int heig
 
 
 // decompresses an rgb 888 format texture
-private bool DDSDecompressRGB888 (const(ddsBuffer_t)* dds, int width, int height, Color* pixels) {
+private bool DDSDecompressRGB888 (const(ddsBuffer_t)* dds, int width, int height, RGBA8888* pixels) {
   auto zin = cast(const(ubyte)*)dds.data.ptr;
   //pixels[0..width*height] = zin[0..width*height];
   foreach (immutable idx; 0..width*height) {
-    pixels.b = *zin++;
-    pixels.g = *zin++;
-    pixels.r = *zin++;
-    pixels.a = 255;
+    pixels.blue = *zin++;
+    pixels.green = *zin++;
+    pixels.red = *zin++;
+    pixels.alpha = 255;
     ++pixels;
   }
   return true;

@@ -11,6 +11,7 @@
 		Write support added February 27, 2021.
 +/
 module justimages.apng;
+import tilemagic.colours.formats;
 
 /// Demo creating one from scratch
 unittest {
@@ -163,7 +164,7 @@ class ApngFrame {
 		} else {
 			auto tci = new TrueColorImage(width, height);
 			frameData = tci;
-			data = tci.imageData.bytes;
+			data = cast(ubyte[])tci.colours;
 		}
 	}
 
@@ -176,7 +177,7 @@ class ApngFrame {
 		assert(frameData.height == frameControlChunk.height);
 
 		if(auto tci = cast(TrueColorImage) frameData) {
-			data = tci.imageData.bytes;
+			data = cast(ubyte[])tci.colours[];
 			assert(parent.header.type == 6);
 		} else if(auto ii = cast(IndexedImage) frameData) {
 			data = ii.data;
@@ -239,7 +240,7 @@ class ApngFrame {
 		} else { // FIXME: other types?!
 			auto i = new TrueColorImage(width, height);
 			img = i;
-			idata = i.imageData.bytes;
+			idata = cast(ubyte[])i.colours[];
 		}
 
 		const(ubyte)[] previousLine;
@@ -301,17 +302,17 @@ struct ApngRenderBuffer {
 			case APNG_DISPOSE_OP.BACKGROUND:
 				// clear area to 0
 				foreach(y; prevFcc.y_offset .. prevFcc.y_offset + prevFcc.height)
-					buffer.imageData.bytes[
-						4 * (prevFcc.x_offset + y * buffer.width)
+					buffer.colours[
+						(prevFcc.x_offset + y * buffer.width)
 						..
-						4 * (prevFcc.x_offset + prevFcc.width + y * buffer.width)
-					] = 0;
+						(prevFcc.x_offset + prevFcc.width + y * buffer.width)
+					] = RGBA8888(0, 0, 0, 0);
 				break;
 			case APNG_DISPOSE_OP.PREVIOUS:
 				// put the buffer back in
 
 				// this could prolly be more efficient, it only really cares about the prevFcc bounding box
-				buffer.imageData.bytes[] = previousFrame.imageData.bytes[];
+				buffer.colours[] = previousFrame.colours[];
 				break;
 		}
 
@@ -322,7 +323,7 @@ struct ApngRenderBuffer {
 			if(previousFrame is null){
 				previousFrame = buffer.clone();
 			} else {
-				previousFrame.imageData.bytes[] = buffer.imageData.bytes[];
+				previousFrame.colours[] = buffer.colours[];
 			}
 		}
 
@@ -330,19 +331,19 @@ struct ApngRenderBuffer {
 		foreach(y; fcc.y_offset .. fcc.y_offset + fcc.height) {
 			final switch(fcc.blend_op) {
 				case APNG_BLEND_OP.SOURCE:
-					buffer.imageData.bytes[
-						4 * (fcc.x_offset + y * buffer.width)
+					buffer.colours[
+						(fcc.x_offset + y * buffer.width)
 						..
-						4 * (fcc.x_offset + y * buffer.width + fcc.width)
-					] = convertedFrames[frameNumber].imageData.bytes[foff .. foff + fcc.width * 4];
-					foff += fcc.width * 4;
+						(fcc.x_offset + y * buffer.width + fcc.width)
+					] = convertedFrames[frameNumber].colours[foff .. foff + fcc.width];
+					foff += fcc.width;
 				break;
 				case APNG_BLEND_OP.OVER:
 					foreach(x; fcc.x_offset .. fcc.x_offset + fcc.width) {
-						buffer.imageData.colors[y * buffer.width + x] =
+						buffer.colours[y * buffer.width + x] =
 							alphaBlend(
-								convertedFrames[frameNumber].imageData.colors[foff],
-								buffer.imageData.colors[y * buffer.width + x]
+								convertedFrames[frameNumber].colours[foff],
+								buffer.colours[y * buffer.width + x]
 							);
 						foff++;
 					}
@@ -365,7 +366,7 @@ struct ApngRenderBuffer {
 class ApngAnimation {
 	PngHeader header;
 	AnimationControlChunk acc;
-	Color[] palette;
+	RGBA8888[] palette;
 	ApngFrame[] frames;
 	// default image? tho i can just load it as a png for that too.
 
@@ -380,7 +381,7 @@ class ApngAnimation {
 	/++
 		If palette is null, it is a true color image. If it has data, it is indexed.
 	+/
-	this(int width, int height, Color[] palette = null) {
+	this(int width, int height, RGBA8888[] palette = null) {
 		header.type = (palette !is null) ? 3 : 6;
 		header.width = width;
 		header.height = height;
@@ -678,6 +679,29 @@ ApngAnimation readApng(in ubyte[] data, bool strictApng = false, scope ApngAnima
 	return obj;
 }
 
+/*@safe*/ unittest {
+	import std.file : read;
+  {
+	auto apng = readApng(cast(ubyte[])read("samples/test.apng"));
+	assert(apng.acc.num_frames == 2); // 2 frames, 300 ms each
+	with (apng.frames[0]) {
+		populateData();
+		assert(frameControlChunk.delay_num == 300);
+		assert(frameData[0, 0] == RGBA8888(0, 0, 255, 255));
+		assert(frameData[128, 0] == RGBA8888(0, 255, 0, 255));
+		assert(frameData[0, 128] == RGBA8888(255, 0, 0, 255));
+		assert(frameData[128, 128] == RGBA8888(0, 0, 0, 0));
+	}
+	with (apng.frames[1]) {
+		populateData();
+		assert(frameControlChunk.delay_num == 300);
+		assert(frameData[0, 0] == RGBA8888(255, 0, 0, 255));
+		assert(frameData[128, 0] == RGBA8888(0, 0, 255, 255));
+		assert(frameData[0, 128] == RGBA8888(0, 255, 0, 255));
+		assert(frameData[128, 128] == RGBA8888(0, 0, 0, 0));
+	}
+  }
+}
 
 /++
 	It takes the apng file and feeds the file data to your `sink` delegate, the given file,
@@ -701,7 +725,7 @@ void writeApngToData(ApngAnimation apng, scope void delegate(in ubyte[] data) si
 	// FIXME: it might be better to just legit use the first frame but meh gotta check size and stuff too
 	auto render = apng.renderer();
 	render.nextFrame();
-	auto data = render.buffer.imageData.bytes;
+	auto data = cast(ubyte[])render.buffer.colours[];
 	addImageDatastreamToPng(data, p, false);
 
 	// then the frames
@@ -792,4 +816,28 @@ ubyte[] getApngBytes(ApngAnimation apng) {
 	ubyte[] ret;
 	writeApngToData(apng, (in ubyte[] data) { ret ~= data; });
 	return ret;
+}
+
+/*@safe*/ unittest {
+	import std.file : read;
+  {
+	auto apng = readApng(getApngBytes(readApng(cast(ubyte[])read("samples/test.apng"))));
+	assert(apng.acc.num_frames == 2); // 2 frames, 300 ms each
+	with (apng.frames[0]) {
+		populateData();
+		assert(frameControlChunk.delay_num == 300);
+		assert(frameData[0, 0] == RGBA8888(0, 0, 255, 255));
+		assert(frameData[128, 0] == RGBA8888(0, 255, 0, 255));
+		assert(frameData[0, 128] == RGBA8888(255, 0, 0, 255));
+		assert(frameData[128, 128] == RGBA8888(0, 0, 0, 0));
+	}
+	with (apng.frames[1]) {
+		populateData();
+		assert(frameControlChunk.delay_num == 300);
+		assert(frameData[0, 0] == RGBA8888(255, 0, 0, 255));
+		assert(frameData[128, 0] == RGBA8888(0, 0, 255, 255));
+		assert(frameData[0, 128] == RGBA8888(0, 255, 0, 255));
+		assert(frameData[128, 128] == RGBA8888(0, 0, 0, 0));
+	}
+  }
 }

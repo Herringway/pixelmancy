@@ -2,6 +2,7 @@
 //TODO: other bpp formats besides 8 and 24
 module justimages.pcx;
 
+import tilemagic.colours.formats;
 import justimages.color;
 import std.stdio : File; // sorry
 
@@ -66,6 +67,16 @@ public MemoryImage loadPcx(T:const(char)[]) (T fname) {
     } else {
       return loadPcx(File(fname.idup), fname);
     }
+  }
+}
+
+/*@safe*/ unittest {
+  {
+    const pcx = loadPcx("samples/test.pcx");
+    assert(pcx[0, 0] == RGBA8888(0, 0, 255, 255));
+    assert(pcx[128, 0] == RGBA8888(0, 255, 0, 255));
+    assert(pcx[0, 128] == RGBA8888(255, 0, 0, 255));
+    assert(pcx[128, 128] == RGBA8888(0, 0, 0, 0));
   }
 }
 
@@ -201,31 +212,30 @@ private MemoryImage loadPcxImpl(ST) (auto ref ST fl, const(char)[] filename) {
     } else {
       // 24bpp
       auto src = line;
-      auto dest = timg.imageData.bytes.ptr+(wdt*4)*y; //RGBA
       if (hdr.colorplanes != 1) {
         // planar
         foreach (immutable x; 0..wdt) {
-          *dest++ = src[0]; // red
-          *dest++ = src[hdr.bytesperline]; // green
-          *dest++ = src[hdr.bytesperline*2]; // blue
+          const red = src[0];
+          const green = src[hdr.bytesperline];
+          const blue = src[hdr.bytesperline*2];
+          ubyte alpha = 255;
           if (hasAlpha) {
-            *dest++ = src[hdr.bytesperline*3]; // blue
-          } else {
-            *dest++ = 255; // alpha (opaque)
+            alpha = src[hdr.bytesperline*3];
           }
+          timg.colours[wdt * y + x] = RGBA8888(red, green, blue, alpha);
           ++src;
         }
       } else {
         // flat
         foreach (immutable x; 0..wdt) {
-          *dest++ = *src++; // red
-          *dest++ = *src++; // green
-          *dest++ = *src++; // blue
+          const red = *src++;
+          const green = *src++;
+          const blue = *src++;
+          ubyte alpha = 255;
           if (hasAlpha) {
-            *dest++ = *src++; // alpha
-          } else {
-            *dest++ = 255; // alpha (opaque)
+            alpha = *src++;
           }
+          timg.colours[wdt * y + x] = RGBA8888(red, green, blue, alpha);
         }
       }
     }
@@ -246,7 +256,7 @@ private MemoryImage loadPcxImpl(ST) (auto ref ST fl, const(char)[] filename) {
       int b = line[cidx*3+2]*255/63;
       iimg.palette[cidx] = Color(r, g, b, 255);
       */
-      iimg.palette[cidx] = Color(line[cidx*3+0], line[cidx*3+1], line[cidx*3+2], 255);
+      iimg.palette[cidx] = RGBA8888(line[cidx*3+0], line[cidx*3+1], line[cidx*3+2], 255);
     }
     return iimg;
   } else {

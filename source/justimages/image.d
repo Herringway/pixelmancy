@@ -24,6 +24,7 @@ public import justimages.dds;
 public import justimages.svg;
 
 public import justimages.imageresize;
+import tilemagic.colours.formats;
 
 import core.memory;
 
@@ -39,17 +40,28 @@ MemoryImage readSvg(const(ubyte)[] rawData) {
     if(image is null)
     	return null;
 
-    int w = cast(int) image.width + 1;
-    int h = cast(int) image.height + 1;
+    int w = cast(int) image.width;
+    int h = cast(int) image.height;
 
     NSVGRasterizer rast = nsvgCreateRasterizer();
     auto img = new TrueColorImage(w, h);
-    rasterize(rast, image, 0, 0, 1, img.imageData.bytes.ptr, w, h, w*4);
+    rasterize(rast, image, 0, 0, 1, img.colours.ptr, w, h, w*4);
     image.kill();
 
     return img;
 }
-
+/*@safe*/ unittest {
+  {
+    auto rendered = readSvg("samples/test.svg");
+    writePng("rendered.png", rendered);
+    assert(rendered.width == 256);
+    assert(rendered.height == 256);
+    assert(rendered[0, 0] == RGBA8888(0, 0, 255, 255));
+    assert(rendered[128, 0] == RGBA8888(0, 255, 0, 255));
+    assert(rendered[0, 128] == RGBA8888(255, 0, 0, 255));
+    assert(rendered[128, 128].alpha == 0); // the colour from the adjacent squares bleeds over a bit, but if it's fully transparent it's fine
+  }
+}
 
 private bool strEquCI (const(char)[] s0, const(char)[] s1) pure nothrow @safe @nogc {
   if (s0.length != s1.length) return false;

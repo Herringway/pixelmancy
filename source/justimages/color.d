@@ -6,7 +6,6 @@
 +/
 module justimages.color;
 
-import justimages.core;
 import tilemagic.colours.formats;
 
 @safe:

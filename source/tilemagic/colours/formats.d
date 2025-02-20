@@ -416,11 +416,15 @@ struct ColourPair(Foreground, Background) if (isColourFormat!Foreground && isCol
 		return contrast >= 7.0;
 	}
 }
+/// ditto
+alias ColorPair = ColourPair;
 
 ///
 ColourPair!(Foreground, Background) colourPair(Foreground, Background)(Foreground foreground, Background background) if (isColourFormat!Foreground && isColourFormat!Background) {
 	return ColourPair!(Foreground, Background)(foreground, background);
 }
+/// ditto
+alias colorPair = colourPair;
 ///
 @safe pure unittest {
 	import std.math : isClose;

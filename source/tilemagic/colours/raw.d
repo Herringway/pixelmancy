@@ -17,36 +17,42 @@ enum SupportedFormat { bgr555, bgr565, rgb24, rgba8888, bgr222, bgr333md }
 +		ColourFormat = colour format to convert to
 + Returns: a colour in the specified format
 +/
-ColourFormat bytesToColor(ColourFormat = RGB24)(const ubyte[] data) if (isColourFormat!ColourFormat) {
-	const result = bytesToColors!ColourFormat(data);
+ColourFormat bytesToColour(ColourFormat = RGB24)(const ubyte[] data) if (isColourFormat!ColourFormat) {
+	const result = bytesToColours!ColourFormat(data);
 	assert(result.length == 1);
 	return result[0];
 }
+/// ditto
+alias bytesToColor = bytesToColour;
 ///
 @safe pure unittest {
-	assert(bytesToColor!BGR555([0xA9, 0xFF]) == BGR555(red: 9, green: 29, blue: 31));
-	assert(bytesToColor!BGR565([0xA9, 0xFF]) == BGR565(red: 9, green: 61, blue: 31));
-	assert(bytesToColor!RGB24([72, 244, 248]) == RGB24(72, 244, 248));
+	assert(bytesToColour!BGR555([0xA9, 0xFF]) == BGR555(red: 9, green: 29, blue: 31));
+	assert(bytesToColour!BGR565([0xA9, 0xFF]) == BGR565(red: 9, green: 61, blue: 31));
+	assert(bytesToColour!RGB24([72, 244, 248]) == RGB24(72, 244, 248));
 }
 /**
 * Reinterprets an array of bytes as an array of colours.
 * Params: data = Raw bytes to reinterpret
 */
-const(ColourFormat)[] bytesToColors(ColourFormat = RGB24)(const ubyte[] data) if (isColourFormat!ColourFormat) {
+const(ColourFormat)[] bytesToColours(ColourFormat = RGB24)(const ubyte[] data) if (isColourFormat!ColourFormat) {
 	return cast(const(ColourFormat)[])data;
 }
+/// ditto
+alias bytesToColors = bytesToColours;
 ///
 @safe pure unittest {
-	assert(bytesToColors!BGR555([0xA9, 0xFF]) == [BGR555(red: 9, green: 29, blue: 31)]);
-	assert(bytesToColors!BGR555([0xA9, 0xFF, 0x0, 0x0]) == [BGR555(red: 9, green: 29, blue: 31), BGR555(0, 0, 0)]);
-	assert(bytesToColors!BGR565([0xA9, 0xFF]) == [BGR565(red: 9, green: 61, blue: 31)]);
-	assert(bytesToColors!RGB24([72, 244, 248]) == [RGB24(red: 72, green: 244, blue: 248)]);
+	assert(bytesToColours!BGR555([0xA9, 0xFF]) == [BGR555(red: 9, green: 29, blue: 31)]);
+	assert(bytesToColours!BGR555([0xA9, 0xFF, 0x0, 0x0]) == [BGR555(red: 9, green: 29, blue: 31), BGR555(0, 0, 0)]);
+	assert(bytesToColours!BGR565([0xA9, 0xFF]) == [BGR565(red: 9, green: 61, blue: 31)]);
+	assert(bytesToColours!RGB24([72, 244, 248]) == [RGB24(red: 72, green: 244, blue: 248)]);
 }
 
 ubyte[Format.sizeof] colourToBytes(Format)(Format data) if (isColourFormat!Format) {
 	import tilemagic.colours.utils : asBytes;
 	return data.asBytes();
 }
+/// ditto
+alias colorToBytes = colourToBytes;
 ///
 @safe pure unittest {
 	assert(colourToBytes(BGR555(9, 29, 31)) == [0xA9, 0x7F]);
@@ -90,8 +96,10 @@ ubyte[] colourToBytes(T)(T data, SupportedFormat format) if (isColourFormat!T) {
 ColourFormat integerToColour(ColourFormat, Endian endianness = endian)(ClosestInteger!(ColourFormat.sizeof) integer) if (isColourFormat!ColourFormat){
 	import std.bitmanip : nativeToBigEndian, nativeToLittleEndian;
 	ubyte[typeof(integer).sizeof] bytes = endianness == Endian.littleEndian ? nativeToLittleEndian(integer) : nativeToBigEndian(integer);
-	return bytesToColor!ColourFormat(bytes[]);
+	return bytesToColour!ColourFormat(bytes[]);
 }
+/// ditto
+alias integerToColor = integerToColour;
 ///
 @safe pure unittest {
 	assert(integerToColour!BGR555(0x7FFF) == BGR555(red: 31, green: 31, blue: 31));
@@ -104,6 +112,8 @@ ClosestInteger!(ColourFormat.sizeof) colourToInteger(Endian endianness = endian,
 	auto raw = colourToBytes(colour);
 	return endianness == Endian.littleEndian ? littleEndianToNative!(typeof(return))(raw) : bigEndianToNative!(typeof(return))(raw);
 }
+/// ditto
+alias colorToInteger = colourToInteger;
 ///
 @safe pure unittest {
 	assert(colourToInteger(BGR555(red: 31, green: 31, blue: 31)) == 0x7FFF);

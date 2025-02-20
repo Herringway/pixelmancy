@@ -136,7 +136,7 @@ ubyte[T.sizeof] asBytes(T)(T input) {
 }
 
 enum isColourFormat(T) = hasRed!T && hasGreen!T && hasBlue!T;
-
+alias isColorFormat = isColourFormat;
 enum hasRed(T) = __traits(hasMember, T, "redSize") && (T.redSize > 0);
 enum hasGreen(T) = __traits(hasMember, T, "greenSize") && (T.greenSize > 0);
 enum hasBlue(T) = __traits(hasMember, T, "blueSize") && (T.blueSize > 0);
@@ -245,7 +245,7 @@ T colourConvert(T, size_t Size1, size_t Size2, Source)(Source val ) {
 		return cast(T)val;
 	}
 }
-
+alias colorConvert = colourConvert;
 mixin template colourCommon() {
 	import tilemagic.colours.formats : AnalogRGB, AnalogRGBA;
 	this(uint red, uint green, uint blue) pure @safe

@@ -464,7 +464,7 @@ Target convert(Target, Source)(Source from) if (isColourFormat!Source && isColou
 		static if (hasAlpha!Source && hasAlpha!Target) {
 			output.alpha = colourConvert!(typeof(output.alpha), Target.alphaSize, Source.alphaSize)(from.alpha);
 		} else static if (hasAlpha!Target) {
-			output.alpha = output.alpha.max;
+			output.alpha = maxAlpha!Target;
 		}
 		return output;
 	}
@@ -476,6 +476,7 @@ Target convert(Target, Source)(Source from) if (isColourFormat!Source && isColou
 	assert(BGR555(0, 0, 0).convert!RGB24 == RGB24(0, 0, 0));
 	assert(RGB24(248, 248, 248).convert!BGR555 == BGR555(31,31,31));
 	assert(RGB24(0, 0, 0).convert!BGR555 == BGR555(0, 0, 0));
+	assert(RGB24(0, 0, 0).convert!ABGR8888 == ABGR8888(0, 0, 0, 255));
 }
 
 ///

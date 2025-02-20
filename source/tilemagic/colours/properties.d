@@ -11,11 +11,11 @@ Precision relativeLuminosity(Precision = double, Colour)(const Colour colour) if
 }
 ///
 @safe pure unittest {
-	import tilemagic.colours.formats : BGR555, RGB888;
+	import tilemagic.colours.formats : BGR555, RGB24;
 	import std.math : isClose;
-	assert(RGB888(0, 0, 0).relativeLuminosity.isClose(0.0));
-	assert(RGB888(255, 255, 255).relativeLuminosity.isClose(1.0));
-	assert(RGB888(250, 112, 20).relativeLuminosity.isClose(0.3196284130));
+	assert(RGB24(0, 0, 0).relativeLuminosity.isClose(0.0));
+	assert(RGB24(255, 255, 255).relativeLuminosity.isClose(1.0));
+	assert(RGB24(250, 112, 20).relativeLuminosity.isClose(0.3196284130));
 	assert(BGR555(0, 16, 31).relativeLuminosity.isClose(0.2361773154));
 }
 
@@ -27,12 +27,12 @@ Precision contrast(Precision = double, Colour1, Colour2)(const Colour1 colour1, 
 }
 ///
 @safe pure unittest {
-	import tilemagic.colours.formats : RGB888;
+	import tilemagic.colours.formats : RGB24;
 	import std.math : isClose;
-	assert(contrast(RGB888(0, 0, 0), RGB888(0, 0, 0)).isClose(1.0));
-	assert(contrast(RGB888(0, 0, 0), RGB888(255, 255, 255)).isClose(21.0));
-	assert(contrast(RGB888(255, 255, 255), RGB888(0, 0, 0)).isClose(21.0));
-	assert(contrast(RGB888(255, 255, 255), RGB888(250, 112, 20)).isClose(2.8406907130));
+	assert(contrast(RGB24(0, 0, 0), RGB24(0, 0, 0)).isClose(1.0));
+	assert(contrast(RGB24(0, 0, 0), RGB24(255, 255, 255)).isClose(21.0));
+	assert(contrast(RGB24(255, 255, 255), RGB24(0, 0, 0)).isClose(21.0));
+	assert(contrast(RGB24(255, 255, 255), RGB24(250, 112, 20)).isClose(2.8406907130));
 }
 
 Colour complementary(Colour)(const Colour colour) if (isColourFormat!Colour) {
@@ -50,9 +50,9 @@ Colour complementary(Colour)(const Colour colour) if (isColourFormat!Colour) {
 }
 ///
 @safe pure unittest {
-	import tilemagic.colours.formats : RGB888;
-	assert(RGB888(0, 0, 0).complementary == RGB888(255, 255, 255));
-	assert(RGB888(255, 255, 255).complementary == RGB888(0, 0, 0));
-	assert(RGB888(0, 255, 255).complementary == RGB888(255, 0, 0));
-	assert(RGB888(0, 128, 0).complementary == RGB888(255, 127, 255));
+	import tilemagic.colours.formats : RGB24;
+	assert(RGB24(0, 0, 0).complementary == RGB24(255, 255, 255));
+	assert(RGB24(255, 255, 255).complementary == RGB24(0, 0, 0));
+	assert(RGB24(0, 255, 255).complementary == RGB24(255, 0, 0));
+	assert(RGB24(0, 128, 0).complementary == RGB24(255, 127, 255));
 }

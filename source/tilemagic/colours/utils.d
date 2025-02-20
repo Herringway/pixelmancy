@@ -180,17 +180,17 @@ void alphaFP(Precision, Colour)(ref Colour colour, Precision value) if (hasAlpha
 }
 
 @safe pure unittest {
-	import tilemagic.colours.formats : RGB888;
+	import tilemagic.colours.formats : RGB24;
 	import std.math : isClose;
-	assert(RGB888(255, 128, 0).redFP() == 1.0);
-	assert(RGB888(255, 128, 0).greenFP().isClose(0.5019607843137254));
-	assert(RGB888(255, 128, 0).blueFP() == 0.0);
-	assert(RGB888(0, 255, 128).redFP() == 0.0);
-	assert(RGB888(0, 255, 128).greenFP() == 1.0);
-	assert(RGB888(0, 255, 128).blueFP().isClose(0.5019607843137254));
-	assert(RGB888(128, 0, 255).redFP().isClose(0.5019607843137254));
-	assert(RGB888(128, 0, 255).greenFP() == 0.0);
-	assert(RGB888(128, 0, 255).blueFP() == 1.0);
+	assert(RGB24(255, 128, 0).redFP() == 1.0);
+	assert(RGB24(255, 128, 0).greenFP().isClose(0.5019607843137254));
+	assert(RGB24(255, 128, 0).blueFP() == 0.0);
+	assert(RGB24(0, 255, 128).redFP() == 0.0);
+	assert(RGB24(0, 255, 128).greenFP() == 1.0);
+	assert(RGB24(0, 255, 128).blueFP().isClose(0.5019607843137254));
+	assert(RGB24(128, 0, 255).redFP().isClose(0.5019607843137254));
+	assert(RGB24(128, 0, 255).greenFP() == 0.0);
+	assert(RGB24(128, 0, 255).blueFP() == 1.0);
 }
 
 template LinearFormatOf(ColourFormat, Precision) {
@@ -347,16 +347,36 @@ mixin template colourCommon() {
 		result &= channelSimilar!(this.blueSize, other.blueSize)(this.blue, other.blue);
 		return result;
 	}
+	/++ isSimilar compares two colours for similarity.
+	+/
+	bool isSimilar(Colour)(Colour other, int tolerance) const @safe pure if (isColourFormat!Colour) {
+		bool channelSimilar(size_t thisSize, size_t otherSize)(uint thisValue, uint otherValue) {
+			static if (thisSize > otherSize) {
+				thisValue >>= thisSize - otherSize;
+			} else static if (thisSize < otherSize) {
+				otherValue >>= otherSize - thisSize;
+			}
+			return (cast(long)thisValue >= cast(long)otherValue - tolerance) && (cast(long)thisValue <= cast(long)otherValue + tolerance);
+		}
+		bool result = true;
+		static if (hasAlpha!(typeof(this)) && hasAlpha!Colour) {
+			result &= channelSimilar!(this.alphaSize, other.alphaSize)(this.alpha, other.alpha);
+		}
+		result &= channelSimilar!(this.redSize, other.redSize)(this.red, other.red);
+		result &= channelSimilar!(this.greenSize, other.greenSize)(this.green, other.green);
+		result &= channelSimilar!(this.blueSize, other.blueSize)(this.blue, other.blue);
+		return result;
+	}
 }
 
 @safe pure unittest {
-	import tilemagic.colours.formats : BGR555, RGB888, RGBA8888;
-	assert(RGB888(255, 255, 255).isSimilar(RGB888(255, 255, 255)));
-	assert(RGB888(255, 255, 255).isSimilar(RGBA8888(255, 255, 255)));
-	assert(RGBA8888(255, 255, 255).isSimilar(RGB888(255, 255, 255)));
+	import tilemagic.colours.formats : BGR555, RGB24, RGBA8888;
+	assert(RGB24(255, 255, 255).isSimilar(RGB24(255, 255, 255)));
+	assert(RGB24(255, 255, 255).isSimilar(RGBA8888(255, 255, 255)));
+	assert(RGBA8888(255, 255, 255).isSimilar(RGB24(255, 255, 255)));
 	assert(!RGBA8888(255, 255, 255, 72).isSimilar(RGBA8888(255, 255, 255, 0)));
-	assert(RGB888(255, 255, 255).isSimilar(BGR555(31, 31, 31)));
-	assert(RGB888(248, 248, 248).isSimilar(BGR555(31, 31, 31)));
-	assert(RGB888(247, 58, 16).isSimilar(BGR555(30, 7, 2)));
-	assert(!RGB888(247, 58, 16).isSimilar(BGR555(30, 31, 31)));
+	assert(RGB24(255, 255, 255).isSimilar(BGR555(31, 31, 31)));
+	assert(RGB24(248, 248, 248).isSimilar(BGR555(31, 31, 31)));
+	assert(RGB24(247, 58, 16).isSimilar(BGR555(30, 7, 2)));
+	assert(!RGB24(247, 58, 16).isSimilar(BGR555(30, 31, 31)));
 }

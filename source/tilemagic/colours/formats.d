@@ -40,19 +40,27 @@ alias BGR333MD = RGBGeneric!([RGBChannel(Channel.red, 3), RGBChannel(Channel.pad
 static assert(BGR333MD.sizeof == 2);
 
 ///
-alias RGB888 = RGBGeneric!(ubyte, [Channel.red, Channel.green, Channel.blue]); // RRRRRRRR GGGGGGGG BBBBBBBB
-static assert(RGB888.sizeof == 3);
+alias RGB24 = RGBGeneric!(ubyte, [Channel.red, Channel.green, Channel.blue]); // [ RRRRRRRR GGGGGGGG BBBBBBBB ]
+static assert(RGB24.sizeof == 3);
+unittest {
+	version(LittleEndian) {
+		alias PackedFormat = ABGR8888;
+	} else {
+		alias PackedFormat = RGBA8888;
+	}
+	assert(RGB24(red: 255, green: 128, blue: 64).rawInteger == PackedFormat(red: 255, green: 128, blue: 64, alpha: 0).rawInteger);
+}
 
 ///
-alias BGR888 = RGBGeneric!(ubyte, [Channel.blue, Channel.green, Channel.red]); // BBBBBBBB GGGGGGGG RRRRRRRR
-static assert(BGR888.sizeof == 3);
+alias BGR24 = RGBGeneric!(ubyte, [Channel.blue, Channel.green, Channel.red]); // [ BBBBBBBB GGGGGGGG RRRRRRRR ]
+static assert(BGR24.sizeof == 3);
 
 ///
-alias RGBA8888 = RGBGeneric!(ubyte, [Channel.red, Channel.green, Channel.blue, Channel.alpha]); // RRRRRRRR GGGGGGGG BBBBBBBB AAAAAAAA
+alias RGBA8888 = RGBGeneric!([RGBChannel(Channel.alpha, 8), RGBChannel(Channel.blue, 8), RGBChannel(Channel.green, 8), RGBChannel(Channel.red, 8)]); // AAAAAAAA RRRRRRRR GGGGGGGG BBBBBBBB
 static assert(RGBA8888.sizeof == 4);
 
 ///
-alias ARGB8888 = RGBGeneric!(ubyte, [Channel.alpha, Channel.red, Channel.green, Channel.blue]); // AAAAAAAA RRRRRRRR GGGGGGGG BBBBBBBB
+alias ARGB8888 = RGBGeneric!([RGBChannel(Channel.red, 8), RGBChannel(Channel.green, 8), RGBChannel(Channel.blue, 8), RGBChannel(Channel.alpha, 8)]); // RRRRRRRR GGGGGGGG BBBBBBBB AAAAAAAA
 static assert(RGBA8888.sizeof == 4);
 
 @safe pure unittest {
@@ -71,11 +79,11 @@ static assert(RGBA8888.sizeof == 4);
 }
 
 ///
-alias BGRA8888 = RGBGeneric!(ubyte, [Channel.blue, Channel.green, Channel.red, Channel.alpha]); // BBBBBBBB GGGGGGGG RRRRRRRR AAAAAAAA
+alias BGRA8888 = RGBGeneric!([RGBChannel(Channel.alpha, 8), RGBChannel(Channel.red, 8), RGBChannel(Channel.green, 8), RGBChannel(Channel.blue, 8)]); // AAAAAAAA BBBBBBBB GGGGGGGG RRRRRRRR
 static assert(BGRA8888.sizeof == 4);
 
 ///
-alias ABGR8888 = RGBGeneric!(ubyte, [Channel.alpha, Channel.blue, Channel.green, Channel.red]); // AAAAAAAA BBBBBBBB GGGGGGGG RRRRRRRR
+alias ABGR8888 = RGBGeneric!([RGBChannel(Channel.red, 8), RGBChannel(Channel.green, 8), RGBChannel(Channel.blue, 8), RGBChannel(Channel.alpha, 8)]); // BBBBBBBB GGGGGGGG RRRRRRRR AAAAAAAA
 static assert(ABGR8888.sizeof == 4);
 
 ///
@@ -186,37 +194,37 @@ HSV!Precision toHSV(Precision = double, Format)(Format input) if (isColourFormat
 ///
 @safe unittest {
 	import std.math : isClose;
-	with(RGB888(0, 0, 0).toHSV) {
+	with(RGB24(0, 0, 0).toHSV) {
 		assert(hue == 0);
 		assert(saturation == 0);
 		assert(value == 0);
 	}
-	with(RGB888(0, 128, 192).toHSV) {
+	with(RGB24(0, 128, 192).toHSV) {
 		assert(hue.isClose(0.5555555555));
 		assert(saturation.isClose(1.0));
 		assert(value.isClose(0.7529411765));
 	}
-	with(RGB888(255, 255, 0).toHSV) {
+	with(RGB24(255, 255, 0).toHSV) {
 		assert(hue.isClose(0.1666666667));
 		assert(saturation.isClose(1.0));
 		assert(value.isClose(1.0));
 	}
-	with(RGB888(255, 0, 0).toHSV) {
+	with(RGB24(255, 0, 0).toHSV) {
 		assert(hue.isClose(0.0));
 		assert(saturation.isClose(1.0));
 		assert(value.isClose(1.0));
 	}
-	with(RGB888(255, 0, 255).toHSV) {
+	with(RGB24(255, 0, 255).toHSV) {
 		assert(hue.isClose(0.8333333333));
 		assert(saturation.isClose(1.0));
 		assert(value.isClose(1.0));
 	}
-	with(RGB888(0, 255, 0).toHSV) {
+	with(RGB24(0, 255, 0).toHSV) {
 		assert(hue.isClose(0.3333333333));
 		assert(saturation.isClose(1.0));
 		assert(value.isClose(1.0));
 	}
-	with(RGB888(0, 0, 255).toHSV) {
+	with(RGB24(0, 0, 255).toHSV) {
 		assert(hue.isClose(0.6666666667));
 		assert(saturation.isClose(1.0));
 		assert(value.isClose(1.0));
@@ -236,7 +244,7 @@ HSVA!Precision toHSVA(Precision = double, Format)(Format input) if (isColourForm
 ///
 @safe unittest {
 	import std.math : isClose;
-	with(RGB888(255, 0, 0).toHSVA) {
+	with(RGB24(255, 0, 0).toHSVA) {
 		assert(hue.isClose(0.0));
 		assert(saturation.isClose(1.0));
 		assert(value.isClose(1.0));
@@ -257,7 +265,7 @@ HSVA!Precision toHSVA(Precision = double, Format)(Format input) if (isColourForm
 }
 
 ///
-Format toRGB(Format = RGB888, Precision = double)(HSV!Precision input) @safe if (isColourFormat!Format) {
+Format toRGB(Format = RGB24, Precision = double)(HSV!Precision input) @safe if (isColourFormat!Format) {
 	static if (hasAlpha!Format) {
 		alias AnalogRGBT = AnalogRGBA!Precision;
 	} else {
@@ -313,59 +321,59 @@ Format toRGB(Format = RGB888, Precision = double)(HSV!Precision input) @safe if 
 }
 ///
 @safe unittest {
-	with(HSVD(0, 0, 0).toRGB!RGB888) {
+	with(HSVD(0, 0, 0).toRGB!RGB24) {
 		assert(red == 0);
 		assert(green == 0);
 		assert(blue == 0);
 	}
-	with(HSVD(0, 0, 0.5).toRGB!RGB888) {
+	with(HSVD(0, 0, 0.5).toRGB!RGB24) {
 		assert(red == 127);
 		assert(green == 127);
 		assert(blue == 127);
 	}
-	with(HSVD(0.5555555, 1.0, 0.752941).toRGB!RGB888) {
+	with(HSVD(0.5555555, 1.0, 0.752941).toRGB!RGB24) {
 		assert(red == 0);
 		assert(green == 128);
 		assert(blue == 191);
 	}
-	with(HSVD(0.166666667, 1.0, 1.0).toRGB!RGB888) {
+	with(HSVD(0.166666667, 1.0, 1.0).toRGB!RGB24) {
 		assert(red == 254);
 		assert(green == 255);
 		assert(blue == 0);
 	}
-	with(HSVD(0.0, 1.0, 1.0).toRGB!RGB888) {
+	with(HSVD(0.0, 1.0, 1.0).toRGB!RGB24) {
 		assert(red == 255);
 		assert(green == 0);
 		assert(blue == 0);
 	}
-	with(HSVD(0.83333333, 1.0, 1.0).toRGB!RGB888) {
+	with(HSVD(0.83333333, 1.0, 1.0).toRGB!RGB24) {
 		assert(red == 254);
 		assert(green == 0);
 		assert(blue == 255);
 	}
-	with(HSVD(0.33333333, 1.0, 1.0).toRGB!RGB888) {
+	with(HSVD(0.33333333, 1.0, 1.0).toRGB!RGB24) {
 		assert(red == 0);
 		assert(green == 255);
 		assert(blue == 0);
 	}
-	with(HSVD(0.66666667, 1.0, 1.0).toRGB!RGB888) {
+	with(HSVD(0.66666667, 1.0, 1.0).toRGB!RGB24) {
 		assert(red == 0);
 		assert(green == 0);
 		assert(blue == 255);
 	}
-	with(HSVD(0.41666667, 1.0, 1.0).toRGB!RGB888) {
+	with(HSVD(0.41666667, 1.0, 1.0).toRGB!RGB24) {
 		assert(red == 0);
 		assert(green == 255);
 		assert(blue == 127);
 	}
-	with(HSVD(0.91666667, 1.0, 1.0).toRGB!RGB888) {
+	with(HSVD(0.91666667, 1.0, 1.0).toRGB!RGB24) {
 		assert(red == 255);
 		assert(green == 0);
 		assert(blue == 127);
 	}
 }
 ///
-Format toRGB(Format = RGB888, Precision = double)(HSVA!Precision input) @safe if (isColourFormat!Format) {
+Format toRGB(Format = RGB24, Precision = double)(HSVA!Precision input) @safe if (isColourFormat!Format) {
 	Format result = HSV!Precision(input.hue, input.saturation, input.value).toRGB!Format();
 	static if (hasAlpha!Format) {
 		result.alphaFP = input.alpha;
@@ -386,7 +394,7 @@ Format toRGB(Format = RGB888, Precision = double)(HSVA!Precision input) @safe if
 		assert(blue == 127);
 		assert(alpha == 255);
 	}
-	with(HSVA!double(0, 0, 0.5, 1.0).toRGB!RGB888) {
+	with(HSVA!double(0, 0, 0.5, 1.0).toRGB!RGB24) {
 		assert(red == 127);
 		assert(green == 127);
 		assert(blue == 127);
@@ -416,22 +424,22 @@ ColourPair!(Foreground, Background) colourPair(Foreground, Background)(Foregroun
 ///
 @safe pure unittest {
 	import std.math : isClose;
-	with(colourPair(RGB888(0, 0, 0), RGB888(255, 255, 255))) {
+	with(colourPair(RGB24(0, 0, 0), RGB24(255, 255, 255))) {
 		assert(contrast.isClose(21.0));
 		assert(meetsWCAGAACriteria);
 		assert(meetsWCAGAAACriteria);
 	}
-	with(colourPair(RGB888(255, 255, 255), RGB888(255, 255, 255))) {
+	with(colourPair(RGB24(255, 255, 255), RGB24(255, 255, 255))) {
 		assert(contrast.isClose(1.0));
 		assert(!meetsWCAGAACriteria);
 		assert(!meetsWCAGAAACriteria);
 	}
-	with(colourPair(RGB888(0, 128, 255), RGB888(0, 0, 0))) {
+	with(colourPair(RGB24(0, 128, 255), RGB24(0, 0, 0))) {
 		assert(contrast.isClose(5.5316685936));
 		assert(meetsWCAGAACriteria);
 		assert(!meetsWCAGAAACriteria);
 	}
-	with(colourPair(BGR555(0, 16, 31), RGB888(0, 0, 0))) {
+	with(colourPair(BGR555(0, 16, 31), RGB24(0, 0, 0))) {
 		assert(contrast.isClose(5.7235463090));
 		assert(meetsWCAGAACriteria);
 		assert(!meetsWCAGAAACriteria);
@@ -464,14 +472,14 @@ Target convert(Target, Source)(Source from) if (isColourFormat!Source && isColou
 ///
 @safe pure unittest {
 	assert((const BGR555)(31,31,31).convert!BGR555 == BGR555(31, 31, 31));
-	assert(BGR555(31,31,31).convert!RGB888 == RGB888(248, 248, 248));
-	assert(BGR555(0, 0, 0).convert!RGB888 == RGB888(0, 0, 0));
-	assert(RGB888(248, 248, 248).convert!BGR555 == BGR555(31,31,31));
-	assert(RGB888(0, 0, 0).convert!BGR555 == BGR555(0, 0, 0));
+	assert(BGR555(31,31,31).convert!RGB24 == RGB24(248, 248, 248));
+	assert(BGR555(0, 0, 0).convert!RGB24 == RGB24(0, 0, 0));
+	assert(RGB24(248, 248, 248).convert!BGR555 == BGR555(31,31,31));
+	assert(RGB24(0, 0, 0).convert!BGR555 == BGR555(0, 0, 0));
 }
 
 ///
-Format fromHex(Format = RGB888)(const string colour) @safe pure if (isColourFormat!Format) {
+Format fromHex(Format = RGB24)(const string colour) @safe pure if (isColourFormat!Format) {
 	Format output;
 	string tmpStr = colour[];
 	if (colour.empty) {
@@ -516,16 +524,16 @@ Format fromHex(Format = RGB888)(const string colour) @safe pure if (isColourForm
 }
 ///
 @safe pure unittest {
-	assert("#000000".fromHex == RGB888(0, 0, 0));
+	assert("#000000".fromHex == RGB24(0, 0, 0));
 	assert("#000000".fromHex!RGBA8888 == RGBA8888(0, 0, 0, 255));
-	assert("#FFFFFF".fromHex == RGB888(255, 255, 255));
+	assert("#FFFFFF".fromHex == RGB24(255, 255, 255));
 	assert("#FFFFFF".fromHex!RGBA8888 == RGBA8888(255, 255, 255, 255));
-	assert("FFFFFF".fromHex == RGB888(255, 255, 255));
-	assert("#FFF".fromHex == RGB888(255, 255, 255));
+	assert("FFFFFF".fromHex == RGB24(255, 255, 255));
+	assert("#FFF".fromHex == RGB24(255, 255, 255));
 	assert("#FFF".fromHex!RGBA8888 == RGBA8888(255, 255, 255, 255));
 	assert("#000".fromHex!RGBA8888 == RGBA8888(0, 0, 0, 255));
-	assert("#888".fromHex == RGB888(0x88, 0x88, 0x88));
-	assert("888".fromHex == RGB888(0x88, 0x88, 0x88));
+	assert("#888".fromHex == RGB24(0x88, 0x88, 0x88));
+	assert("888".fromHex == RGB24(0x88, 0x88, 0x88));
 	assert("#FFFFFFFF".fromHex!RGBA8888 == RGBA8888(255, 255, 255, 255));
 	assert("#FFFF".fromHex!RGBA8888 == RGBA8888(255, 255, 255, 255));
 }

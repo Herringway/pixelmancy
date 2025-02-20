@@ -8,9 +8,9 @@ import tilemagic.colours.utils;
 struct Gradient {
 	ulong index;
 	ulong count;
-	RGB888 start;
-	RGB888 end;
-	RGB888 front;
+	RGB24 start;
+	RGB24 end;
+	RGB24 front;
 	void popFront() @safe pure {
 		popFrontN(1);
 	}
@@ -28,8 +28,8 @@ struct Gradient {
 	}
 	this(T)(T from, T to, ulong steps) if(isColourFormat!T){
 		count = steps;
-		start = front = from.convert!RGB888;
-		end = to.convert!RGB888;
+		start = front = from.convert!RGB24;
+		end = to.convert!RGB24;
 	}
 }
 ///
@@ -47,28 +47,28 @@ struct Gradient {
 		}
 		return true;
 	}
-	assert(closeEnough(Gradient(RGB888(255,0,0), RGB888(0,0,255), 20),
+	assert(closeEnough(Gradient(RGB24(255,0,0), RGB24(0,0,255), 20),
 		only(
-			RGB888(255, 0, 0),
-			RGB888(241, 0, 13),
-			RGB888(228, 0, 26),
-			RGB888(214, 0, 40),
-			RGB888(201, 0, 53),
-			RGB888(187, 0, 67),
-			RGB888(174, 0, 80),
-			RGB888(161, 0, 93),
-			RGB888(147, 0, 107),
-			RGB888(134, 0, 120),
-			RGB888(120, 0, 134),
-			RGB888(107, 0, 147),
-			RGB888(93, 0, 161),
-			RGB888(80, 0, 174),
-			RGB888(67, 0, 187),
-			RGB888(53, 0, 201),
-			RGB888(40, 0, 214),
-			RGB888(26, 0, 228),
-			RGB888(13, 0, 241),
-			RGB888(0, 0, 254)
+			RGB24(255, 0, 0),
+			RGB24(241, 0, 13),
+			RGB24(228, 0, 26),
+			RGB24(214, 0, 40),
+			RGB24(201, 0, 53),
+			RGB24(187, 0, 67),
+			RGB24(174, 0, 80),
+			RGB24(161, 0, 93),
+			RGB24(147, 0, 107),
+			RGB24(134, 0, 120),
+			RGB24(120, 0, 134),
+			RGB24(107, 0, 147),
+			RGB24(93, 0, 161),
+			RGB24(80, 0, 174),
+			RGB24(67, 0, 187),
+			RGB24(53, 0, 201),
+			RGB24(40, 0, 214),
+			RGB24(26, 0, 228),
+			RGB24(13, 0, 241),
+			RGB24(0, 0, 254)
 		)
 	));
 }

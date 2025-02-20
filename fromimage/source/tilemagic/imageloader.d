@@ -30,7 +30,7 @@ ParsedImage loadImageFile(T)(const(ubyte)[] image, TileFormat tileFormat, const 
 	const tileHeight = img.height / 8;
 	Tile[] tiles;
 	tiles.reserve(tileWidth * tileHeight);
-	auto tileRows = array2D(img.data, img.width, img.height);
+	auto tileRows = img.data;
 	foreach (th; 0 .. tileHeight) {
 		foreach (w; 0 .. tileWidth) {
 			auto tile = newTile(tileFormat);
@@ -53,7 +53,7 @@ ParsedImage loadImageFile(T)(const(ubyte)[] image, TileFormat tileFormat, const 
 		auto newTile = (found == -1) ? (seenTiles.length - 1) : found;
 		result.arrangement[x, y] = TileAttributes(newTile, tileAttributes.palette, tileAttributes.horizontalFlip, tileAttributes.verticalFlip);
 	}
-	result.palette = img.palette.map!(x => RGBA8888(x.r, x.g, x.b, x.a)).array;
+	result.palette = img.palette;
 	auto roundUp(size_t v) {
 	    return (v / 16 + !!(v % 16)) * 16;
 	}

@@ -4,7 +4,7 @@ module tilemagic.colours.gradient;
 import tilemagic.colours.formats;
 import tilemagic.colours.utils;
 
-///
+/// A range-based smooth-ish linear gradient generator
 struct Gradient {
 	ulong index;
 	ulong count;

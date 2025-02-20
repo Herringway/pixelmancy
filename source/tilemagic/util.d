@@ -87,6 +87,14 @@ struct Array2D(E) {
 		void opIndexAssign(E elem, size_t i, size_t[2] j) {
 			opIndexAssign(elem, [i, i+1], j);
 		}
+		void opIndexAssign(E[] elements, size_t i, size_t[2] j) {
+			foreach (idx, element; elements) {
+				this[i, j[0] + idx] = element;
+			}
+		}
+		void opIndexAssign(E[] elements, size_t[2] i, size_t j) {
+			impl[j * stride + i[0] .. j * stride + i[1]] = elements;
+		}
 		void opIndexAssign(E elem, size_t[2] i, size_t j) {
 			opIndexAssign(elem, i, [j, j+1]);
 		}
@@ -180,6 +188,14 @@ struct Array2D(E) {
 	tmp[0 .. 2, 0] = 77;
 	assert(tmp[1, 0] == 77);
 	assert(tmp[1, 1] == 31);
+
+	tmp[0 .. $, 4] = [100, 101, 102, 103, 104];
+	assert(tmp[0, 4] == 100);
+	assert(tmp[$ - 1, 4] == 104);
+
+	tmp[4, 0 .. $] = [200, 201, 202, 203, 204, 205];
+	assert(tmp[4, 0] == 200);
+	assert(tmp[4, $ - 1] == 205);
 
 	(cast(Array2D!(ushort[2]))tmp)[2,1] = [1, 2];
 	assert(tmp[2, 1] == 0x00020001);

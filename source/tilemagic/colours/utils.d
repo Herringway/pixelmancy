@@ -1,6 +1,8 @@
 ///
 module tilemagic.colours.utils;
 
+import tilemagic.colours.raw;
+
 import std.algorithm;
 import std.traits;
 
@@ -79,17 +81,9 @@ struct RGBGeneric(T, Channel[] channels) {
 		sink.formattedWrite("RGBA(%s, %s, %s, %s)", red, green, blue, alpha);
 	}
 	size_t toHash() const @safe nothrow {
-		return this.rawInteger;
+		return this.colourToInteger;
 	}
 	mixin colourCommon;
-}
-
-public auto rawInteger(Colour)(const Colour c) if (isColourFormat!Colour) {
-	union Raw {
-		Colour colour;
-		ClosestInteger!(Colour.sizeof) value;
-	}
-	return Raw(c).value;
 }
 
 template ClosestInteger(size_t bytes) {

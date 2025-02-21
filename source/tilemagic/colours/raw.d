@@ -102,20 +102,41 @@ ColourFormat integerToColour(ColourFormat, Endian endianness = endian)(ClosestIn
 alias integerToColor = integerToColour;
 ///
 @safe pure unittest {
+	import std.bitmanip : swapEndian;
 	assert(integerToColour!BGR555(0x7FFF) == BGR555(red: 31, green: 31, blue: 31));
 	assert(integerToColour!BGR555(0x3FFF) == BGR555(red: 31, green: 31, blue: 15));
+	version(LittleEndian) {
+		enum ushort littleEndianValue = 0x7FFF;
+		enum ushort bigEndianValue = swapEndian(littleEndianValue);
+	} else {
+		enum ushort bigEndianValue = 0x7FFF;
+		enum ushort littleEndianValue = swapEndian(bigEndianValue);
+	}
+	assert(integerToColour!(BGR555, Endian.littleEndian)(littleEndianValue) == BGR555(red: 31, green: 31, blue: 31));
+	assert(integerToColour!(BGR555, Endian.bigEndian)(bigEndianValue) == BGR555(red: 31, green: 31, blue: 31));
 }
 
 ///
 ClosestInteger!(ColourFormat.sizeof) colourToInteger(Endian endianness = endian, ColourFormat)(ColourFormat colour) if (isColourFormat!ColourFormat) {
 	import std.bitmanip : bigEndianToNative, littleEndianToNative;
-	auto raw = colourToBytes(colour);
+	ubyte[typeof(return).sizeof] raw;
+	raw[(!endian) * (typeof(return).sizeof - ColourFormat.sizeof) .. $ - (endian) * (typeof(return).sizeof - ColourFormat.sizeof)] = colourToBytes(colour);
 	return endianness == Endian.littleEndian ? littleEndianToNative!(typeof(return))(raw) : bigEndianToNative!(typeof(return))(raw);
 }
 /// ditto
 alias colorToInteger = colourToInteger;
 ///
 @safe pure unittest {
+	import std.bitmanip : swapEndian;
 	assert(colourToInteger(BGR555(red: 31, green: 31, blue: 31)) == 0x7FFF);
 	assert(colourToInteger(BGR555(red: 31, green: 31, blue: 15)) == 0x3FFF);
+	version(LittleEndian) {
+		enum ushort littleEndianValue = 0x7FFF;
+		enum ushort bigEndianValue = swapEndian(littleEndianValue);
+	} else {
+		enum ushort bigEndianValue = 0x7FFF;
+		enum ushort littleEndianValue = swapEndian(bigEndianValue);
+	}
+	assert(colourToInteger!(Endian.littleEndian)(BGR555(red: 31, green: 31, blue: 31)) == littleEndianValue);
+	assert(colourToInteger!(Endian.bigEndian)(BGR555(red: 31, green: 31, blue: 31)) == bigEndianValue);
 }

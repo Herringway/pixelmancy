@@ -1,6 +1,7 @@
 ///
 module tilemagic.colours.formats;
 
+import tilemagic.colours.raw;
 import tilemagic.colours.utils;
 
 import std.algorithm;
@@ -18,9 +19,9 @@ static assert(BGR555.sizeof == 2);
 		assert(green == 15);
 		assert(blue == 0);
 	}
-	assert(BGR555(red: 31, green: 31, blue: 31).rawInteger == 0x7FFF);
-	assert(BGR555(red: 31, green: 31, blue: 0).rawInteger == 0x3FF);
-	assert(BGR555(red: 0, green: 31, blue: 31).rawInteger == 0x7FE0);
+	assert(BGR555(red: 31, green: 31, blue: 31).colourToInteger == 0x7FFF);
+	assert(BGR555(red: 31, green: 31, blue: 0).colourToInteger == 0x3FF);
+	assert(BGR555(red: 0, green: 31, blue: 31).colourToInteger == 0x7FE0);
 }
 
 ///
@@ -48,7 +49,7 @@ unittest {
 	} else {
 		alias PackedFormat = RGBA8888;
 	}
-	assert(RGB24(red: 255, green: 128, blue: 64).rawInteger == PackedFormat(red: 255, green: 128, blue: 64, alpha: 0).rawInteger);
+	assert(RGB24(red: 255, green: 128, blue: 64).colourToInteger == PackedFormat(red: 255, green: 128, blue: 64, alpha: 0).colourToInteger);
 }
 
 ///
@@ -56,11 +57,11 @@ alias BGR24 = RGBGeneric!(ubyte, [Channel.blue, Channel.green, Channel.red]); //
 static assert(BGR24.sizeof == 3);
 
 ///
-alias RGBA8888 = RGBGeneric!([RGBChannel(Channel.alpha, 8), RGBChannel(Channel.blue, 8), RGBChannel(Channel.green, 8), RGBChannel(Channel.red, 8)]); // AAAAAAAA RRRRRRRR GGGGGGGG BBBBBBBB
+alias RGBA8888 = RGBGeneric!([RGBChannel(Channel.alpha, 8), RGBChannel(Channel.blue, 8), RGBChannel(Channel.green, 8), RGBChannel(Channel.red, 8)]); // AAAAAAAA BBBBBBBB GGGGGGGG RRRRRRRR
 static assert(RGBA8888.sizeof == 4);
 
 ///
-alias ARGB8888 = RGBGeneric!([RGBChannel(Channel.red, 8), RGBChannel(Channel.green, 8), RGBChannel(Channel.blue, 8), RGBChannel(Channel.alpha, 8)]); // RRRRRRRR GGGGGGGG BBBBBBBB AAAAAAAA
+alias ARGB8888 = RGBGeneric!([RGBChannel(Channel.blue, 8), RGBChannel(Channel.green, 8), RGBChannel(Channel.red, 8), RGBChannel(Channel.alpha, 8)]); // BBBBBBBB GGGGGGGG RRRRRRRR AAAAAAAA
 static assert(RGBA8888.sizeof == 4);
 
 @safe pure unittest {
@@ -79,11 +80,11 @@ static assert(RGBA8888.sizeof == 4);
 }
 
 ///
-alias BGRA8888 = RGBGeneric!([RGBChannel(Channel.alpha, 8), RGBChannel(Channel.red, 8), RGBChannel(Channel.green, 8), RGBChannel(Channel.blue, 8)]); // AAAAAAAA BBBBBBBB GGGGGGGG RRRRRRRR
+alias BGRA8888 = RGBGeneric!([RGBChannel(Channel.alpha, 8), RGBChannel(Channel.red, 8), RGBChannel(Channel.green, 8), RGBChannel(Channel.blue, 8)]); // AAAAAAAA RRRRRRRR GGGGGGGG BBBBBBBB
 static assert(BGRA8888.sizeof == 4);
 
 ///
-alias ABGR8888 = RGBGeneric!([RGBChannel(Channel.red, 8), RGBChannel(Channel.green, 8), RGBChannel(Channel.blue, 8), RGBChannel(Channel.alpha, 8)]); // BBBBBBBB GGGGGGGG RRRRRRRR AAAAAAAA
+alias ABGR8888 = RGBGeneric!([RGBChannel(Channel.red, 8), RGBChannel(Channel.green, 8), RGBChannel(Channel.blue, 8), RGBChannel(Channel.alpha, 8)]); // RRRRRRRR GGGGGGGG BBBBBBBB AAAAAAAA
 static assert(ABGR8888.sizeof == 4);
 
 ///

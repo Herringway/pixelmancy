@@ -45,17 +45,17 @@ MemoryImage readPng(string filename) @safe {
 @safe unittest {
 	{
 		const png = readPng("samples/test.png");
-		assert(png[0, 0] == RGBA8888(0, 0, 255, 255));
-		assert(png[128, 0] == RGBA8888(0, 255, 0, 255));
-		assert(png[0, 128] == RGBA8888(255, 0, 0, 255));
-		assert(png[128, 128] == RGBA8888(0, 0, 0, 0));
+		assert(png[0, 0] == RGBA32(0, 0, 255, 255));
+		assert(png[128, 0] == RGBA32(0, 255, 0, 255));
+		assert(png[0, 128] == RGBA32(255, 0, 0, 255));
+		assert(png[128, 128] == RGBA32(0, 0, 0, 0));
 	}
 	{
 		const png = readPng("samples/test8.png");
-		assert(png[0, 0] == RGBA8888(0, 0, 255, 255));
-		assert(png[128, 0] == RGBA8888(0, 255, 0, 255));
-		assert(png[0, 128] == RGBA8888(255, 0, 0, 255));
-		assert(png[128, 128] == RGBA8888(0, 0, 0, 0));
+		assert(png[0, 0] == RGBA32(0, 0, 255, 255));
+		assert(png[128, 0] == RGBA32(0, 255, 0, 255));
+		assert(png[0, 128] == RGBA32(255, 0, 0, 255));
+		assert(png[128, 128] == RGBA32(0, 0, 0, 0));
 	}
 }
 
@@ -945,7 +945,7 @@ ubyte[] getANDMask(PNG* p) {
 	ubyte[] data = getDatastream(p);
 	ubyte[] ufdata = new ubyte[h.height*((((h.width+7)/8)+3)&~3)]; // gotta pad to DWORDs...
 
-	RGBA8888[] colors = fetchPalette(p);
+	RGBA32[] colors = fetchPalette(p);
 
 	int pos = 0, pos2 = (h.width/((h.depth == 8) ? 1 : 2)+1)*(h.height-1);
 	bool bits = false;
@@ -1076,14 +1076,14 @@ RGBQUAD[] fetchPaletteWin32(PNG* p) {
 	See_Also:
 		[replacePalette]
 +/
-RGBA8888[] fetchPalette(PNG* p) @safe {
-	RGBA8888[] colors;
+RGBA32[] fetchPalette(PNG* p) @safe {
+	RGBA32[] colors;
 
 	auto header = getHeader(p);
 	if(header.type == 0) { // greyscale
 		colors.length = 256;
 		foreach(i; 0..256)
-			colors[i] = RGBA8888(cast(ubyte) i, cast(ubyte) i, cast(ubyte) i);
+			colors[i] = RGBA32(cast(ubyte) i, cast(ubyte) i, cast(ubyte) i);
 		return colors;
 	}
 
@@ -1117,7 +1117,7 @@ RGBA8888[] fetchPalette(PNG* p) @safe {
 	See_Also:
 		[fetchPalette]
 +/
-void replacePalette(PNG* p, RGBA8888[] colors) {
+void replacePalette(PNG* p, RGBA32[] colors) {
 	auto palette = p.getChunk("PLTE");
 	auto alpha = p.getChunkNullable("tRNS");
 
@@ -1186,7 +1186,7 @@ import std.string;
 //import std.conv;
 
 struct RgbaScanline {
-	RGBA8888[] pixels;
+	RGBA32[] pixels;
 }
 
 
@@ -1228,7 +1228,7 @@ auto convertToGreyscale(ImageLines)(ImageLines lines)
 					cast(int) c.r * 0.30 +
 					cast(int) c.g * 0.59 +
 					cast(int) c.b * 0.11);
-				current.pixels[i] = RGBA8888(v, v, v, c.a);
+				current.pixels[i] = RGBA32(v, v, v, c.a);
 			}
 			lines.popFront;
 		}
@@ -1383,7 +1383,7 @@ struct LazyPngFile(LazyPngChunksProvider)
 
 					auto offset = 0;
 					foreach(i; 0 .. palette.length) {
-						palette[i] = RGBA8888(
+						palette[i] = RGBA32(
 							chunk.payload[offset+0],
 							chunk.payload[offset+1],
 							chunk.payload[offset+2],
@@ -1483,7 +1483,7 @@ struct LazyPngFile(LazyPngChunksProvider)
 			RgbaScanline current;
 			PngHeader header;
 			int bpp;
-			RGBA8888[] palette;
+			RGBA32[] palette;
 
 			bool isEmpty = false;
 
@@ -1535,7 +1535,7 @@ struct LazyPngFile(LazyPngChunksProvider)
 						case 0: // greyscale
 						case 4: // grey with alpha
 							auto value = data[offset++];
-							current.pixels[i] = RGBA8888(
+							current.pixels[i] = RGBA32(
 								value,
 								value,
 								value,
@@ -1548,7 +1548,7 @@ struct LazyPngFile(LazyPngChunksProvider)
 						break;
 						case 2: // truecolor
 						case 6: // true with alpha
-							current.pixels[i] = RGBA8888(
+							current.pixels[i] = RGBA32(
 								data[offset++],
 								data[offset++],
 								data[offset++],
@@ -1592,7 +1592,7 @@ struct LazyPngFile(LazyPngChunksProvider)
 	}
 
 	PngHeader header;
-	RGBA8888[] palette;
+	RGBA32[] palette;
 }
 
 // FIXME: doesn't handle interlacing... I think

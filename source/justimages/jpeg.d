@@ -3272,7 +3272,7 @@ public MemoryImage readJpegFromStream (scope JpegStreamReadFunc rfn) {
   immutable int dst_bpl = image_width*req_comps;
   auto img = new TrueColorImage(image_width, image_height);
   scope(failure) { img.clearInternal(); img = null; }
-  RGBA8888* pImage_data = img.colours.ptr;
+  RGBA32* pImage_data = img.colours.ptr;
 
   for (int y = 0; y < image_height; ++y) {
     //debug(justimages) {{ import core.stdc.stdio; stderr.fprintf("loading line %d...\n", y); }}
@@ -3288,7 +3288,7 @@ public MemoryImage readJpegFromStream (scope JpegStreamReadFunc rfn) {
       return null;
     }
 
-    RGBA8888* pDst = pImage_data+(y*dst_bpl / 4);
+    RGBA32* pDst = pImage_data+(y*dst_bpl / 4);
 
     if ((req_comps == 1 && decoder.num_components == 1) || (req_comps == 4 && decoder.num_components == 3)) {
       memcpy(pDst, pScan_line, dst_bpl);
@@ -3319,7 +3319,7 @@ public MemoryImage readJpegFromStream (scope JpegStreamReadFunc rfn) {
           int r = pScan_line[x*4+0];
           int g = pScan_line[x*4+1];
           int b = pScan_line[x*4+2];
-          *pDst++ = RGBA8888(r, g, b, 255);
+          *pDst++ = RGBA32(r, g, b, 255);
         }
       } else {
         for (int x = 0; x < image_width; ++x) {
@@ -3391,10 +3391,10 @@ public MemoryImage readJpeg (const(char)[] filename) {
   {
     const jpeg = readJpeg("samples/test.jpg");
     // we won't have exact colours, but they'll be very close
-    assert(jpeg[0, 0].isSimilar(RGBA8888(0, 0, 255, 255), 1));
-    assert(jpeg[128, 0].isSimilar(RGBA8888(0, 255, 0, 255), 1));
-    assert(jpeg[0, 128].isSimilar(RGBA8888(255, 0, 0, 255), 1));
-    assert(jpeg[128, 128].isSimilar(RGBA8888(255, 255, 255, 255), 1));
+    assert(jpeg[0, 0].isSimilar(RGBA32(0, 0, 255, 255), 1));
+    assert(jpeg[128, 0].isSimilar(RGBA32(0, 255, 0, 255), 1));
+    assert(jpeg[0, 128].isSimilar(RGBA32(255, 0, 0, 255), 1));
+    assert(jpeg[128, 128].isSimilar(RGBA32(255, 255, 255, 255), 1));
   }
 }
 
@@ -3429,10 +3429,10 @@ public ubyte[] encodeJpeg(TrueColorImage img, JpegParams params = JpegParams.ini
     // round trip it
     const jpeg = readJpegFromMemory(encodeJpeg(readJpeg("samples/test.jpg").getAsTrueColorImage));
     // we won't have exact colours, but they'll be pretty close
-    assert(jpeg[0, 0].isSimilar(RGBA8888(0, 0, 255, 255), 1));
-    assert(jpeg[128, 0].isSimilar(RGBA8888(0, 255, 0, 255), 1));
-    assert(jpeg[0, 128].isSimilar(RGBA8888(255, 0, 0, 255), 1));
-    assert(jpeg[128, 128].isSimilar(RGBA8888(255, 255, 255, 255), 1));
+    assert(jpeg[0, 0].isSimilar(RGBA32(0, 0, 255, 255), 1));
+    assert(jpeg[128, 0].isSimilar(RGBA32(0, 255, 0, 255), 1));
+    assert(jpeg[0, 128].isSimilar(RGBA32(255, 0, 0, 255), 1));
+    assert(jpeg[128, 128].isSimilar(RGBA32(255, 255, 255, 255), 1));
   }
 }
 
@@ -3543,17 +3543,17 @@ public struct JpegParams {
 /// Writes JPEG image to file.
 /// num_channels must be 1 (Y), 3 (RGB), 4 (RGBA), image pitch must be width*num_channels.
 /// note that alpha will not be stored in jpeg file.
-bool compress_image_to_jpeg_stream (scope jpeg_encoder.WriteFunc wfn, int width, int height, int num_channels, const(RGBA8888)[] pImage_data) { return compress_image_to_jpeg_stream(wfn, width, height, num_channels, pImage_data, JpegParams()); }
+bool compress_image_to_jpeg_stream (scope jpeg_encoder.WriteFunc wfn, int width, int height, int num_channels, const(RGBA32)[] pImage_data) { return compress_image_to_jpeg_stream(wfn, width, height, num_channels, pImage_data, JpegParams()); }
 
 /// Writes JPEG image to file.
 /// num_channels must be 1 (Y), 3 (RGB), 4 (RGBA), image pitch must be width*num_channels.
 /// note that alpha will not be stored in jpeg file.
-bool compress_image_to_jpeg_stream (scope jpeg_encoder.WriteFunc wfn, int width, int height, int num_channels, const(RGBA8888)[] pImage_data, in JpegParams comp_params) {
+bool compress_image_to_jpeg_stream (scope jpeg_encoder.WriteFunc wfn, int width, int height, int num_channels, const(RGBA32)[] pImage_data, in JpegParams comp_params) {
   jpeg_encoder dst_image;
   if (!dst_image.setup(wfn, width, height, num_channels, comp_params)) return false;
   for (uint pass_index = 0; pass_index < dst_image.total_passes(); pass_index++) {
     for (int i = 0; i < height; i++) {
-      const(RGBA8888)* pBuf = pImage_data.ptr+i*width*num_channels / 4;
+      const(RGBA32)* pBuf = pImage_data.ptr+i*width*num_channels / 4;
       if (!dst_image.process_scanline(pBuf)) return false;
     }
     if (!dst_image.process_scanline(null)) return false;
@@ -3567,12 +3567,12 @@ bool compress_image_to_jpeg_stream (scope jpeg_encoder.WriteFunc wfn, int width,
 /// Writes JPEG image to file.
 /// num_channels must be 1 (Y), 3 (RGB), 4 (RGBA), image pitch must be width*num_channels.
 /// note that alpha will not be stored in jpeg file.
-bool compress_image_to_jpeg_file (const(char)[] fname, int width, int height, int num_channels, const(RGBA8888)[] pImage_data) { return compress_image_to_jpeg_file(fname, width, height, num_channels, pImage_data, JpegParams()); }
+bool compress_image_to_jpeg_file (const(char)[] fname, int width, int height, int num_channels, const(RGBA32)[] pImage_data) { return compress_image_to_jpeg_file(fname, width, height, num_channels, pImage_data, JpegParams()); }
 
 /// Writes JPEG image to file.
 /// num_channels must be 1 (Y), 3 (RGB), 4 (RGBA), image pitch must be width*num_channels.
 /// note that alpha will not be stored in jpeg file.
-bool compress_image_to_jpeg_file() (const(char)[] fname, int width, int height, int num_channels, const(RGBA8888)[] pImage_data, const scope auto ref JpegParams comp_params) {
+bool compress_image_to_jpeg_file() (const(char)[] fname, int width, int height, int num_channels, const(RGBA32)[] pImage_data, const scope auto ref JpegParams comp_params) {
   import std.internal.cstring;
   import core.stdc.stdio : FILE, fopen, fclose, fwrite;
   FILE* fl = fopen(fname.tempCString, "wb");

@@ -306,7 +306,7 @@ struct ApngRenderBuffer {
 						(prevFcc.x_offset + y * buffer.width)
 						..
 						(prevFcc.x_offset + prevFcc.width + y * buffer.width)
-					] = RGBA8888(0, 0, 0, 0);
+					] = RGBA32(0, 0, 0, 0);
 				break;
 			case APNG_DISPOSE_OP.PREVIOUS:
 				// put the buffer back in
@@ -366,7 +366,7 @@ struct ApngRenderBuffer {
 class ApngAnimation {
 	PngHeader header;
 	AnimationControlChunk acc;
-	RGBA8888[] palette;
+	RGBA32[] palette;
 	ApngFrame[] frames;
 	// default image? tho i can just load it as a png for that too.
 
@@ -381,7 +381,7 @@ class ApngAnimation {
 	/++
 		If palette is null, it is a true color image. If it has data, it is indexed.
 	+/
-	this(int width, int height, RGBA8888[] palette = null) {
+	this(int width, int height, RGBA32[] palette = null) {
 		header.type = (palette !is null) ? 3 : 6;
 		header.width = width;
 		header.height = height;
@@ -687,18 +687,18 @@ ApngAnimation readApng(in ubyte[] data, bool strictApng = false, scope ApngAnima
 	with (apng.frames[0]) {
 		populateData();
 		assert(frameControlChunk.delay_num == 300);
-		assert(frameData[0, 0] == RGBA8888(0, 0, 255, 255));
-		assert(frameData[128, 0] == RGBA8888(0, 255, 0, 255));
-		assert(frameData[0, 128] == RGBA8888(255, 0, 0, 255));
-		assert(frameData[128, 128] == RGBA8888(0, 0, 0, 0));
+		assert(frameData[0, 0] == RGBA32(0, 0, 255, 255));
+		assert(frameData[128, 0] == RGBA32(0, 255, 0, 255));
+		assert(frameData[0, 128] == RGBA32(255, 0, 0, 255));
+		assert(frameData[128, 128] == RGBA32(0, 0, 0, 0));
 	}
 	with (apng.frames[1]) {
 		populateData();
 		assert(frameControlChunk.delay_num == 300);
-		assert(frameData[0, 0] == RGBA8888(255, 0, 0, 255));
-		assert(frameData[128, 0] == RGBA8888(0, 0, 255, 255));
-		assert(frameData[0, 128] == RGBA8888(0, 255, 0, 255));
-		assert(frameData[128, 128] == RGBA8888(0, 0, 0, 0));
+		assert(frameData[0, 0] == RGBA32(255, 0, 0, 255));
+		assert(frameData[128, 0] == RGBA32(0, 0, 255, 255));
+		assert(frameData[0, 128] == RGBA32(0, 255, 0, 255));
+		assert(frameData[128, 128] == RGBA32(0, 0, 0, 0));
 	}
   }
 }
@@ -826,18 +826,18 @@ ubyte[] getApngBytes(ApngAnimation apng) {
 	with (apng.frames[0]) {
 		populateData();
 		assert(frameControlChunk.delay_num == 300);
-		assert(frameData[0, 0] == RGBA8888(0, 0, 255, 255));
-		assert(frameData[128, 0] == RGBA8888(0, 255, 0, 255));
-		assert(frameData[0, 128] == RGBA8888(255, 0, 0, 255));
-		assert(frameData[128, 128] == RGBA8888(0, 0, 0, 0));
+		assert(frameData[0, 0] == RGBA32(0, 0, 255, 255));
+		assert(frameData[128, 0] == RGBA32(0, 255, 0, 255));
+		assert(frameData[0, 128] == RGBA32(255, 0, 0, 255));
+		assert(frameData[128, 128] == RGBA32(0, 0, 0, 0));
 	}
 	with (apng.frames[1]) {
 		populateData();
 		assert(frameControlChunk.delay_num == 300);
-		assert(frameData[0, 0] == RGBA8888(255, 0, 0, 255));
-		assert(frameData[128, 0] == RGBA8888(0, 0, 255, 255));
-		assert(frameData[0, 128] == RGBA8888(0, 255, 0, 255));
-		assert(frameData[128, 128] == RGBA8888(0, 0, 0, 0));
+		assert(frameData[0, 0] == RGBA32(255, 0, 0, 255));
+		assert(frameData[128, 0] == RGBA32(0, 0, 255, 255));
+		assert(frameData[0, 128] == RGBA32(0, 255, 0, 255));
+		assert(frameData[128, 128] == RGBA32(0, 0, 0, 0));
 	}
   }
 }

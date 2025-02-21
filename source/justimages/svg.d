@@ -3772,7 +3772,7 @@ struct NSVGrasterizerS {
   ubyte* scanline;
   int cscanline;
 
-  RGBA8888* bitmap;
+  RGBA32* bitmap;
   int width, height, stride;
 }
 
@@ -4715,7 +4715,7 @@ uint nsvg__applyOpacity (uint c, float u) {
 
 int nsvg__div255() (int x) { pragma(inline, true); return ((x+1)*257)>>16; }
 
-void nsvg__scanlineSolid (RGBA8888* dst, int count, ubyte* cover, int x, int y, float tx, float ty, float scale, const(NSVGcachedPaint)* cache) {
+void nsvg__scanlineSolid (RGBA32* dst, int count, ubyte* cover, int x, int y, float tx, float ty, float scale, const(NSVGcachedPaint)* cache) {
   if (cache.type == NSVG.PaintType.Color) {
     int cr = cache.colors[0]&0xff;
     int cg = (cache.colors[0]>>8)&0xff;
@@ -4926,10 +4926,10 @@ void nsvg__rasterizeSortedEdges (NSVGRasterizer r, float tx, float ty, float sca
 
 }
 
-void nsvg__unpremultiplyAlpha (RGBA8888* image, int w, int h, int stride) {
+void nsvg__unpremultiplyAlpha (RGBA32* image, int w, int h, int stride) {
   // Unpremultiply
   foreach (int y; 0..h) {
-    RGBA8888 *row = &image[y*stride / 4];
+    RGBA32 *row = &image[y*stride / 4];
     foreach (int x; 0..w) {
       int r = row.red, g = row.green, b = row.blue, a = row.alpha;
       if (a != 0) {
@@ -4943,7 +4943,7 @@ void nsvg__unpremultiplyAlpha (RGBA8888* image, int w, int h, int stride) {
 
   // Defringe
   foreach (int y; 0..h) {
-    RGBA8888 *row = &image[y*stride / 4];
+    RGBA32 *row = &image[y*stride / 4];
     foreach (int x; 0..w) {
       int r = 0, g = 0, b = 0, a = row.alpha, n = 0;
       if (a == 0) {
@@ -5058,7 +5058,7 @@ extern(C) {
  *   h = height of the image to render
  *   stride = number of bytes per scaleline in the destination buffer
  */
-public void rasterize (NSVGRasterizer r, const(NSVG)* image, float tx, float ty, float scale, RGBA8888* dst, int w, int h, int stride=-1) {
+public void rasterize (NSVGRasterizer r, const(NSVG)* image, float tx, float ty, float scale, RGBA32* dst, int w, int h, int stride=-1) {
   const(NSVG.Shape)* shape = null;
   NSVGedge* e = null;
   NSVGcachedPaint cache;

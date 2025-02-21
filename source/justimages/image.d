@@ -56,9 +56,9 @@ MemoryImage readSvg(const(ubyte)[] rawData) {
     writePng("rendered.png", rendered);
     assert(rendered.width == 256);
     assert(rendered.height == 256);
-    assert(rendered[0, 0] == RGBA8888(0, 0, 255, 255));
-    assert(rendered[128, 0] == RGBA8888(0, 255, 0, 255));
-    assert(rendered[0, 128] == RGBA8888(255, 0, 0, 255));
+    assert(rendered[0, 0] == RGBA32(0, 0, 255, 255));
+    assert(rendered[128, 0] == RGBA32(0, 255, 0, 255));
+    assert(rendered[0, 128] == RGBA32(255, 0, 0, 255));
     assert(rendered[128, 128].alpha == 0); // the colour from the adjacent squares bleeds over a bit, but if it's fully transparent it's fine
   }
 }

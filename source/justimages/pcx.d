@@ -73,10 +73,17 @@ public MemoryImage loadPcx(T:const(char)[]) (T fname) {
 /*@safe*/ unittest {
   {
     const pcx = loadPcx("samples/test.pcx");
-    assert(pcx[0, 0] == RGBA8888(0, 0, 255, 255));
-    assert(pcx[128, 0] == RGBA8888(0, 255, 0, 255));
-    assert(pcx[0, 128] == RGBA8888(255, 0, 0, 255));
-    assert(pcx[128, 128] == RGBA8888(0, 0, 0, 0));
+    assert(pcx[0, 0] == RGBA32(0, 0, 255, 255));
+    assert(pcx[128, 0] == RGBA32(0, 255, 0, 255));
+    assert(pcx[0, 128] == RGBA32(255, 0, 0, 255));
+    assert(pcx[128, 128] == RGBA32(0, 0, 0, 0));
+  }
+  {
+    const pcx = loadPcx("samples/test8.pcx");
+    assert(pcx[0, 0] == RGBA32(0, 0, 255, 255));
+    assert(pcx[128, 0] == RGBA32(0, 255, 0, 255));
+    assert(pcx[0, 128] == RGBA32(255, 0, 0, 255));
+    assert(pcx[128, 128] == RGBA32(0, 0, 0, 255));
   }
 }
 
@@ -222,7 +229,7 @@ private MemoryImage loadPcxImpl(ST) (auto ref ST fl, const(char)[] filename) {
           if (hasAlpha) {
             alpha = src[hdr.bytesperline*3];
           }
-          timg.colours[wdt * y + x] = RGBA8888(red, green, blue, alpha);
+          timg.colours[wdt * y + x] = RGBA32(red, green, blue, alpha);
           ++src;
         }
       } else {
@@ -235,7 +242,7 @@ private MemoryImage loadPcxImpl(ST) (auto ref ST fl, const(char)[] filename) {
           if (hasAlpha) {
             alpha = *src++;
           }
-          timg.colours[wdt * y + x] = RGBA8888(red, green, blue, alpha);
+          timg.colours[wdt * y + x] = RGBA32(red, green, blue, alpha);
         }
       }
     }
@@ -256,7 +263,7 @@ private MemoryImage loadPcxImpl(ST) (auto ref ST fl, const(char)[] filename) {
       int b = line[cidx*3+2]*255/63;
       iimg.palette[cidx] = Color(r, g, b, 255);
       */
-      iimg.palette[cidx] = RGBA8888(line[cidx*3+0], line[cidx*3+1], line[cidx*3+2], 255);
+      iimg.palette[cidx] = RGBA32(line[cidx*3+0], line[cidx*3+1], line[cidx*3+2], 255);
     }
     return iimg;
   } else {

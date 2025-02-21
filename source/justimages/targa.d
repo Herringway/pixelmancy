@@ -71,10 +71,10 @@ public MemoryImage loadTga(const(char)[] fname) {
 /*@safe*/ unittest {
   {
     const tga = loadTga("samples/test.tga");
-    assert(tga[0, 0] == RGBA8888(0, 0, 255, 255));
-    assert(tga[128, 0] == RGBA8888(0, 255, 0, 255));
-    assert(tga[0, 128] == RGBA8888(255, 0, 0, 255));
-    assert(tga[128, 128] == RGBA8888(0, 0, 0, 0));
+    assert(tga[0, 0] == RGBA32(0, 0, 255, 255));
+    assert(tga[128, 0] == RGBA32(0, 255, 0, 255));
+    assert(tga[0, 128] == RGBA32(255, 0, 0, 255));
+    assert(tga[128, 128] == RGBA32(0, 0, 0, 0));
   }
 }
 
@@ -136,7 +136,7 @@ private MemoryImage loadTgaImpl(ST) (auto ref ST fl, const(char)[] filename) {
   ExtFooter extfooter;
   uint rleBC, rleDC;
   ubyte[4] rleLast;
-  RGBA8888[256] cmap;
+  RGBA32[256] cmap;
 
   void readPixel(bool asRLE, uint bytesPerPixel) (ubyte[] pixel, scope ubyte delegate () readByte) {
     static if (asRLE) {
@@ -160,44 +160,44 @@ private MemoryImage loadTgaImpl(ST) (auto ref ST fl, const(char)[] filename) {
   }
 
   // 8 bit color-mapped row
-  RGBA8888 readColorCM8(bool asRLE) (scope ubyte delegate () readByte) {
+  RGBA32 readColorCM8(bool asRLE) (scope ubyte delegate () readByte) {
     ubyte[1] pixel = void;
     readPixel!(asRLE, 1)(pixel[], readByte);
     auto cmp = cast(const(ubyte)*)(cmap.ptr+pixel.ptr[0]);
-    return RGBA8888(cmp[0], cmp[1], cmp[2]);
+    return RGBA32(cmp[0], cmp[1], cmp[2]);
   }
 
   // 8 bit greyscale
-  RGBA8888 readColorBM8(bool asRLE) (scope ubyte delegate () readByte) {
+  RGBA32 readColorBM8(bool asRLE) (scope ubyte delegate () readByte) {
     ubyte[1] pixel = void;
     readPixel!(asRLE, 1)(pixel[], readByte);
-    return RGBA8888(pixel.ptr[0], pixel.ptr[0], pixel.ptr[0]);
+    return RGBA32(pixel.ptr[0], pixel.ptr[0], pixel.ptr[0]);
   }
 
   // 16 bit greyscale
-  RGBA8888 readColorBM16(bool asRLE) (scope ubyte delegate () readByte) {
+  RGBA32 readColorBM16(bool asRLE) (scope ubyte delegate () readByte) {
     ubyte[2] pixel = void;
     readPixel!(asRLE, 2)(pixel[], readByte);
     immutable ubyte v = cast(ubyte)((pixel.ptr[0]|(pixel.ptr[1]<<8))>>8);
-    return RGBA8888(v, v, v);
+    return RGBA32(v, v, v);
   }
 
   // 16 bit
-  RGBA8888 readColor16(bool asRLE) (scope ubyte delegate () readByte) {
+  RGBA32 readColor16(bool asRLE) (scope ubyte delegate () readByte) {
     ubyte[2] pixel = void;
     readPixel!(asRLE, 2)(pixel[], readByte);
     immutable v = pixel.ptr[0]+(pixel.ptr[1]<<8);
-    return RGBA8888(cmap16.ptr[(v>>10)&0x1f], cmap16.ptr[(v>>5)&0x1f], cmap16.ptr[v&0x1f]);
+    return RGBA32(cmap16.ptr[(v>>10)&0x1f], cmap16.ptr[(v>>5)&0x1f], cmap16.ptr[v&0x1f]);
   }
 
   // 24 bit or 32 bit
-  RGBA8888 readColorTrue(bool asRLE, uint bytesPerPixel) (scope ubyte delegate () readByte) {
+  RGBA32 readColorTrue(bool asRLE, uint bytesPerPixel) (scope ubyte delegate () readByte) {
     ubyte[bytesPerPixel] pixel = void;
     readPixel!(asRLE, bytesPerPixel)(pixel[], readByte);
     static if (bytesPerPixel == 4) {
-      return RGBA8888(pixel.ptr[2], pixel.ptr[1], pixel.ptr[0], pixel.ptr[3]);
+      return RGBA32(pixel.ptr[2], pixel.ptr[1], pixel.ptr[0], pixel.ptr[3]);
     } else {
-      return RGBA8888(pixel.ptr[2], pixel.ptr[1], pixel.ptr[0]);
+      return RGBA32(pixel.ptr[2], pixel.ptr[1], pixel.ptr[0]);
     }
   }
 
@@ -245,7 +245,7 @@ private MemoryImage loadTgaImpl(ST) (auto ref ST fl, const(char)[] filename) {
   bool loadCM = false;
   // get the row reading function
   ubyte readByte () { ubyte b; fl.rawReadExact((&b)[0..1]); return b; }
-  scope RGBA8888 delegate (scope ubyte delegate () readByte) readColor;
+  scope RGBA32 delegate (scope ubyte delegate () readByte) readColor;
   switch (hdr.imgType) {
     case 2: // true color, no rle
       switch (bytesPerPixel) {
@@ -322,7 +322,7 @@ private MemoryImage loadTgaImpl(ST) (auto ref ST fl, const(char)[] filename) {
         --colorMapBytes;
         return readByte;
       }
-      cmap[] = RGBA8888(0, 0, 0, 255);
+      cmap[] = RGBA32(0, 0, 0, 255);
       auto cmp = cmap.ptr;
       switch (colorEntryBytes) {
         case 2:
@@ -375,7 +375,7 @@ private MemoryImage loadTgaImpl(ST) (auto ref ST fl, const(char)[] filename) {
   {
     // read image data
     immutable bool xflip = hdr.xflip, yflip = hdr.yflip;
-    RGBA8888* pixdata = tcimg.colours.ptr;
+    RGBA32* pixdata = tcimg.colours[].ptr;
     if (yflip) pixdata += (hdr.height-1)*hdr.width;
     foreach (immutable y; 0..hdr.height) {
       auto d = pixdata;
@@ -397,7 +397,7 @@ private MemoryImage loadTgaImpl(ST) (auto ref ST fl, const(char)[] filename) {
       if (ext.size < 494) throw new Exception("invalid tga extension record");
       if (ext.attrType == 4) {
         // premultiplied alpha
-        foreach (ref RGBA8888 clr; tcimg.colours) {
+        foreach (ref RGBA32 clr; tcimg.colours[]) {
           if (clr.alpha != 0) {
             clr.red = cast(ubyte)min(255, clr.red*255/clr.alpha);
             clr.green = cast(ubyte)min(255, clr.green*255/clr.alpha);
@@ -410,9 +410,9 @@ private MemoryImage loadTgaImpl(ST) (auto ref ST fl, const(char)[] filename) {
     } else {
       // some writers sets all alphas to zero, check for that
       validAlpha = false;
-      foreach (ref RGBA8888 clr; tcimg.colours) if (clr.alpha != 0) { validAlpha = true; break; }
+      foreach (ref RGBA32 clr; tcimg.colours) if (clr.alpha != 0) { validAlpha = true; break; }
     }
-    if (!validAlpha) foreach (ref RGBA8888 clr; tcimg.colours) clr.alpha = 255;
+    if (!validAlpha) foreach (ref RGBA32 clr; tcimg.colours) clr.alpha = 255;
   }
   return tcimg;
 }

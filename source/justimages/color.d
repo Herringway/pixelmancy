@@ -52,17 +52,17 @@ interface MemoryImage {
 	int height() const pure nothrow @safe @nogc;
 
 	/// Get image pixel. Slow, but returns valid RGBA color (completely transparent for off-image pixels).
-	deprecated final RGBA8888 getPixel(int x, int y) const pure @safe {
+	deprecated final RGBA32 getPixel(int x, int y) const pure @safe {
 		return this[x, y];
 	}
 
   /// Set image pixel.
-	deprecated final void setPixel(int x, int y, in RGBA8888 clr) @safe {
+	deprecated final void setPixel(int x, int y, in RGBA32 clr) @safe {
 		this[x, y] = clr;
 	}
-	RGBA8888 opIndex(size_t x, size_t y) const @safe pure;
+	RGBA32 opIndex(size_t x, size_t y) const @safe pure;
 
-	void opIndexAssign(in RGBA8888 clr, size_t x, size_t y) @safe pure;
+	void opIndexAssign(in RGBA32 clr, size_t x, size_t y) @safe pure;
 
 	/// Returns a copy of the image
 	MemoryImage clone() const pure nothrow @safe;
@@ -93,7 +93,7 @@ class IndexedImage : MemoryImage {
 	bool hasAlpha;
 
 	/// .
-	RGBA8888[] palette;
+	RGBA32[] palette;
 	/// the data as indexes into the palette. Stored left to right, top to bottom, no padding.
 	ubyte[] data;
 
@@ -122,19 +122,19 @@ class IndexedImage : MemoryImage {
 		return n;
 	}
 
-	override RGBA8888 opIndex(size_t x, size_t y) const pure nothrow @safe @nogc {
+	override RGBA32 opIndex(size_t x, size_t y) const pure nothrow @safe @nogc {
 		if (x >= 0 && y >= 0 && x < _width && y < _height) {
 			size_t pos = cast(size_t)y*_width+x;
-			if (pos >= data.length) return RGBA8888(0, 0, 0, 0);
+			if (pos >= data.length) return RGBA32(0, 0, 0, 0);
 			ubyte b = data[pos];
-			if (b >= palette.length) return RGBA8888(0, 0, 0, 0);
+			if (b >= palette.length) return RGBA32(0, 0, 0, 0);
 			return palette[b];
 		} else {
-			return RGBA8888(0, 0, 0, 0);
+			return RGBA32(0, 0, 0, 0);
 		}
 	}
 
-	override void opIndexAssign(in RGBA8888 clr, size_t x, size_t y) nothrow @safe {
+	override void opIndexAssign(in RGBA32 clr, size_t x, size_t y) @safe {
 		if (x >= 0 && y >= 0 && x < _width && y < _height) {
 			size_t pos = cast(size_t)y*_width+x;
 			if (pos >= data.length) return;
@@ -183,7 +183,7 @@ class IndexedImage : MemoryImage {
 	}
 
 	/// Gets an exact match, if possible, adds if not. See also: the findNearestColor free function.
-	ubyte getOrAddColor(RGBA8888 c) nothrow @safe {
+	ubyte getOrAddColor(RGBA32 c) nothrow @safe {
 		foreach(i, co; palette) {
 			if(c == co)
 				return cast(ubyte) i;
@@ -198,7 +198,7 @@ class IndexedImage : MemoryImage {
 	}
 
 	/// Adds an entry to the palette, returning its index
-	ubyte addColor(RGBA8888 c) nothrow @safe pure {
+	ubyte addColor(RGBA32 c) nothrow @safe pure {
 		assert(palette.length < 256);
 		if(c.alpha != 255)
 			hasAlpha = true;
@@ -214,7 +214,7 @@ class TrueColorImage : MemoryImage {
 //	bool isGreyscale;
 
 	/// .
-	RGBA8888[] colours; /// the data as rgba bytes. Stored left to right, top to bottom, no padding.
+	RGBA32[] colours; /// the data as rgba bytes. Stored left to right, top to bottom, no padding.
 
 	int _width;
 	int _height;
@@ -236,16 +236,16 @@ class TrueColorImage : MemoryImage {
 	///.
 	override int height() const pure nothrow @safe @nogc { return _height; }
 
-	override RGBA8888 opIndex(size_t x, size_t y) const pure nothrow @safe @nogc {
+	override RGBA32 opIndex(size_t x, size_t y) const pure nothrow @safe @nogc {
 		if (x >= 0 && y >= 0 && x < _width && y < _height) {
 			size_t pos = cast(size_t)y*_width+x;
 			return colours[pos];
 		} else {
-			return RGBA8888(0, 0, 0, 0);
+			return RGBA32(0, 0, 0, 0);
 		}
 	}
 
-	override void opIndexAssign(in RGBA8888 clr, size_t x, size_t y) nothrow @safe {
+	override void opIndexAssign(in RGBA32 clr, size_t x, size_t y) @safe {
 		if (x >= 0 && y >= 0 && x < _width && y < _height) {
 			size_t pos = cast(size_t)y*_width+x;
 			if (pos < colours.length) colours[pos] = clr;
@@ -260,7 +260,7 @@ class TrueColorImage : MemoryImage {
 		// ensure that the computed size does not exceed basic address space limits
         assert(cast(ulong)w * h * 4 <= size_t.max);
         // upcast to avoid overflow for images larger than 536 Mpix
-		colours = new RGBA8888[](cast(size_t)w * h);
+		colours = new RGBA32[](cast(size_t)w * h);
 	}
 
 	/// Creates with existing data. The data pointer is stored here.
@@ -269,7 +269,7 @@ class TrueColorImage : MemoryImage {
 		_height = h;
 		assert(cast(ulong)w * h * 4 <= size_t.max);
 		assert(data.length == cast(size_t)w * h * 4);
-		colours = cast(RGBA8888[])data;
+		colours = cast(RGBA32[])data;
 	}
 
 	/// Returns this
@@ -279,7 +279,7 @@ class TrueColorImage : MemoryImage {
 }
 
 /// Finds the best match for pixel in palette (currently by checking for minimum euclidean distance in rgb colorspace)
-ubyte findNearestColor(in RGBA8888[] palette, in RGBA8888 pixel) nothrow pure @safe @nogc {
+ubyte findNearestColor(in RGBA32[] palette, in RGBA32 pixel) nothrow pure @safe @nogc {
 	int best = 0;
 	int bestDistance = int.max;
 	foreach(pe, co; palette) {
@@ -304,7 +304,7 @@ void removeTransparency(IndexedImage img, Color background)
 
 /// Perform alpha-blending of `fore` to this color, return new color.
 /// WARNING! This function does blending in RGB space, and RGB space is not linear!
-RGBA8888 alphaBlend(RGBA8888 foreground, RGBA8888 background) pure nothrow @safe @nogc {
+RGBA32 alphaBlend(RGBA32 foreground, RGBA32 background) pure nothrow @safe @nogc {
 	//if(foreground.a == 255)
 		//return foreground;
 	if(foreground.alpha == 0)

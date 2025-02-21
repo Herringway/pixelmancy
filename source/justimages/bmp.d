@@ -56,10 +56,10 @@ MemoryImage readBmp(in ubyte[] data, bool lookForFileHeader = true, bool hackAro
 /*@safe*/ unittest {
 	{
 		const bmp = readBmp("samples/test24.bmp");
-		assert(bmp[0, 0] == RGBA8888(0, 0, 255, 255));
-		assert(bmp[128, 0] == RGBA8888(0, 255, 0, 255));
-		assert(bmp[0, 128] == RGBA8888(255, 0, 0, 255));
-		assert(bmp[128, 128] == RGBA8888(255, 255, 255, 255));
+		assert(bmp[0, 0] == RGBA32(0, 0, 255, 255));
+		assert(bmp[128, 0] == RGBA32(0, 255, 0, 255));
+		assert(bmp[0, 128] == RGBA32(255, 0, 0, 255));
+		assert(bmp[128, 128] == RGBA32(255, 255, 255, 255));
 	}
 }
 /++
@@ -281,9 +281,9 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 			auto r = read1();
 			auto reserved = read1();
 
-			img.palette ~= RGBA8888(r, g, b);
+			img.palette ~= RGBA32(r, g, b);
 		}
-		while (img.palette.length < (1 << bitsPerPixel)) img.palette ~= RGBA8888(0, 0, 0, 0);
+		while (img.palette.length < (1 << bitsPerPixel)) img.palette ~= RGBA32(0, 0, 0, 0);
 
 		// and the data
 		int bytesPerPixel = 1;
@@ -398,14 +398,14 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 			auto tp = img.palette.length;
 			if(tp < 256) {
 				// easy, there's room, just add an entry.
-				img.palette ~= RGBA8888(0, 0, 0, 0);
+				img.palette ~= RGBA32(0, 0, 0, 0);
 				img.hasAlpha = true;
 			} else {
 				// not enough room, gotta try to find something unused to overwrite...
 				// FIXME: could prolly use more caution here
 				auto selection = 39;
 
-				img.palette[selection] = RGBA8888(0, 0, 0, 0);
+				img.palette[selection] = RGBA32(0, 0, 0, 0);
 				img.hasAlpha = true;
 				tp = selection;
 			}
@@ -414,7 +414,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 				processAndMask(delegate int(int x, int y, bool transparent) {
 					auto existing = img.data[y * img.width + x];
 
-					if(img.palette[existing] == RGBA8888(0, 0, 0, 255) && transparent) {
+					if(img.palette[existing] == RGBA32(0, 0, 0, 255) && transparent) {
 						// import std.stdio; write("O");
 						img.data[y * img.width + x] = cast(ubyte) tp;
 					} else {
@@ -471,7 +471,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 					else
 						alpha = 255;
 
-					img.colours[offset / 4] = RGBA8888(cast(ubyte) red, cast(ubyte) green, cast(ubyte) blue, cast(ubyte) alpha);
+					img.colours[offset / 4] = RGBA32(cast(ubyte) red, cast(ubyte) green, cast(ubyte) blue, cast(ubyte) alpha);
 				} else {
 					assert(compression == 0);
 
@@ -485,7 +485,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 							b++;
 						} else {
 						}
-						img.colours[offset / 4] = RGBA8888(red, green, blue, alpha);
+						img.colours[offset / 4] = RGBA32(red, green, blue, alpha);
 						b += 3;
 					} else {
 						assert(bitsPerPixel == 16);
@@ -494,7 +494,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 						d |= cast(ushort)read1() << 8;
 							// we expect 8 bit numbers but these only give 5 bits of info,
 							// therefore we shift left 3 to get the right stuff.
-						img.colours[offset / 4] = RGBA8888((d & 0b0111110000000000) >> (10-3), (d & 0b0000001111100000) >> (5-3), (d & 0b0000000000011111) << 3, 255);
+						img.colours[offset / 4] = RGBA32((d & 0b0111110000000000) >> (10-3), (d & 0b0000001111100000) >> (5-3), (d & 0b0000000000011111) << 3, 255);
 						b += 2;
 					}
 				}
@@ -554,10 +554,10 @@ ubyte[] encodeBmp(MemoryImage img) {
 	// round tripping...
 	{
 		const bmp = readBmp(encodeBmp(readBmp("samples/test24.bmp")));
-		assert(bmp[0, 0] == RGBA8888(0, 0, 255, 255));
-		assert(bmp[128, 0] == RGBA8888(0, 255, 0, 255));
-		assert(bmp[0, 128] == RGBA8888(255, 0, 0, 255));
-		assert(bmp[128, 128] == RGBA8888(255, 255, 255, 255));
+		assert(bmp[0, 0] == RGBA32(0, 0, 255, 255));
+		assert(bmp[128, 0] == RGBA32(0, 255, 0, 255));
+		assert(bmp[0, 128] == RGBA32(255, 0, 0, 255));
+		assert(bmp[128, 128] == RGBA32(255, 255, 255, 255));
 	}
 }
 
@@ -585,7 +585,7 @@ void writeBmpIndirect(MemoryImage img, scope void delegate(ubyte) fwrite, bool p
 	ushort bitsPerPixel;
 
 	ubyte[] data;
-	RGBA8888[] palette;
+	RGBA32[] palette;
 
 	// FIXME we should be able to write RGBA bitmaps too, though it seems like not many
 	// programs correctly read them!

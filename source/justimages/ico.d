@@ -93,13 +93,13 @@ MemoryImage[] loadIco(string filename) {
 	return loadIcoFromMemory(cast(const(ubyte)[]) std.file.read(filename));
 }
 /*@safe*/ unittest {
-	import tilemagic.colours.formats : RGBA8888;
+	import tilemagic.colours.formats : RGBA32;
 	{
 		const ico = loadIco("samples/test.ico")[0];
-		assert(ico[0, 0] == RGBA8888(0, 0, 255, 255));
-		assert(ico[64, 0] == RGBA8888(0, 255, 0, 255));
-		assert(ico[0, 64] == RGBA8888(255, 0, 0, 255));
-		assert(ico[64, 64] == RGBA8888(0, 0, 0, 0));
+		assert(ico[0, 0] == RGBA32(0, 0, 255, 255));
+		assert(ico[64, 0] == RGBA32(0, 255, 0, 255));
+		assert(ico[0, 64] == RGBA32(255, 0, 0, 255));
+		assert(ico[64, 64] == RGBA32(0, 0, 0, 0));
 	}
 }
 
@@ -250,14 +250,14 @@ ubyte[] writeIco(MemoryImage[] images) {
 	return encodeIcoOrCur(false, cast(int) images.length, (int idx) { return IcoCursor(images[idx]); });
 }
 /*@safe*/ unittest {
-	import tilemagic.colours.formats : RGBA8888;
+	import tilemagic.colours.formats : RGBA32;
 	// round-tripping...
 	{
 		const ico = loadIcoFromMemory(writeIco(loadIco("samples/test.ico")))[0];
-		assert(ico[0, 0] == RGBA8888(0, 0, 255, 255));
-		assert(ico[64, 0] == RGBA8888(0, 255, 0, 255));
-		assert(ico[0, 64] == RGBA8888(255, 0, 0, 255));
-		assert(ico[64, 64] == RGBA8888(0, 0, 0, 0));
+		assert(ico[0, 0] == RGBA32(0, 0, 255, 255));
+		assert(ico[64, 0] == RGBA32(0, 255, 0, 255));
+		assert(ico[0, 64] == RGBA32(255, 0, 0, 255));
+		assert(ico[64, 64] == RGBA32(0, 0, 0, 0));
 	}
 }
 

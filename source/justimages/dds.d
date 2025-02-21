@@ -313,7 +313,7 @@ static assert(ddsAlphaBlock3BitLinear_t.sizeof == 8);
 
 
 // decompresses a dds texture into an rgba image buffer, returns 0 on success
-/*public*/ bool DDSDecompress (const(ddsBuffer_t)* dds, RGBA8888[] pixels) {
+/*public*/ bool DDSDecompress (const(ddsBuffer_t)* dds, RGBA32[] pixels) {
   int width, height;
   DDSPixelFormat pf;
 
@@ -390,7 +390,7 @@ private void DDSDecodePixelFormat (const(ddsBuffer_t)* dds, DDSPixelFormat* pf) 
 
 
 // extracts colors from a dds color block
-private void DDSGetColorBlockColors (const(ddsColorBlock_t)* block, RGBA8888* colors) {
+private void DDSGetColorBlockColors (const(ddsColorBlock_t)* block, RGBA32* colors) {
   ushort word;
 
   // color 0
@@ -475,7 +475,7 @@ private void DDSGetColorBlockColors (const(ddsColorBlock_t)* block, RGBA8888* co
 
 //decodes a dds color block
 //FIXME: make endian-safe
-private void DDSDecodeColorBlock (uint* pixel, const(ddsColorBlock_t)* block, int width, const(RGBA8888)* colors) {
+private void DDSDecodeColorBlock (uint* pixel, const(ddsColorBlock_t)* block, int width, const(RGBA32)* colors) {
   int r, n;
   uint bits;
   static immutable uint[4] masks = [ 3, 12, 3<<4, 3<<6 ];  // bit masks = 00000011, 00001100, 00110000, 11000000
@@ -505,7 +505,7 @@ private void DDSDecodeColorBlock (uint* pixel, const(ddsColorBlock_t)* block, in
 private void DDSDecodeAlphaExplicit (uint* pixel, const(ddsAlphaBlockExplicit_t)* alphaBlock, int width, uint alphaZero) {
   int row, pix;
   ushort word;
-  RGBA8888 color;
+  RGBA32 color;
 
   // clear color
   color.red = 0;
@@ -535,7 +535,7 @@ private void DDSDecodeAlpha3BitLinear (uint* pixel, const(ddsAlphaBlock3BitLinea
   uint stuff;
   ubyte[4][4] bits;
   ushort[8] alphas;
-  RGBA8888[4][4] aColors;
+  RGBA32[4][4] aColors;
 
   // get initial alphas
   alphas.ptr[0] = alphaBlock.alpha0;
@@ -625,8 +625,8 @@ private void DDSDecodeAlpha3BitLinear (uint* pixel, const(ddsAlphaBlock3BitLinea
 
 
 // decompresses a dxt1 format texture
-private bool DDSDecompressDXT1 (const(ddsBuffer_t)* dds, int width, int height, RGBA8888* pixels) {
-  RGBA8888[4] colors;
+private bool DDSDecompressDXT1 (const(ddsBuffer_t)* dds, int width, int height, RGBA32* pixels) {
+  RGBA32[4] colors;
   immutable int xBlocks = width/4;
   immutable int yBlocks = height/4;
   // 8 bytes per block
@@ -645,8 +645,8 @@ private bool DDSDecompressDXT1 (const(ddsBuffer_t)* dds, int width, int height, 
 
 
 // decompresses a dxt3 format texture
-private bool DDSDecompressDXT3 (const(ddsBuffer_t)* dds, int width, int height, RGBA8888* pixels) {
-  RGBA8888[4] colors;
+private bool DDSDecompressDXT3 (const(ddsBuffer_t)* dds, int width, int height, RGBA32* pixels) {
+  RGBA32[4] colors;
 
   // setup
   immutable int xBlocks = width/4;
@@ -682,8 +682,8 @@ private bool DDSDecompressDXT3 (const(ddsBuffer_t)* dds, int width, int height, 
 
 
 // decompresses a dxt5 format texture
-private bool DDSDecompressDXT5 (const(ddsBuffer_t)* dds, int width, int height, RGBA8888* pixels) {
-  RGBA8888[4] colors;
+private bool DDSDecompressDXT5 (const(ddsBuffer_t)* dds, int width, int height, RGBA32* pixels) {
+  RGBA32[4] colors;
 
   // setup
   immutable int xBlocks = width/4;
@@ -719,9 +719,9 @@ private bool DDSDecompressDXT5 (const(ddsBuffer_t)* dds, int width, int height, 
 }
 
 
-private void unmultiply (RGBA8888[] pixels) {
+private void unmultiply (RGBA32[] pixels) {
   // premultiplied alpha
-  foreach (ref RGBA8888 clr; pixels) {
+  foreach (ref RGBA32 clr; pixels) {
     if (clr.alpha != 0) {
       clr.red = cast(ubyte)min(255, clr.red*255/clr.alpha);
       clr.green = cast(ubyte)min(255, clr.green*255/clr.alpha);
@@ -732,7 +732,7 @@ private void unmultiply (RGBA8888[] pixels) {
 
 
 // decompresses a dxt2 format texture (FIXME: un-premultiply alpha)
-private bool DDSDecompressDXT2 (const(ddsBuffer_t)* dds, int width, int height, RGBA8888* pixels) {
+private bool DDSDecompressDXT2 (const(ddsBuffer_t)* dds, int width, int height, RGBA32* pixels) {
   // decompress dxt3 first
   if (!DDSDecompressDXT3(dds, width, height, pixels)) return false;
   //FIXME: is un-premultiply correct?
@@ -742,7 +742,7 @@ private bool DDSDecompressDXT2 (const(ddsBuffer_t)* dds, int width, int height, 
 
 
 // decompresses a dxt4 format texture (FIXME: un-premultiply alpha)
-private bool DDSDecompressDXT4 (const(ddsBuffer_t)* dds, int width, int height, RGBA8888* pixels) {
+private bool DDSDecompressDXT4 (const(ddsBuffer_t)* dds, int width, int height, RGBA32* pixels) {
   // decompress dxt5 first
   if (!DDSDecompressDXT5(dds, width, height, pixels)) return false;
   //FIXME: is un-premultiply correct?
@@ -752,8 +752,8 @@ private bool DDSDecompressDXT4 (const(ddsBuffer_t)* dds, int width, int height, 
 
 
 // decompresses an argb 8888 format texture
-private bool DDSDecompressARGB8888 (const(ddsBuffer_t)* dds, int width, int height, RGBA8888* pixels) {
-  auto zin = cast(const(RGBA8888)*)dds.data.ptr;
+private bool DDSDecompressARGB8888 (const(ddsBuffer_t)* dds, int width, int height, RGBA32* pixels) {
+  auto zin = cast(const(RGBA32)*)dds.data.ptr;
   //pixels[0..width*height] = zin[0..width*height];
   foreach (immutable idx; 0..width*height) {
     pixels.red = zin.blue;
@@ -768,7 +768,7 @@ private bool DDSDecompressARGB8888 (const(ddsBuffer_t)* dds, int width, int heig
 
 
 // decompresses an rgb 888 format texture
-private bool DDSDecompressRGB888 (const(ddsBuffer_t)* dds, int width, int height, RGBA8888* pixels) {
+private bool DDSDecompressRGB888 (const(ddsBuffer_t)* dds, int width, int height, RGBA32* pixels) {
   auto zin = cast(const(ubyte)*)dds.data.ptr;
   //pixels[0..width*height] = zin[0..width*height];
   foreach (immutable idx; 0..width*height) {

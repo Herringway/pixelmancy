@@ -53,7 +53,6 @@ MemoryImage readSvg(const(ubyte)[] rawData) {
 /*@safe*/ unittest {
   {
     auto rendered = readSvg("samples/test.svg");
-    writePng("rendered.png", rendered);
     assert(rendered.width == 256);
     assert(rendered.height == 256);
     assert(rendered[0, 0] == RGBA32(0, 0, 255, 255));

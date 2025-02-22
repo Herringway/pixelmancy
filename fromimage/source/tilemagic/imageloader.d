@@ -14,7 +14,7 @@ import tilemagic.util;
 
 struct ParsedImage {
 	Array2D!TileAttributes arrangement;
-	RGBA8888[] palette;
+	RGBA32[] palette;
 	Tile[] tiles;
 }
 

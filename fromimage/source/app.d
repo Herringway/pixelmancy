@@ -52,7 +52,7 @@ void main(string[] args) {
 	if (palettePath) {
 		auto paletteFile = File(palettePath, "wb");
 		foreach (palette; result.palette.chunks(16)) {
-			if (palette.all!(x => x == RGBA8888(0, 0, 0, 255))) {
+			if (palette.all!(x => x == RGBA32(0, 0, 0, 255))) {
 				continue;
 			}
 			foreach (colour; palette) {

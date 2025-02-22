@@ -160,11 +160,11 @@ class ApngFrame {
 			auto ii = new IndexedImage(width, height);
 			ii.palette = parent.palette;
 			frameData = ii;
-			data = ii.data;
+			data = ii.data[];
 		} else {
 			auto tci = new TrueColorImage(width, height);
 			frameData = tci;
-			data = cast(ubyte[])tci.colours;
+			data = cast(ubyte[])tci.colours[];
 		}
 	}
 
@@ -180,7 +180,7 @@ class ApngFrame {
 			data = cast(ubyte[])tci.colours[];
 			assert(parent.header.type == 6);
 		} else if(auto ii = cast(IndexedImage) frameData) {
-			data = ii.data;
+			data = ii.data[];
 			assert(parent.header.type == 3);
 			assert(ii.palette == parent.palette);
 		}
@@ -236,7 +236,7 @@ class ApngFrame {
 			auto i = new IndexedImage(width, height);
 			img = i;
 			i.palette = parent.palette;
-			idata = i.data;
+			idata = i.data[];
 		} else { // FIXME: other types?!
 			auto i = new TrueColorImage(width, height);
 			img = i;
@@ -301,12 +301,7 @@ struct ApngRenderBuffer {
 				break;
 			case APNG_DISPOSE_OP.BACKGROUND:
 				// clear area to 0
-				foreach(y; prevFcc.y_offset .. prevFcc.y_offset + prevFcc.height)
-					buffer.colours[
-						(prevFcc.x_offset + y * buffer.width)
-						..
-						(prevFcc.x_offset + prevFcc.width + y * buffer.width)
-					] = RGBA32(0, 0, 0, 0);
+				buffer.colours[prevFcc.x_offset .. prevFcc.x_offset + prevFcc.width, prevFcc.y_offset .. prevFcc.y_offset + prevFcc.height] = RGBA32(0, 0, 0, 0);
 				break;
 			case APNG_DISPOSE_OP.PREVIOUS:
 				// put the buffer back in
@@ -327,25 +322,18 @@ struct ApngRenderBuffer {
 			}
 		}
 
-		size_t foff;
 		foreach(y; fcc.y_offset .. fcc.y_offset + fcc.height) {
 			final switch(fcc.blend_op) {
 				case APNG_BLEND_OP.SOURCE:
-					buffer.colours[
-						(fcc.x_offset + y * buffer.width)
-						..
-						(fcc.x_offset + y * buffer.width + fcc.width)
-					] = convertedFrames[frameNumber].colours[foff .. foff + fcc.width];
-					foff += fcc.width;
+					buffer.colours[fcc.x_offset .. fcc.x_offset + fcc.width, y] = convertedFrames[frameNumber].colours[fcc.x_offset .. fcc.x_offset + fcc.width, y];
 				break;
 				case APNG_BLEND_OP.OVER:
 					foreach(x; fcc.x_offset .. fcc.x_offset + fcc.width) {
-						buffer.colours[y * buffer.width + x] =
+						buffer.colours[x, y] =
 							alphaBlend(
-								convertedFrames[frameNumber].colours[foff],
-								buffer.colours[y * buffer.width + x]
+								convertedFrames[frameNumber].colours[x, y],
+								buffer.colours[x, y]
 							);
-						foff++;
 					}
 				break;
 			}
@@ -700,6 +688,15 @@ ApngAnimation readApng(in ubyte[] data, bool strictApng = false, scope ApngAnima
 		assert(frameData[0, 128] == RGBA32(0, 255, 0, 255));
 		assert(frameData[128, 128] == RGBA32(0, 0, 0, 0));
 	}
+  }
+  {
+	auto apng = readApng(cast(ubyte[])read("samples/dispose_op_bg.apng"));
+	assert(apng.acc.num_frames == 2);
+	auto renderer = apng.renderer();
+	renderer.nextFrame();
+	assert(renderer.buffer[64, 32] == RGBA32(255, 0, 0, 255));
+	renderer.nextFrame();
+	assert(renderer.buffer[64, 32] == RGBA32(0, 255, 0, 255));
   }
 }
 

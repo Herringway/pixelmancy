@@ -3272,7 +3272,7 @@ public MemoryImage readJpegFromStream (scope JpegStreamReadFunc rfn) {
   immutable int dst_bpl = image_width*req_comps;
   auto img = new TrueColorImage(image_width, image_height);
   scope(failure) { img.clearInternal(); img = null; }
-  RGBA32* pImage_data = img.colours.ptr;
+  RGBA32* pImage_data = img.colours[].ptr;
 
   for (int y = 0; y < image_height; ++y) {
     //debug(justimages) {{ import core.stdc.stdio; stderr.fprintf("loading line %d...\n", y); }}
@@ -3404,7 +3404,7 @@ public MemoryImage readJpeg (const(char)[] filename) {
 		Added January 22, 2021 (release version 9.2)
 +/
 public void writeJpeg(const(char)[] filename, TrueColorImage img, JpegParams params = JpegParams.init) {
-	if(!compress_image_to_jpeg_file(filename, img.width, img.height, 4, img.colours, params))
+	if(!compress_image_to_jpeg_file(filename, img.width, img.height, 4, img.colours[], params))
 		throw new Exception("jpeg write failed"); // FIXME: check errno?
 }
 
@@ -3440,7 +3440,7 @@ public ubyte[] encodeJpeg(TrueColorImage img, JpegParams params = JpegParams.ini
 public void encodeJpeg(scope bool delegate(const scope ubyte[]) dg, TrueColorImage img, JpegParams params = JpegParams.init) {
 	if(!compress_image_to_jpeg_stream(
 		dg,
-		img.width, img.height, 4, img.colours, params))
+		img.width, img.height, 4, img.colours[], params))
 		throw new Exception("encode");
 }
 

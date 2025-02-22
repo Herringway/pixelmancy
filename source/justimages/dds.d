@@ -89,7 +89,7 @@ public TrueColorImage ddsLoadFromMemory (const(void)[] buf) {
   auto tc = new TrueColorImage(w, h);
   scope(failure) .destroy(tc);
 
-  if (!DDSDecompress(dds, tc.colours)) throw new Exception("invalid dds image");
+  if (!DDSDecompress(dds, tc.colours[])) throw new Exception("invalid dds image");
 
   return tc;
 }
@@ -489,10 +489,10 @@ private void DDSDecodeColorBlock (uint* pixel, const(ddsColorBlock_t)* block, in
       bits = block.row.ptr[r]&masks.ptr[n];
       bits >>= shift.ptr[n];
       switch (bits) {
-        case 0: *pixel++ = colors[0].rawInteger; break;
-        case 1: *pixel++ = colors[1].rawInteger; break;
-        case 2: *pixel++ = colors[2].rawInteger; break;
-        case 3: *pixel++ = colors[3].rawInteger; break;
+        case 0: *pixel++ = colors[0].colourToInteger; break;
+        case 1: *pixel++ = colors[1].colourToInteger; break;
+        case 2: *pixel++ = colors[2].colourToInteger; break;
+        case 3: *pixel++ = colors[3].colourToInteger; break;
         default: ++pixel; break; // invalid
       }
     }
@@ -657,7 +657,7 @@ private bool DDSDecompressDXT3 (const(ddsBuffer_t)* dds, int width, int height, 
   colors.ptr[0].red = 0xFF;
   colors.ptr[0].green = 0xFF;
   colors.ptr[0].blue = 0xFF;
-  immutable uint alphaZero = colors.ptr[0].rawInteger;
+  immutable uint alphaZero = colors.ptr[0].colourToInteger;
 
   // 8 bytes per block, 1 block for alpha, 1 block for color
   auto block = cast(const(ddsColorBlock_t)*)dds.data.ptr;
@@ -694,7 +694,7 @@ private bool DDSDecompressDXT5 (const(ddsBuffer_t)* dds, int width, int height, 
   colors.ptr[0].red = 0xFF;
   colors.ptr[0].green = 0xFF;
   colors.ptr[0].blue = 0xFF;
-  immutable uint alphaZero = colors.ptr[0].rawInteger;
+  immutable uint alphaZero = colors.ptr[0].colourToInteger;
 
   // 8 bytes per block, 1 block for alpha, 1 block for color
   auto block = cast(const(ddsColorBlock_t)*)dds.data.ptr;

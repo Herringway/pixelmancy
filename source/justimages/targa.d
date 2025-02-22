@@ -410,9 +410,9 @@ private MemoryImage loadTgaImpl(ST) (auto ref ST fl, const(char)[] filename) {
     } else {
       // some writers sets all alphas to zero, check for that
       validAlpha = false;
-      foreach (ref RGBA32 clr; tcimg.colours) if (clr.alpha != 0) { validAlpha = true; break; }
+      foreach (ref RGBA32 clr; tcimg.colours[]) if (clr.alpha != 0) { validAlpha = true; break; }
     }
-    if (!validAlpha) foreach (ref RGBA32 clr; tcimg.colours) clr.alpha = 255;
+    if (!validAlpha) foreach (ref RGBA32 clr; tcimg.colours[]) clr.alpha = 255;
   }
   return tcimg;
 }

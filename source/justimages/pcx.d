@@ -213,9 +213,8 @@ private MemoryImage loadPcxImpl(ST) (auto ref ST fl, const(char)[] filename) {
   foreach (immutable y; 0..hgt) {
     readLine(line);
     if (!bpp24) {
-      import core.stdc.string : memcpy;
       // 8bpp, with palette
-      memcpy(iimg.data.ptr+wdt*y, line, wdt);
+      iimg.data[0 .. $, y] = line[0 .. wdt];
     } else {
       // 24bpp
       auto src = line;
@@ -229,7 +228,7 @@ private MemoryImage loadPcxImpl(ST) (auto ref ST fl, const(char)[] filename) {
           if (hasAlpha) {
             alpha = src[hdr.bytesperline*3];
           }
-          timg.colours[wdt * y + x] = RGBA32(red, green, blue, alpha);
+          timg.colours[x, y] = RGBA32(red, green, blue, alpha);
           ++src;
         }
       } else {
@@ -242,7 +241,7 @@ private MemoryImage loadPcxImpl(ST) (auto ref ST fl, const(char)[] filename) {
           if (hasAlpha) {
             alpha = *src++;
           }
-          timg.colours[wdt * y + x] = RGBA32(red, green, blue, alpha);
+          timg.colours[x, y] = RGBA32(red, green, blue, alpha);
         }
       }
     }

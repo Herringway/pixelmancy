@@ -122,10 +122,10 @@ enum PngType {
 /++
 	Saves an image from an existing array of pixel data. Note that depth other than 8 may not be implemented yet. Also note depth of 16 must be stored big endian
 +/
-void writePng(string filename, const ubyte[] data, int width, int height, PngType type, ubyte depth = 8) @safe {
-	writePng(filename, Array2D!(const ubyte)(width, height, data), type, depth);
+void writePng(string filename, const RGBA32[] data, int width, int height, PngType type, ubyte depth = 8) @safe {
+	writePng(filename, Array2D!(const RGBA32)(width, height, data), type, depth);
 }
-void writePng(string filename, Array2D!(const ubyte) data, PngType type, ubyte depth = 8) @safe {
+void writePng(T : const RGBA32)(string filename, const Array2D!(T) data, PngType type, ubyte depth = 8) @safe {
 	PngHeader h;
 	h.width = cast(uint)data.width;
 	h.height = cast(uint)data.height;
@@ -133,7 +133,7 @@ void writePng(string filename, Array2D!(const ubyte) data, PngType type, ubyte d
 	h.depth = depth;
 
 	auto png = blankPNG(h);
-	addImageDatastreamToPng(data[], png);
+	addImageDatastreamToPng(cast(const(ubyte)[])data[], png);
 
 	import std.file;
 	std.file.write(filename, writePng(png));
@@ -203,20 +203,20 @@ MemoryImage imageFromPng(PNG* png) @safe {
 		case 4: // greyscale with alpha
 			// this might be a different class eventually...
 			auto a = new TrueColorImage(h.width, h.height);
-			idata = cast(ubyte[])a.colours;
+			idata = cast(ubyte[])a.colours[];
 			i = a;
 		break;
 		case 2: // truecolor
 		case 6: // truecolor with alpha
 			auto a = new TrueColorImage(h.width, h.height);
-			idata = cast(ubyte[])a.colours;
+			idata = cast(ubyte[])a.colours[];
 			i = a;
 		break;
 		case 3: // indexed
 			auto a = new IndexedImage(h.width, h.height);
 			a.palette = fetchPalette(png);
 			a.hasAlpha = true; // FIXME: don't be so conservative here
-			idata = a.data;
+			idata = a.data[];
 			i = a;
 		break;
 		default:
@@ -408,11 +408,11 @@ PNG* pngFromImage(IndexedImage i) @safe {
 	}
 
 	for(int a = 0; a < i.palette.length; a++) {
-		palette.payload[a*3+0] = i.palette[a].red;
-		palette.payload[a*3+1] = i.palette[a].green;
-		palette.payload[a*3+2] = i.palette[a].blue;
+		palette.payload[a*3+0] = cast(ubyte)i.palette[a].red;
+		palette.payload[a*3+1] = cast(ubyte)i.palette[a].green;
+		palette.payload[a*3+2] = cast(ubyte)i.palette[a].blue;
 		if(i.hasAlpha)
-			alpha.payload[a] = i.palette[a].alpha;
+			alpha.payload[a] = cast(ubyte)i.palette[a].alpha;
 	}
 
 	palette.checksum = crc("PLTE", palette.payload);
@@ -424,7 +424,7 @@ PNG* pngFromImage(IndexedImage i) @safe {
 
 	// do the datastream
 	if(h.depth == 8) {
-		addImageDatastreamToPng(i.data, png);
+		addImageDatastreamToPng(i.data[], png);
 	} else {
 		// gotta convert it
 
@@ -449,7 +449,7 @@ PNG* pngFromImage(IndexedImage i) @safe {
 		bool justAdvanced;
 		for(int y = 0; y < i.height; y++) {
 		for(int x = 0; x < i.width; x++) {
-			datastream[dsp] |= i.data[dpos++] << shift;
+			datastream[dsp] |= i.data[][dpos++] << shift;
 
 			switch(h.depth) {
 				default: assert(0);
@@ -503,7 +503,7 @@ PNG* pngFromImage(TrueColorImage i) @safe {
 	// FIXME: optimize it if it is greyscale or doesn't use alpha alpha
 
 	auto png = blankPNG(h);
-	addImageDatastreamToPng(cast(ubyte[])i.colours, png);
+	addImageDatastreamToPng(cast(ubyte[])i.colours[], png);
 
 	return png;
 }
@@ -1131,11 +1131,11 @@ void replacePalette(PNG* p, RGBA32[] colors) {
 	p.length = 0; // so write will recalculate
 
 	for(int i = 0; i < colors.length; i++) {
-		palette.payload[i*3+0] = colors[i].red;
-		palette.payload[i*3+1] = colors[i].green;
-		palette.payload[i*3+2] = colors[i].blue;
+		palette.payload[i*3+0] = cast(ubyte)colors[i].red;
+		palette.payload[i*3+1] = cast(ubyte)colors[i].green;
+		palette.payload[i*3+2] = cast(ubyte)colors[i].blue;
 		if(alpha)
-			alpha.payload[i] = colors[i].alpha;
+			alpha.payload[i] = cast(ubyte)colors[i].alpha;
 	}
 
 	palette.checksum = crc("PLTE", palette.payload);

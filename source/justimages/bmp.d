@@ -195,7 +195,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 		colorsImportant = read4();
 	}
 
-	if (compression > 3) throw new Exception("invalid bitmap compression");
+	if (compression > 3) throw new Exception(text("invalid bitmap compression: ", compression));
 	if (compression == 1 && bitsPerPixel != 8) throw new Exception("invalid bitmap compression");
 	if (compression == 2 && bitsPerPixel != 4) throw new Exception("invalid bitmap compression");
 
@@ -295,7 +295,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 			assert(bitsPerPixel == 8); // always
 			int x = 0, y = (rdheight > 0 ? 0 : height-1);
 			void setpix (int v) {
-				if (x >= 0 && y >= 0 && x < width && y < height) img.data.ptr[y*width+x] = v&0xff;
+				if (x >= 0 && y >= 0 && x < width && y < height) img.data[x, y] = v&0xff;
 				++x;
 			}
 			debug(justimages) { import core.stdc.stdio; printf("width=%d; height=%d; rdheight=%d\n", width, height, rdheight); }
@@ -357,33 +357,33 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 					auto b = read1();
 					++bytesRead;
 					if(bitsPerPixel == 8) {
-						img.data[offset++] = b;
+						img.data[][offset++] = b;
 					} else if(bitsPerPixel == 4) {
-						img.data[offset++] = (b&0xf0) >> 4;
+						img.data[][offset++] = (b&0xf0) >> 4;
 						x++;
-						if(offset == img.data.length)
+						if(offset == img.data[].length)
 							break;
-						img.data[offset++] = (b&0x0f);
+						img.data[][offset++] = (b&0x0f);
 					} else if(bitsPerPixel == 2) {
-						img.data[offset++] = (b & 0b11000000) >> 6;
+						img.data[][offset++] = (b & 0b11000000) >> 6;
 						x++;
-						if(offset == img.data.length)
+						if(offset == img.data[].length)
 							break;
-						img.data[offset++] = (b & 0b00110000) >> 4;
+						img.data[][offset++] = (b & 0b00110000) >> 4;
 						x++;
-						if(offset == img.data.length)
+						if(offset == img.data[].length)
 							break;
-						img.data[offset++] = (b & 0b00001100) >> 2;
+						img.data[][offset++] = (b & 0b00001100) >> 2;
 						x++;
-						if(offset == img.data.length)
+						if(offset == img.data[].length)
 							break;
-						img.data[offset++] = (b & 0b00000011) >> 0;
+						img.data[][offset++] = (b & 0b00000011) >> 0;
 					} else if(bitsPerPixel == 1) {
 						foreach_reverse(lol; 0 .. 8) {
 							bool value = !!((b & (1 << lol)));
-							img.data[offset++] = value ? 1 : 0;
+							img.data[][offset++] = value ? 1 : 0;
 							x++;
-							if(offset == img.data.length)
+							if(offset == img.data[].length)
 								break;
 						}
 						x--; // we do this once too many times in the loop
@@ -412,11 +412,11 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 
 			if(tp < 256) {
 				processAndMask(delegate int(int x, int y, bool transparent) {
-					auto existing = img.data[y * img.width + x];
+					auto existing = img.data[][y * img.width + x];
 
 					if(img.palette[existing] == RGBA32(0, 0, 0, 255) && transparent) {
 						// import std.stdio; write("O");
-						img.data[y * img.width + x] = cast(ubyte) tp;
+						img.data[][y * img.width + x] = cast(ubyte) tp;
 					} else {
 						// import std.stdio; write("X");
 					}
@@ -430,7 +430,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 
 		return img;
 	} else {
-		if (compression != 0) throw new Exception("invalid bitmap compression");
+		if (compression != 0) throw new Exception(text("invalid bitmap compression: ", compression));
 		// true color image
 		auto img = new TrueColorImage(width, height);
 
@@ -471,7 +471,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 					else
 						alpha = 255;
 
-					img.colours[offset / 4] = RGBA32(cast(ubyte) red, cast(ubyte) green, cast(ubyte) blue, cast(ubyte) alpha);
+					img.colours[][offset / 4] = RGBA32(cast(ubyte) red, cast(ubyte) green, cast(ubyte) blue, cast(ubyte) alpha);
 				} else {
 					assert(compression == 0);
 
@@ -485,7 +485,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 							b++;
 						} else {
 						}
-						img.colours[offset / 4] = RGBA32(red, green, blue, alpha);
+						img.colours[][offset / 4] = RGBA32(red, green, blue, alpha);
 						b += 3;
 					} else {
 						assert(bitsPerPixel == 16);
@@ -494,7 +494,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 						d |= cast(ushort)read1() << 8;
 							// we expect 8 bit numbers but these only give 5 bits of info,
 							// therefore we shift left 3 to get the right stuff.
-						img.colours[offset / 4] = RGBA32((d & 0b0111110000000000) >> (10-3), (d & 0b0000001111100000) >> (5-3), (d & 0b0000000000011111) << 3, 255);
+						img.colours[][offset / 4] = RGBA32((d & 0b0111110000000000) >> (10-3), (d & 0b0000001111100000) >> (5-3), (d & 0b0000000000011111) << 3, 255);
 						b += 2;
 					}
 				}
@@ -511,10 +511,10 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 		if(hasAndMask) {
 			processAndMask(delegate int(int x, int y, bool transparent) {
 				int offset = y * img.width + x;
-				auto existing = img.colours[offset].alpha;
+				auto existing = img.colours[][offset].alpha;
 				// only use the and mask if the alpha channel appears unused
 				if(transparent && (existing == 255))
-					img.colours[offset].alpha = 0;
+					img.colours[][offset].alpha = 0;
 				//import std.stdio; write(transparent ? "o":"x");
 
 				return 4;
@@ -604,7 +604,7 @@ void writeBmpIndirect(MemoryImage img, scope void delegate(ubyte) fwrite, bool p
 		else
 		*/
 			bitsPerPixel = 8;
-		data = pi.data;
+		data = pi.data[];
 		palette = pi.palette;
 	} else throw new Exception("I can't save this image type " ~ img.classinfo.name);
 

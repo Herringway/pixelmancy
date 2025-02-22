@@ -45,7 +45,7 @@ MemoryImage readSvg(const(ubyte)[] rawData) {
 
     NSVGRasterizer rast = nsvgCreateRasterizer();
     auto img = new TrueColorImage(w, h);
-    rasterize(rast, image, 0, 0, 1, img.colours.ptr, w, h, w*4);
+    rasterize(rast, image, 0, 0, 1, img.colours[].ptr, w, h, w*4);
     image.kill();
 
     return img;

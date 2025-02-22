@@ -7,6 +7,7 @@
 module justimages.color;
 
 import tilemagic.colours.formats;
+import tilemagic.util;
 
 @safe:
 
@@ -43,7 +44,7 @@ interface MemoryImage {
 	//TrueColorImage convertToTrueColor() const;
 
 	/// gets it as a TrueColorImage. May return this or may do a conversion and return a new image
-	TrueColorImage getAsTrueColorImage() pure nothrow @safe;
+	TrueColorImage getAsTrueColorImage() pure @safe;
 
 	/// Image width, in pixels
 	int width() const pure nothrow @safe @nogc;
@@ -65,7 +66,7 @@ interface MemoryImage {
 	void opIndexAssign(in RGBA32 clr, size_t x, size_t y) @safe pure;
 
 	/// Returns a copy of the image
-	MemoryImage clone() const pure nothrow @safe;
+	MemoryImage clone() const pure @safe;
 
 	/// Load image from file. This will import justimages.image to do the actual work, and cost nothing if you don't use it.
 	static MemoryImage fromImage(const(char)[] filename) @system {
@@ -95,11 +96,11 @@ class IndexedImage : MemoryImage {
 	/// .
 	RGBA32[] palette;
 	/// the data as indexes into the palette. Stored left to right, top to bottom, no padding.
-	ubyte[] data;
+	Array2D!ubyte data;
 
 	override void clearInternal () nothrow @safe {
 		palette = null;
-		data = null;
+		data = data.init;
 		_width = _height = 0;
 	}
 
@@ -114,9 +115,9 @@ class IndexedImage : MemoryImage {
 	}
 
 	/// .
-	override IndexedImage clone() const pure nothrow @safe {
+	override IndexedImage clone() const pure @safe {
 		auto n = new IndexedImage(width, height);
-		n.data[] = this.data[]; // the data member is already there, so array copy
+		n.data[][] = this.data[][]; // the data member is already there, so array copy
 		n.palette = this.palette.dup; // and here we need to allocate too, so dup
 		n.hasAlpha = this.hasAlpha;
 		return n;
@@ -124,9 +125,7 @@ class IndexedImage : MemoryImage {
 
 	override RGBA32 opIndex(size_t x, size_t y) const pure nothrow @safe @nogc {
 		if (x >= 0 && y >= 0 && x < _width && y < _height) {
-			size_t pos = cast(size_t)y*_width+x;
-			if (pos >= data.length) return RGBA32(0, 0, 0, 0);
-			ubyte b = data[pos];
+			ubyte b = data[x, y];
 			if (b >= palette.length) return RGBA32(0, 0, 0, 0);
 			return palette[b];
 		} else {
@@ -136,15 +135,13 @@ class IndexedImage : MemoryImage {
 
 	override void opIndexAssign(in RGBA32 clr, size_t x, size_t y) @safe {
 		if (x >= 0 && y >= 0 && x < _width && y < _height) {
-			size_t pos = cast(size_t)y*_width+x;
-			if (pos >= data.length) return;
 			ubyte pidx = findNearestColor(palette, clr);
 			if (palette.length < 255 &&
 				 (palette[pidx].red != clr.red || palette[pidx].green != clr.green || palette[pidx].blue != clr.blue || palette[pidx].alpha != clr.alpha)) {
 				// add new color
 				pidx = addColor(clr);
 			}
-			data[pos] = pidx;
+			data[x, y] = pidx;
 		}
 	}
 
@@ -152,14 +149,13 @@ class IndexedImage : MemoryImage {
 	private int _height;
 
 	/// .
-	this(int w, int h) pure nothrow @safe {
+	this(int w, int h) pure @safe {
 		_width = w;
 		_height = h;
 
         // ensure that the computed size does not exceed basic address space limits
         assert(cast(ulong)w * h  <= size_t.max);
-        // upcast to avoid overflow for images larger than 536 Mpix
-		data = new ubyte[cast(size_t)w*h];
+		data = Array2D!ubyte(w, h);
 	}
 
 	/*
@@ -169,15 +165,15 @@ class IndexedImage : MemoryImage {
 	*/
 
 	/// returns a new image
-	override TrueColorImage getAsTrueColorImage() pure nothrow @safe {
+	override TrueColorImage getAsTrueColorImage() pure @safe {
 		return convertToTrueColor();
 	}
 
 	/// Creates a new TrueColorImage based on this data
-	TrueColorImage convertToTrueColor() const pure nothrow @safe {
+	TrueColorImage convertToTrueColor() const pure @safe {
 		auto tci = new TrueColorImage(width, height);
-		foreach(i, b; data) {
-			tci.colours[i] = palette[b];
+		foreach(x, y, b; data) {
+			tci.colours[x, y] = palette[b];
 		}
 		return tci;
 	}
@@ -214,20 +210,20 @@ class TrueColorImage : MemoryImage {
 //	bool isGreyscale;
 
 	/// .
-	RGBA32[] colours; /// the data as rgba bytes. Stored left to right, top to bottom, no padding.
+	Array2D!RGBA32 colours; /// the data as rgba bytes. Stored left to right, top to bottom, no padding.
 
 	int _width;
 	int _height;
 
 	override void clearInternal () nothrow @safe {// @nogc {
-		colours = null;
+		colours = colours.init;
 		_width = _height = 0;
 	}
 
 	/// .
-	override TrueColorImage clone() const pure nothrow @safe {
+	override TrueColorImage clone() const pure @safe {
 		auto n = new TrueColorImage(width, height);
-		n.colours[] = this.colours[]; // copy into existing array ctor allocated
+		n.colours[][] = this.colours[][]; // copy into existing array ctor allocated
 		return n;
 	}
 
@@ -238,8 +234,7 @@ class TrueColorImage : MemoryImage {
 
 	override RGBA32 opIndex(size_t x, size_t y) const pure nothrow @safe @nogc {
 		if (x >= 0 && y >= 0 && x < _width && y < _height) {
-			size_t pos = cast(size_t)y*_width+x;
-			return colours[pos];
+			return colours[x, y];
 		} else {
 			return RGBA32(0, 0, 0, 0);
 		}
@@ -247,29 +242,27 @@ class TrueColorImage : MemoryImage {
 
 	override void opIndexAssign(in RGBA32 clr, size_t x, size_t y) @safe {
 		if (x >= 0 && y >= 0 && x < _width && y < _height) {
-			size_t pos = cast(size_t)y*_width+x;
-			if (pos < colours.length) colours[pos] = clr;
+			colours[x, y] = clr;
 		}
 	}
 
 	/// .
-	this(int w, int h) pure nothrow @safe {
+	this(int w, int h) pure @safe {
 		_width = w;
 		_height = h;
 
 		// ensure that the computed size does not exceed basic address space limits
-        assert(cast(ulong)w * h * 4 <= size_t.max);
-        // upcast to avoid overflow for images larger than 536 Mpix
-		colours = new RGBA32[](cast(size_t)w * h);
+        assert(cast(ulong)w * h <= size_t.max);
+		colours = Array2D!RGBA32(w, h);
 	}
 
 	/// Creates with existing data. The data pointer is stored here.
-	this(int w, int h, ubyte[] data) pure nothrow @safe {
+	this(int w, int h, ubyte[] data) pure @safe {
 		_width = w;
 		_height = h;
-		assert(cast(ulong)w * h * 4 <= size_t.max);
-		assert(data.length == cast(size_t)w * h * 4);
-		colours = cast(RGBA32[])data;
+		assert(cast(ulong)w * h <= size_t.max);
+		assert(data.length == cast(size_t)w * h * RGBA32.sizeof);
+		colours = Array2D!RGBA32(w, h, cast(RGBA32[])data);
 	}
 
 	/// Returns this
@@ -310,8 +303,10 @@ RGBA32 alphaBlend(RGBA32 foreground, RGBA32 background) pure nothrow @safe @nogc
 	if(foreground.alpha == 0)
 		return background; // the other blend function always returns alpha 255, but if the foreground has nothing, we should keep the background the same so its antialiasing doesn't get smashed (assuming this is blending in like a png instead of on a framebuffer)
 
-	static if (__VERSION__ > 2067) pragma(inline, true);
-	return background.alphaBlend(foreground);
+	ubyte blendChannel(ubyte fgChannel, ubyte bgChannel) {
+		return cast(ubyte)((fgChannel * foreground.alpha / 255) + (bgChannel * (255 - foreground.alpha) / 255));
+	}
+	return RGBA32(blendChannel(cast(ubyte)foreground.red, cast(ubyte)background.red), blendChannel(cast(ubyte)foreground.green, cast(ubyte)background.green), blendChannel(cast(ubyte)foreground.blue, cast(ubyte)background.blue), 255);
 }
 
 /*

@@ -1,7 +1,7 @@
-module tilemagic.tiles.bpp3;
+module pixelmancy.tiles.bpp3;
 
-import tilemagic.tiles.bpp1;
-import tilemagic.tiles.common;
+import pixelmancy.tiles.bpp1;
+import pixelmancy.tiles.common;
 
 import std.format;
 

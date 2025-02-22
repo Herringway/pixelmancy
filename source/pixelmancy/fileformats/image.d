@@ -24,7 +24,7 @@ public import pixelmancy.fileformats.dds;
 public import pixelmancy.fileformats.svg;
 
 public import pixelmancy.fileformats.imageresize;
-import tilemagic.colours.formats;
+import pixelmancy.colours.formats;
 
 import core.memory;
 
@@ -52,7 +52,7 @@ MemoryImage readSvg(const(ubyte)[] rawData) {
 }
 /*@safe*/ unittest {
   {
-    auto rendered = readSvg("samples/test.svg");
+    auto rendered = readSvg("testdata/test.svg");
     assert(rendered.width == 256);
     assert(rendered.height == 256);
     assert(rendered[0, 0] == RGBA32(0, 0, 255, 255));
@@ -261,13 +261,13 @@ public ImageFileFormat guessImageFormatFromMemory (const(void)[] membuf) @safe {
 
 @safe unittest {
   import std.file : read;
-  assert(guessImageFormatFromMemory(read("samples/test.png")) == ImageFileFormat.Png);
-  assert(guessImageFormatFromMemory(read("samples/test.gif")) == ImageFileFormat.Gif);
-  assert(guessImageFormatFromMemory(read("samples/test.bmp")) == ImageFileFormat.Bmp);
-  assert(guessImageFormatFromMemory(read("samples/test.jpg")) == ImageFileFormat.Jpeg);
-  assert(guessImageFormatFromMemory(read("samples/test.dds")) == ImageFileFormat.Dds);
-  assert(guessImageFormatFromMemory(read("samples/test.tga")) == ImageFileFormat.Tga);
-  assert(guessImageFormatFromMemory(read("samples/test.svg")) == ImageFileFormat.Svg);
+  assert(guessImageFormatFromMemory(read("testdata/test.png")) == ImageFileFormat.Png);
+  assert(guessImageFormatFromMemory(read("testdata/test.gif")) == ImageFileFormat.Gif);
+  assert(guessImageFormatFromMemory(read("testdata/test.bmp")) == ImageFileFormat.Bmp);
+  assert(guessImageFormatFromMemory(read("testdata/test.jpg")) == ImageFileFormat.Jpeg);
+  assert(guessImageFormatFromMemory(read("testdata/test.dds")) == ImageFileFormat.Dds);
+  assert(guessImageFormatFromMemory(read("testdata/test.tga")) == ImageFileFormat.Tga);
+  assert(guessImageFormatFromMemory(read("testdata/test.svg")) == ImageFileFormat.Svg);
 }
 
 

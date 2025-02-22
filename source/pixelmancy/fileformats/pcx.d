@@ -72,14 +72,14 @@ public MemoryImage loadPcx(T:const(char)[]) (T fname) {
 
 /*@safe*/ unittest {
   {
-    const pcx = loadPcx("samples/test.pcx");
+    const pcx = loadPcx("testdata/test.pcx");
     assert(pcx[0, 0] == RGBA32(0, 0, 255, 255));
     assert(pcx[128, 0] == RGBA32(0, 255, 0, 255));
     assert(pcx[0, 128] == RGBA32(255, 0, 0, 255));
     assert(pcx[128, 128] == RGBA32(0, 0, 0, 0));
   }
   {
-    const pcx = loadPcx("samples/test8.pcx");
+    const pcx = loadPcx("testdata/test8.pcx");
     assert(pcx[0, 0] == RGBA32(0, 0, 255, 255));
     assert(pcx[128, 0] == RGBA32(0, 255, 0, 255));
     assert(pcx[0, 128] == RGBA32(255, 0, 0, 255));
@@ -157,7 +157,7 @@ private MemoryImage loadPcxImpl(ST) (auto ref ST fl, const(char)[] filename) {
     hasAlpha = (hdr.colorplanes == 4);
   }
 
-  debug(justimages) { import core.stdc.stdio; printf("colorplanes=%u; bitsperpixel=%u; bytesperline=%u\n", cast(uint)hdr.colorplanes, cast(uint)hdr.bitsperpixel, cast(uint)hdr.bytesperline); }
+  debug(pixelmancy) { import core.stdc.stdio; printf("colorplanes=%u; bitsperpixel=%u; bytesperline=%u\n", cast(uint)hdr.colorplanes, cast(uint)hdr.bitsperpixel, cast(uint)hdr.bytesperline); }
 
   // additional checks
   if (hdr.reserved != 0) throw new Exception("invalid pcx hdr");

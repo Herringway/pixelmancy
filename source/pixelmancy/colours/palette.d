@@ -1,7 +1,7 @@
 ///
-module tilemagic.colours.palette;
+module pixelmancy.colours.palette;
 
-import tilemagic.colours.formats;
+import pixelmancy.colours.formats;
 
 enum GameBoy = [
 	RGB24(red: 155, green: 188, blue: 15),

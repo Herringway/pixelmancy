@@ -903,7 +903,7 @@ void nsvg__parseXML (const(char)[] input,
       }
       // start of a tag
       //{ import std.stdio; writeln("ctx: ", input[0..cpos].quote); }
-      ////debug(justimages) { import std.stdio; writeln("ctx: ", input[0..cpos].quote); }
+      ////debug(pixelmancy) { import std.stdio; writeln("ctx: ", input[0..cpos].quote); }
       nsvg__parseContent(input[0..cpos], contentCb, ud);
       input = input[cpos+1..$];
       if (input.length > 2 && input.ptr[0] == '!' && input.ptr[1] == '-' && input.ptr[2] == '-') {
@@ -2492,9 +2492,9 @@ void nsvg__parseClassOrId (Parser* p, char lch, const(char)[] str) {
     if (str.length == 0) break;
     usize pos = 1;
     while (pos < str.length && str.ptr[pos] > ' ') ++pos;
-    debug(justimages) { import std.stdio; writeln("class to find: ", lch, str[0..pos].quote); }
+    debug(pixelmancy) { import std.stdio; writeln("class to find: ", lch, str[0..pos].quote); }
     if (auto st = p.findStyle(lch, str[0..pos])) {
-      debug(justimages) { import std.stdio; writeln("class: [", str[0..pos], "]; value: ", st.value.quote); }
+      debug(pixelmancy) { import std.stdio; writeln("class: [", str[0..pos], "]; value: ", st.value.quote); }
       nsvg__parseStyle(p, st.value);
     }
     str = str[pos..$];
@@ -2597,7 +2597,7 @@ bool nsvg__parseNameValue (Parser* p, const(char)[] str) {
 
   str = str[pos+(pos < str.length ? 1 : 0)..$].trimLeft.trimRight(';');
 
-  debug(justimages) { import std.stdio; writeln("** name=", name.quote, "; value=", str.quote); }
+  debug(pixelmancy) { import std.stdio; writeln("** name=", name.quote, "; value=", str.quote); }
 
   return nsvg__parseAttr(p, name, str);
 }
@@ -2616,7 +2616,7 @@ void nsvg__parseStyle (Parser* p, const(char)[] str) {
       }
     }
     const(char)[] val = trimRight(str[0..pos]);
-    debug(justimages) { import std.stdio; writeln("style: ", val.quote); }
+    debug(pixelmancy) { import std.stdio; writeln("style: ", val.quote); }
     str = str[pos+(pos < str.length ? 1 : 0)..$];
     if (val.length > 0) nsvg__parseNameValue(p, val);
   }
@@ -3332,7 +3332,7 @@ void nsvg__parseGradientStop (Parser* p, AttrList attr) {
 void nsvg__startElement (void* ud, const(char)[] el, AttrList attr) {
   Parser* p = cast(Parser*)ud;
 
-  debug(justimages) { import std.stdio; writeln("tagB: ", el.quote); }
+  debug(pixelmancy) { import std.stdio; writeln("tagB: ", el.quote); }
   version(nanosvg_crappy_stylesheet_parser) { p.inStyle = (el == "style"); }
 
   if (p.defsFlag) {
@@ -3394,7 +3394,7 @@ void nsvg__startElement (void* ud, const(char)[] el, AttrList attr) {
 }
 
 void nsvg__endElement (void* ud, const(char)[] el) {
-  debug(justimages) { import std.stdio; writeln("tagE: ", el.quote); }
+  debug(pixelmancy) { import std.stdio; writeln("tagE: ", el.quote); }
   Parser* p = cast(Parser*)ud;
        if (el == "g") nsvg__popAttr(p);
   else if (el == "path") p.pathFlag = false;
@@ -3418,7 +3418,7 @@ void nsvg__content (void* ud, const(char)[] s) {
       while (s.length && (s[$-1] <= ' ' || s[$-1] == '>')) s = s[0..$-1];
       if (s.length > 1 && s[$-2..$] == "]]") s = s[0..$-2]; else break;
     }
-    debug(justimages) { import std.stdio; writeln("ctx: ", s.quote); }
+    debug(pixelmancy) { import std.stdio; writeln("ctx: ", s.quote); }
     uint tokensAdded = 0;
     while (s.length) {
       if (s.length > 1 && s.ptr[0] == '/' && s.ptr[1] == '*') {
@@ -3432,7 +3432,7 @@ void nsvg__content (void* ud, const(char)[] s) {
         while (s.length && s.ptr[0] <= ' ') s = s[1..$];
         continue;
       }
-      //debug(justimages) { import std.stdio; writeln("::: ", s.quote); }
+      //debug(pixelmancy) { import std.stdio; writeln("::: ", s.quote); }
       if (s.ptr[0] == '{') {
         usize pos = 1;
         while (pos < s.length && s.ptr[pos] != '}') {
@@ -3446,7 +3446,7 @@ void nsvg__content (void* ud, const(char)[] s) {
             ++pos;
           }
         }
-        debug(justimages) { import std.stdio; writeln("*** style: ", s[1..pos].quote); }
+        debug(pixelmancy) { import std.stdio; writeln("*** style: ", s[1..pos].quote); }
         if (tokensAdded > 0) {
           foreach (immutable idx; p.styleCount-tokensAdded..p.styleCount) p.styles[idx].value = s[1..pos];
         }
@@ -3457,7 +3457,7 @@ void nsvg__content (void* ud, const(char)[] s) {
         usize pos = 0;
         while (pos < s.length && s.ptr[pos] > ' ' && s.ptr[pos] != '{' && s.ptr[pos] != '/') ++pos;
         const(char)[] tk = s[0..pos];
-        debug(justimages) { import std.stdio; writeln("token: ", tk.quote); }
+        debug(pixelmancy) { import std.stdio; writeln("token: ", tk.quote); }
         s = s[pos..$];
         {
           import core.stdc.stdlib : realloc;
@@ -3470,7 +3470,7 @@ void nsvg__content (void* ud, const(char)[] s) {
         ++tokensAdded;
       }
     }
-    debug(justimages) foreach (const ref st; p.styles[0..p.styleCount]) { import std.stdio; writeln("name: ", st.name.quote, "; value: ", st.value.quote); }
+    debug(pixelmancy) foreach (const ref st; p.styles[0..p.styleCount]) { import std.stdio; writeln("name: ", st.name.quote, "; value: ", st.value.quote); }
   }
 }
 

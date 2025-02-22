@@ -1,6 +1,6 @@
-module tilemagic.tiles.bpp1;
+module pixelmancy.tiles.bpp1;
 
-import tilemagic.tiles.common;
+import pixelmancy.tiles.common;
 
 /++
 + 1 bit per pixel tile format. Commonly used by many platforms.

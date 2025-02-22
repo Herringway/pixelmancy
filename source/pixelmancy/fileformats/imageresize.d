@@ -187,7 +187,7 @@ public void imageResize(int Components=4) (
 
 
   if (lastGamma != gamma) {
-    debug(justimages) { import core.stdc.stdio; stderr.fprintf("creating translation tables for gamma %f (previous gamma is %f)\n", gamma, lastGamma); }
+    debug(pixelmancy) { import core.stdc.stdio; stderr.fprintf("creating translation tables for gamma %f (previous gamma is %f)\n", gamma, lastGamma); }
     foreach (immutable i, ref v; srgb2linear[]) {
       import std.math : pow;
       v = cast(float)pow(cast(int)i*1.0f/255.0f, gamma);
@@ -201,7 +201,7 @@ public void imageResize(int Components=4) (
     }
     lastGamma = gamma;
   }
-  debug(justimages) { import core.stdc.stdio; stderr.fprintf("filter is %d\n", filter); }
+  debug(pixelmancy) { import core.stdc.stdio; stderr.fprintf("filter is %d\n", filter); }
 
   ImageResampleWorker[Components] resamplers;
   float[][Components] samples;
@@ -276,7 +276,7 @@ public void imageResize(int Components=4) (
           ++dsc;
         }
       }
-      //debug(justimages) { import core.stdc.stdio; stderr.fprintf("writing dest row %d with %u components\n", dsty, Components); }
+      //debug(pixelmancy) { import core.stdc.stdio; stderr.fprintf("writing dest row %d with %u components\n", dsty, Components); }
       dstPutRow(dsty, dstrow);
       ++dsty;
     }

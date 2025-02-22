@@ -1,6 +1,6 @@
-module tilemagic.tiles.bpp4;
+module pixelmancy.tiles.bpp4;
 
-import tilemagic.tiles.common;
+import pixelmancy.tiles.common;
 
 /++
 + 4 bit per pixel tile format with palette. Each row has its bitplanes stored

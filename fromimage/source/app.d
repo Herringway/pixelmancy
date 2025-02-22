@@ -9,9 +9,7 @@ import std.range;
 import std.stdio;
 
 import siryul;
-import tilemagic;
-import tilemagic.util;
-import tilemagic.imageloader;
+import pixelmancy;
 
 void main(string[] args) {
 	string palettePath;

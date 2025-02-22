@@ -15,7 +15,7 @@
 		writeln(thing.length); // tell how many things it found
 
 		/+ // just to display one
-		import justimages.simpledisplay;
+		import pixelmancy.simpledisplay;
 		auto img = new SimpleWindow(thing[0].width, thing[0].height);
 		{
 		auto paint = img.draw();
@@ -93,9 +93,9 @@ MemoryImage[] loadIco(string filename) {
 	return loadIcoFromMemory(cast(const(ubyte)[]) std.file.read(filename));
 }
 /*@safe*/ unittest {
-	import tilemagic.colours.formats : RGBA32;
+	import pixelmancy.colours.formats : RGBA32;
 	{
-		const ico = loadIco("samples/test.ico")[0];
+		const ico = loadIco("testdata/test.ico")[0];
 		assert(ico[0, 0] == RGBA32(0, 0, 255, 255));
 		assert(ico[64, 0] == RGBA32(0, 255, 0, 255));
 		assert(ico[0, 64] == RGBA32(255, 0, 0, 255));
@@ -250,10 +250,10 @@ ubyte[] writeIco(MemoryImage[] images) {
 	return encodeIcoOrCur(false, cast(int) images.length, (int idx) { return IcoCursor(images[idx]); });
 }
 /*@safe*/ unittest {
-	import tilemagic.colours.formats : RGBA32;
+	import pixelmancy.colours.formats : RGBA32;
 	// round-tripping...
 	{
-		const ico = loadIcoFromMemory(writeIco(loadIco("samples/test.ico")))[0];
+		const ico = loadIcoFromMemory(writeIco(loadIco("testdata/test.ico")))[0];
 		assert(ico[0, 0] == RGBA32(0, 0, 255, 255));
 		assert(ico[64, 0] == RGBA32(0, 255, 0, 255));
 		assert(ico[0, 64] == RGBA32(255, 0, 0, 255));

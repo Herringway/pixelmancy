@@ -1,4 +1,4 @@
-module tilemagic.imageloader;
+module pixelmancy.tileloader;
 
 import std.algorithm.iteration;
 import std.algorithm.searching;
@@ -6,11 +6,10 @@ import std.array;
 import std.exception;
 import std.stdio;
 
-import justimages;
-import siryul;
+import pixelmancy.fileformats;
 
-import tilemagic;
-import tilemagic.util;
+import pixelmancy;
+import pixelmancy.util;
 
 struct ParsedImage {
 	Array2D!TileAttributes arrangement;

@@ -1,5 +1,5 @@
 /++
-	PNG file read and write. Leverages [justimages.color|color.d]'s [MemoryImage] interfaces for interop.
+	PNG file read and write. Leverages [pixelmancy.color|color.d]'s [MemoryImage] interfaces for interop.
 
 	The main high-level functions you want are [readPng], [readPngFromBytes], [writePng], and maybe [writeImageToPngFile] or [writePngLazy] for some circumstances.
 
@@ -10,15 +10,15 @@
 
 	See_Also:
 	$(LIST
-		* [justimages.image] has generic load interfaces that can handle multiple file formats, including png.
-		* [justimages.apng] handles the animated png extensions.
+		* [pixelmancy.image] has generic load interfaces that can handle multiple file formats, including png.
+		* [pixelmancy.apng] handles the animated png extensions.
 	)
 +/
-module justimages.png;
+module pixelmancy.fileformats.png;
 
 import core.memory;
-import tilemagic.colours.formats;
-import tilemagic.util;
+import pixelmancy.colours.formats;
+import pixelmancy.util;
 
 private ubyte[] readTrusted(string filename) @trusted {
 	import std.file : read;
@@ -44,14 +44,14 @@ MemoryImage readPng(string filename) @safe {
 
 @safe unittest {
 	{
-		const png = readPng("samples/test.png");
+		const png = readPng("testdata/test.png");
 		assert(png[0, 0] == RGBA32(0, 0, 255, 255));
 		assert(png[128, 0] == RGBA32(0, 255, 0, 255));
 		assert(png[0, 128] == RGBA32(255, 0, 0, 255));
 		assert(png[128, 128] == RGBA32(0, 0, 0, 0));
 	}
 	{
-		const png = readPng("samples/test8.png");
+		const png = readPng("testdata/test8.png");
 		assert(png[0, 0] == RGBA32(0, 0, 255, 255));
 		assert(png[128, 0] == RGBA32(0, 255, 0, 255));
 		assert(png[0, 128] == RGBA32(255, 0, 0, 255));
@@ -99,7 +99,7 @@ ubyte[] writePngToArray(MemoryImage mi) @safe {
 }
 
 @safe unittest {
-	auto orig = readPng("samples/test.png");
+	auto orig = readPng("testdata/test.png");
 	auto roundTripped = readPngFromBytes(writePngToArray(orig));
 	foreach (x; 0 .. orig.width) {
 		foreach (y; 0 .. orig.height) {
@@ -143,8 +143,8 @@ void writePng(T : const RGBA32)(string filename, const Array2D!(T) data, PngType
 /*
 //Here's a simple test program that shows how to write a quick image viewer with simpledisplay:
 
-import justimages.png;
-import justimages.simpledisplay;
+import pixelmancy.png;
+import pixelmancy.simpledisplay;
 
 import std.file;
 void main(string[] args) {
@@ -166,7 +166,7 @@ void main(string[] args) {
 
 import std.zlib;
 
-public import justimages.color;
+public import pixelmancy.fileformats.color;
 
 /**
 	The return value should be casted to indexed or truecolor depending on what the file is. You can
@@ -1166,16 +1166,16 @@ uint crc(in string lol, in ubyte[] buf) @safe {
 }
 
 
-/* former module justimages.lazypng follows */
+/* former module pixelmancy.lazypng follows */
 
 // this is like png.d but all range based so more complicated...
 // and I don't remember how to actually use it.
 
 // some day I'll prolly merge it with png.d but for now just throwing it up there
 
-//module justimages.lazypng;
+//module pixelmancy.lazypng;
 
-//import justimages.color;
+//import pixelmancy.color;
 
 //import std.stdio;
 

@@ -1,11 +1,11 @@
-module tilemagic.arrangement.arrangement;
+module pixelmancy.arrangement.arrangement;
 
 import std.algorithm;
 import std.bitmanip;
 import std.exception;
 import std.range;
 
-import tilemagic.util;
+import pixelmancy.util;
 
 enum ArrangementFormat {
 	snes

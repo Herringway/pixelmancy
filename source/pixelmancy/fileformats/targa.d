@@ -70,7 +70,7 @@ public MemoryImage loadTga(const(char)[] fname) {
 }
 /*@safe*/ unittest {
   {
-    const tga = loadTga("samples/test.tga");
+    const tga = loadTga("testdata/test.tga");
     assert(tga[0, 0] == RGBA32(0, 0, 255, 255));
     assert(tga[128, 0] == RGBA32(0, 255, 0, 255));
     assert(tga[0, 128] == RGBA32(255, 0, 0, 255));

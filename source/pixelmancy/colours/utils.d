@@ -1,7 +1,7 @@
 ///
-module tilemagic.colours.utils;
+module pixelmancy.colours.utils;
 
-import tilemagic.colours.raw;
+import pixelmancy.colours.raw;
 
 import std.algorithm;
 import std.traits;
@@ -123,7 +123,7 @@ ubyte[T.sizeof] asBytes(T)(T input) {
 }
 
 @safe pure unittest {
-	import tilemagic.colours.formats : BGR555;
+	import pixelmancy.colours.formats : BGR555;
 	assert(BGR555(31, 31, 31).asBytes == [0xFF, 0x7F]);
 	assert((const BGR555)(31, 31, 31).asBytes == [0xFF, 0x7F]);
 	assert(BGR555(30, 31, 31).asBytes == [0xFE, 0x7F]);
@@ -174,7 +174,7 @@ void alphaFP(Precision, Colour)(ref Colour colour, Precision value) if (hasAlpha
 }
 
 @safe pure unittest {
-	import tilemagic.colours.formats : RGB24;
+	import pixelmancy.colours.formats : RGB24;
 	import std.math : isClose;
 	assert(RGB24(255, 128, 0).redFP() == 1.0);
 	assert(RGB24(255, 128, 0).greenFP().isClose(0.5019607843137254));
@@ -189,10 +189,10 @@ void alphaFP(Precision, Colour)(ref Colour colour, Precision value) if (hasAlpha
 
 template LinearFormatOf(ColourFormat, Precision) {
 	static if (hasAlpha!ColourFormat) {
-		import tilemagic.colours.formats : AnalogRGBA;
+		import pixelmancy.colours.formats : AnalogRGBA;
 		alias LinearFormatOf = AnalogRGBA!Precision;
 	} else {
-		import tilemagic.colours.formats : AnalogRGB;
+		import pixelmancy.colours.formats : AnalogRGB;
 		alias LinearFormatOf = AnalogRGB!Precision;
 	}
 }
@@ -241,7 +241,7 @@ T colourConvert(T, size_t Size1, size_t Size2, Source)(Source val ) {
 }
 alias colorConvert = colourConvert;
 mixin template colourCommon() {
-	import tilemagic.colours.formats : AnalogRGB, AnalogRGBA;
+	import pixelmancy.colours.formats : AnalogRGB, AnalogRGBA;
 	this(uint red, uint green, uint blue) pure @safe
 		in(red < (1<<redSize), "Red value out of range")
 		in(green < (1<<greenSize), "Green value out of range")
@@ -364,7 +364,7 @@ mixin template colourCommon() {
 }
 
 @safe pure unittest {
-	import tilemagic.colours.formats : BGR555, RGB24, RGBA8888;
+	import pixelmancy.colours.formats : BGR555, RGB24, RGBA8888;
 	assert(RGB24(255, 255, 255).isSimilar(RGB24(255, 255, 255)));
 	assert(RGB24(255, 255, 255).isSimilar(RGBA8888(255, 255, 255)));
 	assert(RGBA8888(255, 255, 255).isSimilar(RGB24(255, 255, 255)));

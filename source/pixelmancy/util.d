@@ -1,4 +1,4 @@
-module tilemagic.util;
+module pixelmancy.util;
 
 // from D documentation
 struct Array2D(E) {

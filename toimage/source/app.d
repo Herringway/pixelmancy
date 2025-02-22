@@ -9,12 +9,7 @@ import std.stdio;
 import std.string;
 import std.traits;
 
-import tilemagic.arrangement;
-import tilemagic.colours;
-import tilemagic.imagesaver;
-import tilemagic.tiles;
-import tilemagic.util;
-import justimages;
+import pixelmancy;
 import siryul;
 
 const(Array2D!TileAttributes) getArrangement(const string path, ArrangementFormat format, size_t width, const Array2D!TileAttributes defaultArrangement) @safe {

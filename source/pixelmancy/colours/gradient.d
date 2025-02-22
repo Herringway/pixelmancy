@@ -1,8 +1,8 @@
 ///
-module tilemagic.colours.gradient;
+module pixelmancy.colours.gradient;
 
-import tilemagic.colours.formats;
-import tilemagic.colours.utils;
+import pixelmancy.colours.formats;
+import pixelmancy.colours.utils;
 
 /// A range-based smooth-ish linear gradient generator
 struct Gradient {

@@ -1,13 +1,13 @@
 ///
-module tilemagic.colours.raw;
+module pixelmancy.colours.raw;
 
 import std.conv;
 import std.string;
 import std.system;
 import std.traits;
 
-import tilemagic.colours.formats;
-import tilemagic.colours.utils;
+import pixelmancy.colours.formats;
+import pixelmancy.colours.utils;
 
 enum SupportedFormat {
 	bgr555,
@@ -93,7 +93,7 @@ alias bytesToColors = bytesToColours;
 }
 
 ubyte[Format.sizeof] colourToBytes(Format)(Format data) if (isColourFormat!Format) {
-	import tilemagic.colours.utils : asBytes;
+	import pixelmancy.colours.utils : asBytes;
 	return data.asBytes();
 }
 /// ditto

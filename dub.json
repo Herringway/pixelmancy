@@ -1,10 +1,11 @@
 {
-	"name": "tilemagic",
+	"name": "pixelmancy",
 	"authors": [
-		"Cameron \"Herringway\" Ross"
+		"Cameron \"Herringway\" Ross",
+		"Adam D. Ruppe"
 	],
-	"description": "Library for misc tile functions",
-	"copyright": "Copyright © 2024, Cameron",
+	"description": "Library for manipulating pixels in file formats and memory",
+	"copyright": "Copyright © 2025, Cameron",
 	"license": "BSL-1.0",
 	"stringImportPaths": ["testdata"],
 	"subPackages": [

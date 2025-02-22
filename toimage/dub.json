@@ -1,8 +1,7 @@
 {
 	"name": "toimage",
 	"dependencies": {
-		"tilemagic": "*",
-		"siryul": "~>0.8.0",
-		"justimages": "~>0.0"
+		"pixelmancy": "*",
+		"siryul": "~>0.8.0"
 	}
 }

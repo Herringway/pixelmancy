@@ -670,7 +670,7 @@ ApngAnimation readApng(in ubyte[] data, bool strictApng = false, scope ApngAnima
 /*@safe*/ unittest {
 	import std.file : read;
   {
-	auto apng = readApng(cast(ubyte[])read("samples/test.apng"));
+	auto apng = readApng(cast(ubyte[])read("testdata/test.apng"));
 	assert(apng.acc.num_frames == 2); // 2 frames, 300 ms each
 	with (apng.frames[0]) {
 		populateData();
@@ -690,7 +690,7 @@ ApngAnimation readApng(in ubyte[] data, bool strictApng = false, scope ApngAnima
 	}
   }
   {
-	auto apng = readApng(cast(ubyte[])read("samples/dispose_op_bg.apng"));
+	auto apng = readApng(cast(ubyte[])read("testdata/dispose_op_bg.apng"));
 	assert(apng.acc.num_frames == 2);
 	auto renderer = apng.renderer();
 	renderer.nextFrame();
@@ -818,7 +818,7 @@ ubyte[] getApngBytes(ApngAnimation apng) {
 /*@safe*/ unittest {
 	import std.file : read;
   {
-	auto apng = readApng(getApngBytes(readApng(cast(ubyte[])read("samples/test.apng"))));
+	auto apng = readApng(getApngBytes(readApng(cast(ubyte[])read("testdata/test.apng"))));
 	assert(apng.acc.num_frames == 2); // 2 frames, 300 ms each
 	with (apng.frames[0]) {
 		populateData();

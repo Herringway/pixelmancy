@@ -1,7 +1,7 @@
 ///
-module tilemagic.colours.properties;
+module pixelmancy.colours.properties;
 
-import tilemagic.colours.utils;
+import pixelmancy.colours.utils;
 
 Precision relativeLuminosity(Precision = double, Colour)(const Colour colour) if(isColourFormat!Colour) {
 	const linear = colour.asLinearRGB!Precision;
@@ -11,7 +11,7 @@ Precision relativeLuminosity(Precision = double, Colour)(const Colour colour) if
 }
 ///
 @safe pure unittest {
-	import tilemagic.colours.formats : BGR555, RGB24;
+	import pixelmancy.colours.formats : BGR555, RGB24;
 	import std.math : isClose;
 	assert(RGB24(0, 0, 0).relativeLuminosity.isClose(0.0));
 	assert(RGB24(255, 255, 255).relativeLuminosity.isClose(1.0));
@@ -27,7 +27,7 @@ Precision contrast(Precision = double, Colour1, Colour2)(const Colour1 colour1, 
 }
 ///
 @safe pure unittest {
-	import tilemagic.colours.formats : RGB24;
+	import pixelmancy.colours.formats : RGB24;
 	import std.math : isClose;
 	assert(contrast(RGB24(0, 0, 0), RGB24(0, 0, 0)).isClose(1.0));
 	assert(contrast(RGB24(0, 0, 0), RGB24(255, 255, 255)).isClose(21.0));
@@ -50,7 +50,7 @@ Colour complementary(Colour)(const Colour colour) if (isColourFormat!Colour) {
 }
 ///
 @safe pure unittest {
-	import tilemagic.colours.formats : RGB24;
+	import pixelmancy.colours.formats : RGB24;
 	assert(RGB24(0, 0, 0).complementary == RGB24(255, 255, 255));
 	assert(RGB24(255, 255, 255).complementary == RGB24(0, 0, 0));
 	assert(RGB24(0, 255, 255).complementary == RGB24(255, 0, 0));

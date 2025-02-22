@@ -1,11 +1,11 @@
-module tilemagic.imagesaver;
+module pixelmancy.tilesaver;
 
 import std.algorithm;
 import std.traits;
 
-import tilemagic.arrangement;
-import tilemagic.colours;
-import tilemagic.util;
+import pixelmancy.arrangement;
+import pixelmancy.colours;
+import pixelmancy.util;
 
 struct PaletteCoords {
 	uint colour;
@@ -43,7 +43,7 @@ Array2D!(TargetColour) toTrueColour(TargetColour, Colour)(const Array2D!PaletteC
 }
 
 @safe pure unittest {
-	import tilemagic.tiles.bpp4 : Intertwined4BPP;
+	import pixelmancy.tiles.bpp4 : Intertwined4BPP;
 	const tiles = cast(immutable(Intertwined4BPP)[])import("imagesaver_test.bpp4");
 	const tilemap = array2D(cast(immutable(SNESTileAttributes)[])import("imagesaver_test.arr"), 2, 2);
 	const palettePixels = toPaletteCoords(tiles, tilemap[0 .. $, 0 .. $]);

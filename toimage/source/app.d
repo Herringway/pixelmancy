@@ -14,7 +14,7 @@ import tilemagic.colours;
 import tilemagic.imagesaver;
 import tilemagic.tiles;
 import tilemagic.util;
-import arsd.png;
+import justimages;
 import siryul;
 
 const(Array2D!TileAttributes) getArrangement(const string path, ArrangementFormat format, size_t width, const Array2D!TileAttributes defaultArrangement) @safe {

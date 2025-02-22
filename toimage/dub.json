@@ -3,6 +3,6 @@
 	"dependencies": {
 		"tilemagic": "*",
 		"siryul": "~>0.8.0",
-		"arsd-official:png": "~>10.6.0"
+		"justimages": "~>0.0"
 	}
 }

@@ -2,12 +2,30 @@
 module tilemagic.colours.raw;
 
 import std.conv;
+import std.string;
 import std.system;
+import std.traits;
 
 import tilemagic.colours.formats;
 import tilemagic.colours.utils;
 
-enum SupportedFormat { bgr555, bgr565, rgb24, rgba8888, bgr222, bgr333md }
+enum SupportedFormat {
+	bgr555,
+	rgb555,
+	bgr565,
+	bgr222,
+	bgr333md,
+	rgb24,
+	rgba32,
+	argb32,
+	bgr24,
+	bgra32,
+	abgr32,
+	rgba8888,
+	argb8888,
+	bgra8888,
+	abgr8888,
+}
 
 /++
 + Reads a colour from a raw byte array to a specified colour format.
@@ -17,10 +35,18 @@ enum SupportedFormat { bgr555, bgr565, rgb24, rgba8888, bgr222, bgr333md }
 +		ColourFormat = colour format to convert to
 + Returns: a colour in the specified format
 +/
-ColourFormat bytesToColour(ColourFormat = RGB24)(const ubyte[] data) if (isColourFormat!ColourFormat) {
-	const result = bytesToColours!ColourFormat(data);
+ColourFormat bytesToColour(ColourFormat = RGB24)(const ubyte[] data, SupportedFormat format) if (isColourFormat!ColourFormat) {
+	const result = bytesToColours!ColourFormat(data, format);
 	assert(result.length == 1);
 	return result[0];
+}
+/// ditto
+ColourFormat bytesToColour(ColourFormat = RGB24)(const ubyte[] data) if (isColourFormat!ColourFormat) {
+	static foreach (format; EnumMembers!SupportedFormat) {
+		static if (is(mixin(format.stringof.toUpper) == ColourFormat)) {
+			return bytesToColour!ColourFormat(data, format);
+		}
+	}
 }
 /// ditto
 alias bytesToColor = bytesToColour;
@@ -34,8 +60,27 @@ alias bytesToColor = bytesToColour;
 * Reinterprets an array of bytes as an array of colours.
 * Params: data = Raw bytes to reinterpret
 */
-const(ColourFormat)[] bytesToColours(ColourFormat = RGB24)(const ubyte[] data) if (isColourFormat!ColourFormat) {
-	return cast(const(ColourFormat)[])data;
+ColourFormat[] bytesToColours(ColourFormat = RGB24)(const ubyte[] data, SupportedFormat format) if (isColourFormat!ColourFormat) {
+	final switch (format) {
+		static foreach (fmt; EnumMembers!SupportedFormat) {
+			case fmt:
+				alias Fmt = mixin(fmt.stringof.toUpper);
+				ColourFormat[] output;
+				output.reserve(data.length / Fmt.sizeof);
+				foreach (reinterpreted; cast(const(Fmt)[])data) {
+					output ~= reinterpreted.convert!ColourFormat;
+				}
+				return output;
+		}
+	}
+}
+/// ditto
+ColourFormat[] bytesToColours(ColourFormat = RGB24)(const ubyte[] data) if (isColourFormat!ColourFormat) {
+	static foreach (format; EnumMembers!SupportedFormat) {
+		static if (is(mixin(format.stringof.toUpper) == ColourFormat)) {
+			return bytesToColours!ColourFormat(data, format);
+		}
+	}
 }
 /// ditto
 alias bytesToColors = bytesToColours;
@@ -60,30 +105,12 @@ alias colorToBytes = colourToBytes;
 	assert(colourToBytes(RGB24(red: 72, green: 232, blue: 248)) == [72, 232, 248]);
 }
 
-
 ubyte[] colourToBytes(T)(T data, SupportedFormat format) if (isColourFormat!T) {
-	ubyte[] output;
 	final switch (format) {
-		case SupportedFormat.bgr222:
-			output = colourToBytes(data.convert!BGR222)[].dup;
-			break;
-		case SupportedFormat.bgr333md:
-			output = colourToBytes(data.convert!BGR333MD)[].dup;
-			break;
-		case SupportedFormat.bgr555:
-			output = colourToBytes(data.convert!BGR555)[].dup;
-			break;
-		case SupportedFormat.bgr565:
-			output = colourToBytes(data.convert!BGR565)[].dup;
-			break;
-		case SupportedFormat.rgb24:
-			output = colourToBytes(data.convert!RGB24)[].dup;
-			break;
-		case SupportedFormat.rgba8888:
-			output = colourToBytes(data.convert!RGBA8888)[].dup;
-			break;
+		static foreach (fmt; EnumMembers!SupportedFormat) {
+			case fmt: return colourToBytes(data.convert!(mixin(fmt.stringof.toUpper)))[].dup;
+		}
 	}
-	return output;
 }
 ///
 @safe pure unittest {
@@ -92,11 +119,24 @@ ubyte[] colourToBytes(T)(T data, SupportedFormat format) if (isColourFormat!T) {
 	assert(colourToBytes(RGB24(red: 72, green: 232, blue: 248), SupportedFormat.rgb24) == [72, 232, 248]);
 }
 
+size_t colourSize(SupportedFormat format) @safe pure {
+	final switch (format) {
+		static foreach (fmt; EnumMembers!SupportedFormat) {
+			case fmt: return mixin(fmt.stringof.toUpper).sizeof;
+		}
+	}
+}
+///
+@safe pure unittest {
+	assert(colourSize(SupportedFormat.rgb24) == RGB24.sizeof);
+	assert(colourSize(SupportedFormat.rgba32) == RGBA32.sizeof);
+}
+
 ///
 ColourFormat integerToColour(ColourFormat, Endian endianness = endian)(ClosestInteger!(ColourFormat.sizeof) integer) if (isColourFormat!ColourFormat){
 	import std.bitmanip : nativeToBigEndian, nativeToLittleEndian;
 	ubyte[typeof(integer).sizeof] bytes = endianness == Endian.littleEndian ? nativeToLittleEndian(integer) : nativeToBigEndian(integer);
-	return bytesToColour!ColourFormat(bytes[]);
+	return bytesToColour!ColourFormat(bytes[0 .. ColourFormat.sizeof]);
 }
 /// ditto
 alias integerToColor = integerToColour;
@@ -104,16 +144,23 @@ alias integerToColor = integerToColour;
 @safe pure unittest {
 	import std.bitmanip : swapEndian;
 	assert(integerToColour!BGR555(0x7FFF) == BGR555(red: 31, green: 31, blue: 31));
+	assert(integerToColour!RGB24(0xFDFEFF) == RGB24(red: 255, green: 254, blue: 253));
 	assert(integerToColour!BGR555(0x3FFF) == BGR555(red: 31, green: 31, blue: 15));
 	version(LittleEndian) {
 		enum ushort littleEndianValue = 0x7FFF;
 		enum ushort bigEndianValue = swapEndian(littleEndianValue);
+		enum uint littleEndianValue2 = 0xFDFEFF;
+		enum uint bigEndianValue2 = swapEndian(littleEndianValue2);
 	} else {
 		enum ushort bigEndianValue = 0x7FFF;
 		enum ushort littleEndianValue = swapEndian(bigEndianValue);
+		enum uint bigEndianValue2 = 0xFDFEFF;
+		enum uint littleEndianValue2 = swapEndian(bigEndianValue2);
 	}
 	assert(integerToColour!(BGR555, Endian.littleEndian)(littleEndianValue) == BGR555(red: 31, green: 31, blue: 31));
 	assert(integerToColour!(BGR555, Endian.bigEndian)(bigEndianValue) == BGR555(red: 31, green: 31, blue: 31));
+	assert(integerToColour!(RGB24, Endian.littleEndian)(littleEndianValue2) == RGB24(red: 255, green: 254, blue: 253));
+	assert(integerToColour!(RGB24, Endian.bigEndian)(bigEndianValue2) == RGB24(red: 255, green: 254, blue: 253));
 }
 
 ///
@@ -127,16 +174,26 @@ ClosestInteger!(ColourFormat.sizeof) colourToInteger(Endian endianness = endian,
 alias colorToInteger = colourToInteger;
 ///
 @safe pure unittest {
+	enum rgb24Value = RGB24(red: 255, green: 254, blue: 253);
+	enum rgb24ExpectedInteger = 0xFDFEFF;
+	enum bgr555Value = BGR555(red: 31, green: 30, blue: 29);
+	enum bgr555ExpectedInteger = 0x77DF;
 	import std.bitmanip : swapEndian;
-	assert(colourToInteger(BGR555(red: 31, green: 31, blue: 31)) == 0x7FFF);
-	assert(colourToInteger(BGR555(red: 31, green: 31, blue: 15)) == 0x3FFF);
+	assert(colourToInteger(bgr555Value) == bgr555ExpectedInteger);
+	assert(colourToInteger(rgb24Value) == rgb24ExpectedInteger);
 	version(LittleEndian) {
-		enum ushort littleEndianValue = 0x7FFF;
+		enum ushort littleEndianValue = bgr555ExpectedInteger;
 		enum ushort bigEndianValue = swapEndian(littleEndianValue);
+		enum uint littleEndianValue2 = rgb24ExpectedInteger;
+		enum uint bigEndianValue2 = swapEndian(littleEndianValue2);
 	} else {
-		enum ushort bigEndianValue = 0x7FFF;
+		enum ushort bigEndianValue = bgr555ExpectedInteger;
 		enum ushort littleEndianValue = swapEndian(bigEndianValue);
+		enum uint bigEndianValue2 = rgb24ExpectedInteger;
+		enum uint littleEndianValue2 = swapEndian(bigEndianValue2);
 	}
-	assert(colourToInteger!(Endian.littleEndian)(BGR555(red: 31, green: 31, blue: 31)) == littleEndianValue);
-	assert(colourToInteger!(Endian.bigEndian)(BGR555(red: 31, green: 31, blue: 31)) == bigEndianValue);
+	assert(colourToInteger!(Endian.littleEndian)(bgr555Value) == littleEndianValue);
+	assert(colourToInteger!(Endian.bigEndian)(bgr555Value) == bigEndianValue);
+	assert(colourToInteger!(Endian.littleEndian)(rgb24Value) == littleEndianValue2);
+	assert(colourToInteger!(Endian.bigEndian)(rgb24Value) == bigEndianValue2);
 }

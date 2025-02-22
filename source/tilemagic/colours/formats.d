@@ -53,8 +53,31 @@ unittest {
 }
 
 ///
+alias RGBA32 = RGBGeneric!(ubyte, [Channel.red, Channel.green, Channel.blue, Channel.alpha]); // [ RRRRRRRR GGGGGGGG BBBBBBBB AAAAAAAA ]
+static assert(RGBA32.sizeof == 4);
+unittest {
+	version(LittleEndian) {
+		alias PackedFormat = ABGR8888;
+	} else {
+		alias PackedFormat = RGBA8888;
+	}
+	assert(RGBA32(red: 255, green: 128, blue: 64, alpha: 255).colourToInteger == PackedFormat(red: 255, green: 128, blue: 64, alpha: 255).colourToInteger);
+}
+///
+alias ARGB32 = RGBGeneric!(ubyte, [Channel.alpha, Channel.red, Channel.green, Channel.blue]); // [ AAAAAAAA RRRRRRRR GGGGGGGG BBBBBBBB ]
+static assert(ARGB32.sizeof == 4);
+
+///
 alias BGR24 = RGBGeneric!(ubyte, [Channel.blue, Channel.green, Channel.red]); // [ BBBBBBBB GGGGGGGG RRRRRRRR ]
 static assert(BGR24.sizeof == 3);
+
+///
+alias BGRA32 = RGBGeneric!(ubyte, [Channel.blue, Channel.green, Channel.red, Channel.alpha]); // [ BBBBBBBB GGGGGGGG RRRRRRRR AAAAAAAA ]
+static assert(BGRA32.sizeof == 4);
+
+///
+alias ABGR32 = RGBGeneric!(ubyte, [Channel.alpha, Channel.blue, Channel.green, Channel.red]); // [ AAAAAAAA BBBBBBBB GGGGGGGG RRRRRRRR ]
+static assert(ABGR32.sizeof == 4);
 
 ///
 alias RGBA8888 = RGBGeneric!([RGBChannel(Channel.alpha, 8), RGBChannel(Channel.blue, 8), RGBChannel(Channel.green, 8), RGBChannel(Channel.red, 8)]); // AAAAAAAA BBBBBBBB GGGGGGGG RRRRRRRR

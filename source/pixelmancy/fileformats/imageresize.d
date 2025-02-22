@@ -1,5 +1,5 @@
 /++
-	Image resizing support for [justimages.color.MemoryImage]. Handles up and down scaling.
+	Image resizing support for [pixelmancy.fileformats.color.MemoryImage]. Handles up and down scaling.
 	See [imageResize] for the main function, all others are lower level if you need
 	more control.
 
@@ -26,9 +26,9 @@
 	License:
 		Public Domain / Unlicense - http://unlicense.org/
 +/
-module justimages.imageresize;
+module pixelmancy.fileformats.imageresize;
 
-import justimages.color;
+import pixelmancy.fileformats.color;
 
 // ////////////////////////////////////////////////////////////////////////// //
 // Separable filtering image rescaler v2.21, Rich Geldreich - richgel99@gmail.com

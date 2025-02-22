@@ -81,8 +81,8 @@
 
   To turn a SVG into a png:
   ---
-	import justimages.svg;
-	import justimages.png;
+	import pixelmancy.fileformats.svg;
+	import pixelmancy.fileformats.png;
 
 	void main() {
 	    // Load
@@ -106,9 +106,9 @@
 	}
   ---
  */
-module justimages.svg;
+module pixelmancy.fileformats.svg;
 
-import tilemagic.colours.formats;
+import pixelmancy.colours.formats;
 
 private import core.stdc.math : fabs, fabsf, atan2f, acosf, cosf, sinf, tanf, sqrt, sqrtf, floorf, ceilf, fmodf;
 

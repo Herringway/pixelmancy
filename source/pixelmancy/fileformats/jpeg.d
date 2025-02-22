@@ -41,9 +41,9 @@
  * On return, width/height will be set to the image's dimensions, and actual_comps will be set to the either 1 (grayscale) or 3 (RGB).
  * Requesting a 8 or 32bpp image is currently a little faster than 24bpp because the jpeg_decoder class itself currently always unpacks to either 8 or 32bpp.
  */
-module justimages.jpeg;
+module pixelmancy.fileformats.jpeg;
 
-import tilemagic.colours.formats;
+import pixelmancy.colours.formats;
 
 // Set to 1 to enable freq. domain chroma upsampling on images using H2V2 subsampling (0=faster nearest neighbor sampling).
 // This is slower, but results in higher quality on images with highly saturated colors.
@@ -3241,7 +3241,7 @@ public struct LastJpegError {
 public LastJpegError lastJpegError;
 
 
-import justimages.color;
+import pixelmancy.fileformats.color;
 
 // ////////////////////////////////////////////////////////////////////////// //
 /// decompress JPEG image, what else?

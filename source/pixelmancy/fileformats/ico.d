@@ -26,17 +26,17 @@
 		+/
 
 		// and this converts all its versions
-		import justimages.png;
+		import pixelmancy.fileformats.png;
 		import std.format;
 		foreach(idx, t; thing)
 			writePng(format("test-converted-%d-%dx%d.png", idx, t.width, t.height), t);
 	}
 	---
 +/
-module justimages.ico;
+module pixelmancy.fileformats.ico;
 
-import justimages.png;
-import justimages.bmp;
+import pixelmancy.fileformats.png;
+import pixelmancy.fileformats.bmp;
 
 /++
 	A representation of a cursor image as found in a .cur file.

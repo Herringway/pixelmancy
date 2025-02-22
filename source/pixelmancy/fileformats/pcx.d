@@ -1,9 +1,9 @@
 //ketmar: Adam didn't wrote this, don't blame him!
 //TODO: other bpp formats besides 8 and 24
-module justimages.pcx;
+module pixelmancy.fileformats.pcx;
 
-import tilemagic.colours.formats;
-import justimages.color;
+import pixelmancy.colours.formats;
+import pixelmancy.fileformats.color;
 import std.stdio : File; // sorry
 
 

@@ -4,10 +4,10 @@
 	Also has various basic data type definitions that are generally
 	useful with images like [Point], [Size], and [Rectangle].
 +/
-module justimages.color;
+module pixelmancy.fileformats.color;
 
-import tilemagic.colours.formats;
-import tilemagic.util;
+import pixelmancy.colours.formats;
+import pixelmancy.util;
 
 @safe:
 
@@ -68,10 +68,10 @@ interface MemoryImage {
 	/// Returns a copy of the image
 	MemoryImage clone() const pure @safe;
 
-	/// Load image from file. This will import justimages.image to do the actual work, and cost nothing if you don't use it.
+	/// Load image from file. This will import pixelmancy.fileformats.image to do the actual work, and cost nothing if you don't use it.
 	static MemoryImage fromImage(const(char)[] filename) @system {
 		// yay, we have image loader here, try it!
-		import justimages.image;
+		import pixelmancy.fileformats.image;
 		return loadImageFromFile(filename);
 	}
 

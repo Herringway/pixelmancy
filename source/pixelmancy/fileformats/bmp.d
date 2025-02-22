@@ -1,11 +1,11 @@
 /++
-	Basic .bmp file format implementation for [justimages.color.MemoryImage].
-	Compare with [justimages.png] basic functionality.
+	Basic .bmp file format implementation for [pixelmancy.fileformats.color.MemoryImage].
+	Compare with [pixelmancy.fileformats.png] basic functionality.
 +/
-module justimages.bmp;
+module pixelmancy.fileformats.bmp;
 
-import justimages.color;
-import tilemagic.colours.formats;
+import pixelmancy.fileformats.color;
+import pixelmancy.colours.formats;
 
 import std.conv;
 

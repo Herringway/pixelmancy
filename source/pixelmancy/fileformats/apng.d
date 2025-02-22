@@ -10,12 +10,12 @@
 
 		Write support added February 27, 2021.
 +/
-module justimages.apng;
-import tilemagic.colours.formats;
+module pixelmancy.fileformats.apng;
+import pixelmancy.colours.formats;
 
 /// Demo creating one from scratch
 unittest {
-	import justimages.apng;
+	import pixelmancy.fileformats.apng;
 
 	void main() {
 		auto apng = new ApngAnimation(50, 50);
@@ -50,7 +50,7 @@ unittest {
 	version(Demo) main(); // exclude from docs
 }
 
-import justimages.png;
+import pixelmancy.fileformats.png;
 
 // must be in the file before the IDAT
 /// acTL chunk direct representation

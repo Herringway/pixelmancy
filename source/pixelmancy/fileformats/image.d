@@ -10,20 +10,20 @@
 	)
 
 	History:
-		The image resize code used to live directly in here, but has now moved to a new module, [justimages.imageresize]. It is public imported here for compatibility, but the build has changed as of December 25, 2020.
+		The image resize code used to live directly in here, but has now moved to a new module, [pixelmancy.fileformats.imageresize]. It is public imported here for compatibility, but the build has changed as of December 25, 2020.
 +/
-module justimages.image;
+module pixelmancy.fileformats.image;
 
-public import justimages.color;
-public import justimages.png;
-public import justimages.jpeg;
-public import justimages.bmp;
-public import justimages.targa;
-public import justimages.pcx;
-public import justimages.dds;
-public import justimages.svg;
+public import pixelmancy.fileformats.color;
+public import pixelmancy.fileformats.png;
+public import pixelmancy.fileformats.jpeg;
+public import pixelmancy.fileformats.bmp;
+public import pixelmancy.fileformats.targa;
+public import pixelmancy.fileformats.pcx;
+public import pixelmancy.fileformats.dds;
+public import pixelmancy.fileformats.svg;
 
-public import justimages.imageresize;
+public import pixelmancy.fileformats.imageresize;
 import tilemagic.colours.formats;
 
 import core.memory;
@@ -74,7 +74,7 @@ private bool strEquCI (const(char)[] s0, const(char)[] s1) pure nothrow @safe @n
 }
 
 
-/// Image formats `justimages.image` can load (except `Unknown`, of course).
+/// Image formats `pixelmancy.fileformats.image` can load (except `Unknown`, of course).
 enum ImageFileFormat {
   Unknown, ///
   Png, ///

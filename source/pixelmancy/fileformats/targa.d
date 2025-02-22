@@ -1,8 +1,8 @@
 //ketmar: Adam didn't wrote this, don't blame him!
-module justimages.targa;
+module pixelmancy.fileformats.targa;
 
-import justimages.color;
-import tilemagic.colours;
+import pixelmancy.fileformats.color;
+import pixelmancy.colours;
 import std.algorithm.comparison : min;
 import std.stdio : File; // sorry
 
@@ -474,7 +474,7 @@ void rawWrite(ST, T) (auto ref ST st, in T[] buf) if (isLowLevelStreamW!ST) {
 }
 
 // read exact size or throw error
-package(justimages) T[] rawReadExact(ST, T) (auto ref ST st, T[] buf) if (isReadableStream!ST && !is(T == const) && !is(T == immutable)) {
+package(pixelmancy.fileformats) T[] rawReadExact(ST, T) (auto ref ST st, T[] buf) if (isReadableStream!ST && !is(T == const) && !is(T == immutable)) {
   if (buf.length == 0) return buf;
   auto left = buf.length*T.sizeof;
   auto dp = cast(ubyte*)buf.ptr;

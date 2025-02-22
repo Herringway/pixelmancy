@@ -31,10 +31,10 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // D port and further changes by Ketmar // Invisible Vector
-module justimages.dds;
+module pixelmancy.fileformats.dds;
 
-import justimages.color : TrueColorImage;
-import tilemagic.colours;
+import pixelmancy.fileformats.color : TrueColorImage;
+import pixelmancy.colours;
 import std.algorithm.comparison : min;
 
 

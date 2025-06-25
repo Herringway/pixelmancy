@@ -14,7 +14,7 @@
 		* [pixelmancy.apng] handles the animated png extensions.
 	)
 +/
-module pixelmancy.fileformats.png;
+module pixelmancy.fileformats.png.core;
 
 import core.memory;
 import pixelmancy.colours.formats;

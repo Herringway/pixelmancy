@@ -10,12 +10,12 @@
 
 		Write support added February 27, 2021.
 +/
-module pixelmancy.fileformats.apng;
+module pixelmancy.fileformats.png.animation;
 import pixelmancy.colours.formats;
 
 /// Demo creating one from scratch
 unittest {
-	import pixelmancy.fileformats.apng;
+	import pixelmancy.fileformats.png.animation;
 
 	void main() {
 		auto apng = new ApngAnimation(50, 50);

@@ -1,6 +1,5 @@
 module pixelmancy.fileformats;
 
-public import pixelmancy.fileformats.apng;
 public import pixelmancy.fileformats.bmp;
 public import pixelmancy.fileformats.color;
 public import pixelmancy.fileformats.dds;

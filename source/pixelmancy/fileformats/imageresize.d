@@ -788,10 +788,9 @@ public:
 
 		// Resampling on the X axis first?
 		if (mDelayXResample) {
-			import core.stdc.string : memcpy;
 			assert(mIntermediateX == mResampleSrcX);
 			// Y-X resampling order
-			memcpy(mPscanBuf.scanBufL.ptr[i], Psrc, mIntermediateX*Sample.sizeof);
+			mPscanBuf.scanBufL.ptr[i][0 .. mIntermediateX*Sample.sizeof] = Psrc[0 .. mIntermediateX*Sample.sizeof];
 		} else {
 			assert(mIntermediateX == mResampleDstX);
 			// X-Y resampling order

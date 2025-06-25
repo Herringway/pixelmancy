@@ -1136,9 +1136,7 @@ public void nsvg__xformInverse (float* inv, const(float)* t) {
 ///
 public void nsvg__xformPremultiply (float* t, const(float)* s) {
 	float[6] s2 = s[0..6];
-	//memcpy(s2.ptr, s, float.sizeof*6);
 	nsvg__xformMultiply(s2.ptr, t);
-	//memcpy(t, s2.ptr, float.sizeof*6);
 	t[0..6] = s2[];
 }
 
@@ -1483,7 +1481,6 @@ NSVG.Gradient* nsvg__createGradient (Parser* p, const(char)[] id, const(float)* 
 	nsvg__xformMultiply(grad.xform.ptr, attr.xform.ptr);
 
 	grad.spread = data.spread;
-	//memcpy(grad.stops.ptr, stops, nstops*NSVG.GradientStop.sizeof);
 	grad.stops.ptr[0..nstops] = stops[0..nstops];
 	grad.nstops = nstops;
 
@@ -3595,13 +3592,11 @@ void nsvg__scaleToViewbox (Parser* p, const(char)[] units) {
 
 		if (shape.fill.type == NSVG.PaintType.LinearGradient || shape.fill.type == NSVG.PaintType.RadialGradient) {
 			nsvg__scaleGradient(shape.fill.gradient, tx, ty, sx, sy);
-			//memcpy(t.ptr, shape.fill.gradient.xform.ptr, float.sizeof*6);
 			t.ptr[0..6] = shape.fill.gradient.xform[0..6];
 			nsvg__xformInverse(shape.fill.gradient.xform.ptr, t.ptr);
 		}
 		if (shape.stroke.type == NSVG.PaintType.LinearGradient || shape.stroke.type == NSVG.PaintType.RadialGradient) {
 			nsvg__scaleGradient(shape.stroke.gradient, tx, ty, sx, sy);
-			//memcpy(t.ptr, shape.stroke.gradient.xform.ptr, float.sizeof*6);
 			t.ptr[0..6] = shape.stroke.gradient.xform[0..6];
 			nsvg__xformInverse(shape.stroke.gradient.xform.ptr, t.ptr);
 		}
@@ -4996,7 +4991,6 @@ void nsvg__initPaint (NSVGcachedPaint* cache, const(NSVG.Paint)* paint, float op
 	grad = paint.gradient;
 
 	cache.spread = grad.spread;
-	//memcpy(cache.xform.ptr, grad.xform.ptr, float.sizeof*6);
 	cache.xform[0..6] = grad.xform[0..6];
 
 	if (grad.nstops == 0) {

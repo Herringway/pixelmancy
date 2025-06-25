@@ -368,7 +368,7 @@ void idct_4x4() (const(jpeg_decoder.jpgd_block_t)* pSrc_ptr, ubyte* pDst_ptr) {
 
 // ////////////////////////////////////////////////////////////////////////// //
 struct jpeg_decoder {
-private import core.stdc.string : memcpy, memset;
+private import core.stdc.string : memset;
 private:
 	static auto JPGD_MIN(T) (T a, T b) pure nothrow @safe @nogc { pragma(inline, true); return (a < b ? a : b); }
 	static auto JPGD_MAX(T) (T a, T b) pure nothrow @safe @nogc { pragma(inline, true); return (a > b ? a : b); }
@@ -1131,9 +1131,9 @@ private:
 			if (!m_huff_val.ptr[index])
 				m_huff_val.ptr[index] = cast(ubyte*)alloc(256);
 
-			m_huff_ac.ptr[index] = (index & 0x10) != 0;
-			memcpy(m_huff_num.ptr[index], huff_num.ptr, 17);
-			memcpy(m_huff_val.ptr[index], huff_val.ptr, 256);
+			m_huff_ac[index] = (index & 0x10) != 0;
+			m_huff_num[index][0 .. 17] = huff_num[0 .. 17];
+			m_huff_val[index][0 .. 256] = huff_val[0 .. 256];
 		}
 	}
 
@@ -1781,7 +1781,7 @@ private:
 				jpgd_block_t* pAC = coeff_buf_getp(m_ac_coeffs.ptr[component_id], block_x_mcu.ptr[component_id] + block_x_mcu_ofs, m_block_y_mcu.ptr[component_id] + block_y_mcu_ofs);
 				jpgd_block_t* pDC = coeff_buf_getp(m_dc_coeffs.ptr[component_id], block_x_mcu.ptr[component_id] + block_x_mcu_ofs, m_block_y_mcu.ptr[component_id] + block_y_mcu_ofs);
 				p[0] = pDC[0];
-				memcpy(&p[1], &pAC[1], 63 * jpgd_block_t.sizeof);
+				p[1 .. 1 + 63 * jpgd_block_t.sizeof] = pAC[1 .. 1 + 63 * jpgd_block_t.sizeof];
 
 				for (i = 63; i > 0; i--)
 					if (p[g_ZAG[i]])
@@ -3040,13 +3040,12 @@ public bool detect_jpeg_image_from_memory (const(void)[] buf, out int width, out
 	size_t bufpos;
 	return detect_jpeg_image_from_stream(
 		delegate int (void* pBuf, int max_bytes_to_read, bool *pEOF_flag) {
-			import core.stdc.string : memcpy;
 			if (bufpos >= buf.length) {
 				*pEOF_flag = true;
 				return 0;
 			}
 			if (buf.length-bufpos < max_bytes_to_read) max_bytes_to_read = cast(int)(buf.length-bufpos);
-			memcpy(pBuf, (cast(const(ubyte)*)buf.ptr)+bufpos, max_bytes_to_read);
+			(cast(ubyte*)pBuf)[0 .. max_bytes_to_read] = (cast(const(ubyte)*)buf.ptr)[bufpos .. bufpos + max_bytes_to_read];
 			bufpos += max_bytes_to_read;
 			return max_bytes_to_read;
 		},
@@ -3058,8 +3057,6 @@ public bool detect_jpeg_image_from_memory (const(void)[] buf, out int width, out
 /// decompress JPEG image, what else?
 /// you can specify required color components in `req_comps` (3 for RGB or 4 for RGBA), or leave it as is to use image value.
 public ubyte[] decompress_jpeg_image_from_stream(scope JpegStreamReadFunc rfn, out int width, out int height, out int actual_comps, int req_comps=-1) {
-	import core.stdc.string : memcpy;
-
 	//actual_comps = 0;
 	if (rfn is null) return null;
 	if (req_comps != -1 && req_comps != 1 && req_comps != 3 && req_comps != 4) return null;
@@ -3099,7 +3096,7 @@ public ubyte[] decompress_jpeg_image_from_stream(scope JpegStreamReadFunc rfn, o
 		ubyte* pDst = pImage_data+y*dst_bpl;
 
 		if ((req_comps == 1 && decoder.num_components == 1) || (req_comps == 4 && decoder.num_components == 3)) {
-			memcpy(pDst, pScan_line, dst_bpl);
+			pDst[0 .. dst_bpl] = pScan_line[0 .. dst_bpl];
 		} else if (decoder.num_components == 1) {
 			if (req_comps == 3) {
 				for (int x = 0; x < image_width; ++x) {
@@ -3201,13 +3198,12 @@ public ubyte[] decompress_jpeg_image_from_memory(const(void)[] buf, out int widt
 	size_t bufpos;
 	return decompress_jpeg_image_from_stream(
 		delegate int (void* pBuf, int max_bytes_to_read, bool *pEOF_flag) {
-			import core.stdc.string : memcpy;
 			if (bufpos >= buf.length) {
 				*pEOF_flag = true;
 				return 0;
 			}
 			if (buf.length-bufpos < max_bytes_to_read) max_bytes_to_read = cast(int)(buf.length-bufpos);
-			memcpy(pBuf, (cast(const(ubyte)*)buf.ptr)+bufpos, max_bytes_to_read);
+			(cast(ubyte*)pBuf)[0 .. max_bytes_to_read] = (cast(const(ubyte)*)buf.ptr)[bufpos .. bufpos + max_bytes_to_read];
 			bufpos += max_bytes_to_read;
 			return max_bytes_to_read;
 		},
@@ -3230,7 +3226,6 @@ import pixelmancy.fileformats.color;
 // ////////////////////////////////////////////////////////////////////////// //
 /// decompress JPEG image, what else?
 public MemoryImage readJpegFromStream (scope JpegStreamReadFunc rfn) {
-	import core.stdc.string : memcpy;
 	enum req_comps = 4;
 
 	if (rfn is null) return null;
@@ -3275,7 +3270,7 @@ public MemoryImage readJpegFromStream (scope JpegStreamReadFunc rfn) {
 		RGBA32* pDst = pImage_data+(y*dst_bpl / 4);
 
 		if ((req_comps == 1 && decoder.num_components == 1) || (req_comps == 4 && decoder.num_components == 3)) {
-			memcpy(pDst, pScan_line, dst_bpl);
+			(cast(ubyte*)pDst)[0 .. dst_bpl] = pScan_line[0 .. dst_bpl];
 		} else if (decoder.num_components == 1) {
 			if (req_comps == 3) {
 				for (int x = 0; x < image_width; ++x) {
@@ -3435,13 +3430,12 @@ public MemoryImage readJpegFromMemory (const(void)[] buf) {
 	size_t bufpos;
 	return readJpegFromStream(
 		delegate int (void* pBuf, int max_bytes_to_read, bool *pEOF_flag) {
-			import core.stdc.string : memcpy;
 			if (bufpos >= buf.length) {
 				*pEOF_flag = true;
 				return 0;
 			}
 			if (buf.length-bufpos < max_bytes_to_read) max_bytes_to_read = cast(int)(buf.length-bufpos);
-			memcpy(pBuf, (cast(const(ubyte)*)buf.ptr)+bufpos, max_bytes_to_read);
+			(cast(ubyte*)pBuf)[0 .. max_bytes_to_read] = (cast(const(ubyte)*)buf.ptr)[bufpos .. bufpos + max_bytes_to_read];
 			bufpos += max_bytes_to_read;
 			return max_bytes_to_read;
 		}
@@ -4086,11 +4080,14 @@ private:
 		}
 		else
 		{
-			import core.stdc.string : memcpy;
-			memcpy(m_huff_bits[0+0].ptr, s_dc_lum_bits.ptr, 17); memcpy(m_huff_val[0+0].ptr, s_dc_lum_val.ptr, DC_LUM_CODES);
-			memcpy(m_huff_bits[2+0].ptr, s_ac_lum_bits.ptr, 17); memcpy(m_huff_val[2+0].ptr, s_ac_lum_val.ptr, AC_LUM_CODES);
-			memcpy(m_huff_bits[0+1].ptr, s_dc_chroma_bits.ptr, 17); memcpy(m_huff_val[0+1].ptr, s_dc_chroma_val.ptr, DC_CHROMA_CODES);
-			memcpy(m_huff_bits[2+1].ptr, s_ac_chroma_bits.ptr, 17); memcpy(m_huff_val[2+1].ptr, s_ac_chroma_val.ptr, AC_CHROMA_CODES);
+			m_huff_bits[0+0 .. 0+0 + 17] = s_dc_lum_bits[0 .. 17];
+			m_huff_val[0+0 .. 0+0 + DC_LUM_CODES] = cast(const(ubyte[256])[])s_dc_lum_val[0 .. DC_LUM_CODES];
+			m_huff_bits[2+0 .. 2+0 + 17] = s_ac_lum_bits[0 .. 17];
+			m_huff_val[2+0 .. 2+0 + AC_LUM_CODES] = s_ac_lum_val[0 .. AC_LUM_CODES];
+			m_huff_bits[0+1 .. 0+1 + 17] = s_dc_chroma_bits[0 .. 17];
+			m_huff_val[0+1 .. 0+1 + DC_CHROMA_CODES] = cast(const(ubyte[256][]))s_dc_chroma_val[0 .. DC_CHROMA_CODES];
+			m_huff_bits[2+1 .. 2+1 + 17] = s_ac_chroma_bits[0 .. 17];
+			m_huff_val[2+1 .. 2+1 + AC_CHROMA_CODES] = s_ac_chroma_val[0 .. AC_CHROMA_CODES];
 			if (!second_pass_init()) return false; // in effect, skip over the first pass
 		}
 		return m_all_stream_writes_succeeded;
@@ -4369,8 +4366,7 @@ private:
 			if (m_mcu_y_ofs < 16) // check here just to shut up static analysis
 			{
 				for (int i = m_mcu_y_ofs; i < m_mcu_y; i++) {
-					import core.stdc.string : memcpy;
-					memcpy(m_mcu_lines[i], m_mcu_lines[m_mcu_y_ofs-1], m_image_bpl_mcu);
+					m_mcu_lines[i][0 .. m_image_bpl_mcu] = m_mcu_lines[m_mcu_y_ofs-1][0 .. m_image_bpl_mcu];
 				}
 			}
 			process_mcu_row();
@@ -4383,7 +4379,6 @@ private:
 	}
 
 	void load_mcu (const(void)* pSrc) {
-		import core.stdc.string : memcpy;
 		const(ubyte)* Psrc = cast(const(ubyte)*)(pSrc);
 
 		ubyte* pDst = m_mcu_lines[m_mcu_y_ofs]; // OK to write up to m_image_bpl_xlt bytes to pDst
@@ -4395,7 +4390,7 @@ private:
 			else if (m_image_bpp == 3)
 				RGB_to_Y(pDst, Psrc, m_image_x);
 			else
-				memcpy(pDst, Psrc, m_image_x);
+				pDst[0.. m_image_x] = Psrc[0 .. m_image_x];
 		}
 		else
 		{

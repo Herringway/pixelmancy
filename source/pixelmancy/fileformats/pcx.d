@@ -40,11 +40,10 @@ public MemoryImage loadPcxMem (const(void)[] buf, const(char)[] filename=null) {
 		ptrdiff_t read (void* buf, size_t count) @system {
 			if (pos >= data.length) return 0;
 			if (count > 0) {
-				import core.stdc.string : memcpy;
 				long rlen = data.length-pos;
 				if (rlen >= count) rlen = count;
 				assert(rlen != 0);
-				memcpy(buf, data.ptr+pos, cast(size_t)rlen);
+				(cast(ubyte*)buf)[0 .. rlen] = data.ptr[pos .. pos + rlen];
 				pos += rlen;
 				return cast(ptrdiff_t)rlen;
 			} else {
@@ -485,9 +484,8 @@ void writeNum(T, string es="LE", ST) (auto ref ST st, T n) if (isGoodEndianness!
 	static if (isSystemEndianness!es) {
 		st.rawWriteExact((&n)[0..1]);
 	} else {
-		import core.stdc.string : memcpy;
 		ubyte[T.sizeof] b = void;
-		memcpy(b.ptr, &v, T.sizeof);
+		b.ptr[0 .. T.sizeof] = (cast(ubyte*)&n)[0 .. T.sizeof];
 		mixin(reverseBytesMixin);
 		st.rawWriteExact(b[]);
 	}
@@ -502,11 +500,10 @@ T readNum(T, string es="LE", ST) (auto ref ST st) if (isGoodEndianness!es && isR
 	static if (isSystemEndianness!es) {
 		st.rawReadExact((&v)[0..1]);
 	} else {
-		import core.stdc.string : memcpy;
 		ubyte[T.sizeof] b = void;
 		st.rawReadExact(b[]);
 		mixin(reverseBytesMixin);
-		memcpy(&v, b.ptr, T.sizeof);
+		v = (cast(T[1])b)[0];
 	}
 	return v;
 }

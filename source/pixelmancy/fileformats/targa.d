@@ -631,9 +631,8 @@ void writeNum(T, string es="LE", ST) (auto ref ST st, T n) if (isGoodEndianness!
 	static if (isSystemEndianness!es) {
 		st.rawWriteExact((&n)[0..1]);
 	} else {
-		import core.stdc.string : memcpy;
 		ubyte[T.sizeof] b = void;
-		memcpy(b.ptr, &v, T.sizeof);
+		b.ptr[0 .. T.sizeof] = (cast(ubyte*)&v)[0 .. T.sizeof];
 		mixin(reverseBytesMixin);
 		st.rawWriteExact(b[]);
 	}
@@ -648,11 +647,10 @@ T readNum(T, string es="LE", ST) (auto ref ST st) if (isGoodEndianness!es && isR
 	static if (isSystemEndianness!es) {
 		st.rawReadExact((&v)[0..1]);
 	} else {
-		import core.stdc.string : memcpy;
 		ubyte[T.sizeof] b = void;
 		st.rawReadExact(b[]);
 		mixin(reverseBytesMixin);
-		memcpy(&v, b.ptr, T.sizeof);
+		(cast(ubyte*)&v)[0 .. T.sizeof] = b.ptr[0 .. T.sizeof];
 	}
 	return v;
 }

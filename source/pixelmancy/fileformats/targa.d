@@ -569,28 +569,6 @@ private template isSystemEndianness(string s) if (isGoodEndianness!s) {
 	}
 }
 
-
-// ////////////////////////////////////////////////////////////////////////// //
-// write integer value of the given type, with the given endianness (default: little-endian)
-// usage: st.writeNum!ubyte(10)
-void writeNum(T, string es="LE", ST) (auto ref ST st, T n) if (isGoodEndianness!es && isWriteableStream!ST && __traits(isIntegral, T)) {
-	static assert(T.sizeof <= 8); // just in case
-	static if (isSystemEndianness!es) {
-		st.rawWriteExact((&n)[0..1]);
-	} else {
-		ubyte[T.sizeof] b = void;
-		version(LittleEndian) {
-			// convert to big-endian
-			foreach_reverse (ref x; b) { x = n&0xff; n >>= 8; }
-		} else {
-			// convert to little-endian
-			foreach (ref x; b) { x = n&0xff; n >>= 8; }
-		}
-		st.rawWriteExact(b[]);
-	}
-}
-
-
 // read integer value of the given type, with the given endianness (default: little-endian)
 // usage: auto v = st.readNum!ubyte
 T readNum(T, string es="LE", ST) (auto ref ST st) if (isGoodEndianness!es && isReadableStream!ST && __traits(isIntegral, T)) {
@@ -622,22 +600,6 @@ private enum reverseBytesMixin = "
 		b[$-idx-1] = t;
 	}
 ";
-
-
-// write floating value of the given type, with the given endianness (default: little-endian)
-// usage: st.writeNum!float(10)
-void writeNum(T, string es="LE", ST) (auto ref ST st, T n) if (isGoodEndianness!es && isWriteableStream!ST && __traits(isFloating, T)) {
-	static assert(T.sizeof <= 8);
-	static if (isSystemEndianness!es) {
-		st.rawWriteExact((&n)[0..1]);
-	} else {
-		ubyte[T.sizeof] b = void;
-		b.ptr[0 .. T.sizeof] = (cast(ubyte*)&v)[0 .. T.sizeof];
-		mixin(reverseBytesMixin);
-		st.rawWriteExact(b[]);
-	}
-}
-
 
 // read floating value of the given type, with the given endianness (default: little-endian)
 // usage: auto v = st.readNum!float

@@ -55,7 +55,7 @@ align(1) struct RowMajorFrameArrangement(Tile, size_t inWidth, size_t inHeight, 
 			idxOffset++;
 		}
 	}
-	auto ref opIndex(size_t x, size_t y)  => tiles[y * width + x];
+	auto ref opIndex(size_t x, size_t y) => tiles[y * width + x];
 }
 
 @safe pure unittest {

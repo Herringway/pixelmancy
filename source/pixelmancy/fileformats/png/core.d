@@ -2002,7 +2002,7 @@ const(ubyte)[] unfilter(ubyte filterType, in ubyte[] data, in ubyte[] previousLi
 		case 4:
 			auto arr = data.dup;
 			foreach(i; 0 .. arr.length) {
-				ubyte prev   = i < bpp ? 0 : arr[i - bpp];
+				ubyte prev = i < bpp ? 0 : arr[i - bpp];
 				ubyte prevLL = i < bpp ? 0 : (i < previousLine.length ? previousLine[i - bpp] : 0);
 
 				arr[i] += PaethPredictor(prev, (i < previousLine.length ? previousLine[i] : 0), prevLL);

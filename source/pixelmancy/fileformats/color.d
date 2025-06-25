@@ -57,7 +57,7 @@ interface MemoryImage {
 		return this[x, y];
 	}
 
-  /// Set image pixel.
+	/// Set image pixel.
 	deprecated final void setPixel(int x, int y, in RGBA32 clr) @safe {
 		this[x, y] = clr;
 	}
@@ -153,8 +153,8 @@ class IndexedImage : MemoryImage {
 		_width = w;
 		_height = h;
 
-        // ensure that the computed size does not exceed basic address space limits
-        assert(cast(ulong)w * h  <= size_t.max);
+		// ensure that the computed size does not exceed basic address space limits
+		assert(cast(ulong)w * h <= size_t.max);
 		data = Array2D!ubyte(w, h);
 	}
 
@@ -252,7 +252,7 @@ class TrueColorImage : MemoryImage {
 		_height = h;
 
 		// ensure that the computed size does not exceed basic address space limits
-        assert(cast(ulong)w * h <= size_t.max);
+		assert(cast(ulong)w * h <= size_t.max);
 		colours = Array2D!RGBA32(w, h);
 	}
 

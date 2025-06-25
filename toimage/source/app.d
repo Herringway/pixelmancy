@@ -75,7 +75,7 @@ void main(string[] args) @system {
 	SupportedFormat paletteFormat;
 	ArrangementStyle arrangementStyle;
 	auto helpInformation = getopt(args,
-    	std.getopt.config.caseSensitive,
+		std.getopt.config.caseSensitive,
 		"arrangement|a", "Use a tile arrangement file", &arrangementFile,
 		"arrangementdoc|i", "Use a tile arrangement doc", &arrangementDoc,
 		"arrangement-style|s", "Use a specific tile arrangement generator", &arrangementStyle,

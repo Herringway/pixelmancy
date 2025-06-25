@@ -73,8 +73,8 @@ MemoryImage readBmp(in ubyte[] data, bool lookForFileHeader = true, bool hackAro
 		The `hasAndMask` param was added July 21, 2022. This is set to true if it is a bitmap from a .ico file or similar, where the top half of the file (by height) is the xor mask, then the bottom half is the and mask.
 +/
 MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookForFileHeader = true, bool hackAround64BitLongs = false, bool hasAndMask = false) {
-	uint read4()  { uint what; fread(&what, 4); return what; }
-	uint readLONG()  {
+	uint read4() { uint what; fread(&what, 4); return what; }
+	uint readLONG() {
 		auto le = read4();
 		/++
 			A user on discord encountered a file in the wild that wouldn't load
@@ -172,8 +172,8 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 
 	/*
 		0 = BI_RGB
-		1 = BI_RLE8   RLE 8-bit/pixel   Can be used only with 8-bit/pixel bitmaps
-		2 = BI_RLE4   RLE 4-bit/pixel   Can be used only with 4-bit/pixel bitmaps
+		1 = BI_RLE8 RLE 8-bit/pixel Can be used only with 8-bit/pixel bitmaps
+		2 = BI_RLE4 RLE 4-bit/pixel Can be used only with 4-bit/pixel bitmaps
 		3 = BI_BITFIELDS
 	*/
 	uint compression = 0;

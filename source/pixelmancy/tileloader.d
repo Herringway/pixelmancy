@@ -54,7 +54,7 @@ ParsedImage loadImageFile(T)(const(ubyte)[] image, TileFormat tileFormat, const 
 	}
 	result.palette = img.palette;
 	auto roundUp(size_t v) {
-	    return (v / 16 + !!(v % 16)) * 16;
+		return (v / 16 + !!(v % 16)) * 16;
 	}
 	result.palette.length = roundUp(result.palette.length);
 	return result;

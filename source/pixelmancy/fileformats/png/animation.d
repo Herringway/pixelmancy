@@ -66,13 +66,13 @@ struct AnimationControlChunk {
 		int offset = 0;
 		buffer[offset++] = (num_frames >> 24) & 0xff;
 		buffer[offset++] = (num_frames >> 16) & 0xff;
-		buffer[offset++] = (num_frames >>  8) & 0xff;
-		buffer[offset++] = (num_frames >>  0) & 0xff;
+		buffer[offset++] = (num_frames >> 8) & 0xff;
+		buffer[offset++] = (num_frames >> 0) & 0xff;
 
 		buffer[offset++] = (num_plays >> 24) & 0xff;
 		buffer[offset++] = (num_plays >> 16) & 0xff;
-		buffer[offset++] = (num_plays >>  8) & 0xff;
-		buffer[offset++] = (num_plays >>  0) & 0xff;
+		buffer[offset++] = (num_plays >> 8) & 0xff;
+		buffer[offset++] = (num_plays >> 0) & 0xff;
 
 		return buffer[0 .. offset];
 	}
@@ -104,34 +104,34 @@ struct FrameControlChunk {
 
 		buffer[offset++] = (sequence_number >> 24) & 0xff;
 		buffer[offset++] = (sequence_number >> 16) & 0xff;
-		buffer[offset++] = (sequence_number >>  8) & 0xff;
-		buffer[offset++] = (sequence_number >>  0) & 0xff;
+		buffer[offset++] = (sequence_number >> 8) & 0xff;
+		buffer[offset++] = (sequence_number >> 0) & 0xff;
 
 		buffer[offset++] = (width >> 24) & 0xff;
 		buffer[offset++] = (width >> 16) & 0xff;
-		buffer[offset++] = (width >>  8) & 0xff;
-		buffer[offset++] = (width >>  0) & 0xff;
+		buffer[offset++] = (width >> 8) & 0xff;
+		buffer[offset++] = (width >> 0) & 0xff;
 
 		buffer[offset++] = (height >> 24) & 0xff;
 		buffer[offset++] = (height >> 16) & 0xff;
-		buffer[offset++] = (height >>  8) & 0xff;
-		buffer[offset++] = (height >>  0) & 0xff;
+		buffer[offset++] = (height >> 8) & 0xff;
+		buffer[offset++] = (height >> 0) & 0xff;
 
 		buffer[offset++] = (x_offset >> 24) & 0xff;
 		buffer[offset++] = (x_offset >> 16) & 0xff;
-		buffer[offset++] = (x_offset >>  8) & 0xff;
-		buffer[offset++] = (x_offset >>  0) & 0xff;
+		buffer[offset++] = (x_offset >> 8) & 0xff;
+		buffer[offset++] = (x_offset >> 0) & 0xff;
 
 		buffer[offset++] = (y_offset >> 24) & 0xff;
 		buffer[offset++] = (y_offset >> 16) & 0xff;
-		buffer[offset++] = (y_offset >>  8) & 0xff;
-		buffer[offset++] = (y_offset >>  0) & 0xff;
+		buffer[offset++] = (y_offset >> 8) & 0xff;
+		buffer[offset++] = (y_offset >> 0) & 0xff;
 
-		buffer[offset++] = (delay_num >>  8) & 0xff;
-		buffer[offset++] = (delay_num >>  0) & 0xff;
+		buffer[offset++] = (delay_num >> 8) & 0xff;
+		buffer[offset++] = (delay_num >> 0) & 0xff;
 
-		buffer[offset++] = (delay_den >>  8) & 0xff;
-		buffer[offset++] = (delay_den >>  0) & 0xff;
+		buffer[offset++] = (delay_den >> 8) & 0xff;
+		buffer[offset++] = (delay_den >> 0) & 0xff;
 
 		buffer[offset++] = cast(ubyte) dispose_op;
 		buffer[offset++] = cast(ubyte) blend_op;
@@ -570,13 +570,13 @@ ApngAnimation readApng(in ubyte[] data, bool strictApng = false, scope ApngAnima
 				int offset = 0;
 				c.num_frames |= chunk.payload[offset++] << 24;
 				c.num_frames |= chunk.payload[offset++] << 16;
-				c.num_frames |= chunk.payload[offset++] <<  8;
-				c.num_frames |= chunk.payload[offset++] <<  0;
+				c.num_frames |= chunk.payload[offset++] << 8;
+				c.num_frames |= chunk.payload[offset++] << 0;
 
 				c.num_plays |= chunk.payload[offset++] << 24;
 				c.num_plays |= chunk.payload[offset++] << 16;
-				c.num_plays |= chunk.payload[offset++] <<  8;
-				c.num_plays |= chunk.payload[offset++] <<  0;
+				c.num_plays |= chunk.payload[offset++] << 8;
+				c.num_plays |= chunk.payload[offset++] << 0;
 
 				assert(offset == chunk.payload.length);
 
@@ -593,34 +593,34 @@ ApngAnimation readApng(in ubyte[] data, bool strictApng = false, scope ApngAnima
 
 				c.sequence_number |= chunk.payload[offset++] << 24;
 				c.sequence_number |= chunk.payload[offset++] << 16;
-				c.sequence_number |= chunk.payload[offset++] <<  8;
-				c.sequence_number |= chunk.payload[offset++] <<  0;
+				c.sequence_number |= chunk.payload[offset++] << 8;
+				c.sequence_number |= chunk.payload[offset++] << 0;
 
 				c.width |= chunk.payload[offset++] << 24;
 				c.width |= chunk.payload[offset++] << 16;
-				c.width |= chunk.payload[offset++] <<  8;
-				c.width |= chunk.payload[offset++] <<  0;
+				c.width |= chunk.payload[offset++] << 8;
+				c.width |= chunk.payload[offset++] << 0;
 
 				c.height |= chunk.payload[offset++] << 24;
 				c.height |= chunk.payload[offset++] << 16;
-				c.height |= chunk.payload[offset++] <<  8;
-				c.height |= chunk.payload[offset++] <<  0;
+				c.height |= chunk.payload[offset++] << 8;
+				c.height |= chunk.payload[offset++] << 0;
 
 				c.x_offset |= chunk.payload[offset++] << 24;
 				c.x_offset |= chunk.payload[offset++] << 16;
-				c.x_offset |= chunk.payload[offset++] <<  8;
-				c.x_offset |= chunk.payload[offset++] <<  0;
+				c.x_offset |= chunk.payload[offset++] << 8;
+				c.x_offset |= chunk.payload[offset++] << 0;
 
 				c.y_offset |= chunk.payload[offset++] << 24;
 				c.y_offset |= chunk.payload[offset++] << 16;
-				c.y_offset |= chunk.payload[offset++] <<  8;
-				c.y_offset |= chunk.payload[offset++] <<  0;
+				c.y_offset |= chunk.payload[offset++] << 8;
+				c.y_offset |= chunk.payload[offset++] << 0;
 
-				c.delay_num |= chunk.payload[offset++] <<  8;
-				c.delay_num |= chunk.payload[offset++] <<  0;
+				c.delay_num |= chunk.payload[offset++] << 8;
+				c.delay_num |= chunk.payload[offset++] << 0;
 
-				c.delay_den |= chunk.payload[offset++] <<  8;
-				c.delay_den |= chunk.payload[offset++] <<  0;
+				c.delay_den |= chunk.payload[offset++] << 8;
+				c.delay_den |= chunk.payload[offset++] << 0;
 
 				c.dispose_op = cast(APNG_DISPOSE_OP) chunk.payload[offset++];
 				c.blend_op = cast(APNG_BLEND_OP) chunk.payload[offset++];
@@ -646,8 +646,8 @@ ApngAnimation readApng(in ubyte[] data, bool strictApng = false, scope ApngAnima
 
 				sequence_number |= chunk.payload[offset++] << 24;
 				sequence_number |= chunk.payload[offset++] << 16;
-				sequence_number |= chunk.payload[offset++] <<  8;
-				sequence_number |= chunk.payload[offset++] <<  0;
+				sequence_number |= chunk.payload[offset++] << 8;
+				sequence_number |= chunk.payload[offset++] << 0;
 
 				import std.conv;
 				if(expectedSequenceNumber != sequence_number)
@@ -669,35 +669,35 @@ ApngAnimation readApng(in ubyte[] data, bool strictApng = false, scope ApngAnima
 
 /*@safe*/ unittest {
 	import std.file : read;
-  {
-	auto apng = readApng(cast(ubyte[])read("testdata/test.apng"));
-	assert(apng.acc.num_frames == 2); // 2 frames, 300 ms each
-	with (apng.frames[0]) {
-		populateData();
-		assert(frameControlChunk.delay_num == 300);
-		assert(frameData[0, 0] == RGBA32(0, 0, 255, 255));
-		assert(frameData[128, 0] == RGBA32(0, 255, 0, 255));
-		assert(frameData[0, 128] == RGBA32(255, 0, 0, 255));
-		assert(frameData[128, 128] == RGBA32(0, 0, 0, 0));
+	{
+		auto apng = readApng(cast(ubyte[])read("testdata/test.apng"));
+		assert(apng.acc.num_frames == 2); // 2 frames, 300 ms each
+		with (apng.frames[0]) {
+			populateData();
+			assert(frameControlChunk.delay_num == 300);
+			assert(frameData[0, 0] == RGBA32(0, 0, 255, 255));
+			assert(frameData[128, 0] == RGBA32(0, 255, 0, 255));
+			assert(frameData[0, 128] == RGBA32(255, 0, 0, 255));
+			assert(frameData[128, 128] == RGBA32(0, 0, 0, 0));
+		}
+		with (apng.frames[1]) {
+			populateData();
+			assert(frameControlChunk.delay_num == 300);
+			assert(frameData[0, 0] == RGBA32(255, 0, 0, 255));
+			assert(frameData[128, 0] == RGBA32(0, 0, 255, 255));
+			assert(frameData[0, 128] == RGBA32(0, 255, 0, 255));
+			assert(frameData[128, 128] == RGBA32(0, 0, 0, 0));
+		}
 	}
-	with (apng.frames[1]) {
-		populateData();
-		assert(frameControlChunk.delay_num == 300);
-		assert(frameData[0, 0] == RGBA32(255, 0, 0, 255));
-		assert(frameData[128, 0] == RGBA32(0, 0, 255, 255));
-		assert(frameData[0, 128] == RGBA32(0, 255, 0, 255));
-		assert(frameData[128, 128] == RGBA32(0, 0, 0, 0));
+	{
+		auto apng = readApng(cast(ubyte[])read("testdata/dispose_op_bg.apng"));
+		assert(apng.acc.num_frames == 2);
+		auto renderer = apng.renderer();
+		renderer.nextFrame();
+		assert(renderer.buffer[64, 32] == RGBA32(255, 0, 0, 255));
+		renderer.nextFrame();
+		assert(renderer.buffer[64, 32] == RGBA32(0, 255, 0, 255));
 	}
-  }
-  {
-	auto apng = readApng(cast(ubyte[])read("testdata/dispose_op_bg.apng"));
-	assert(apng.acc.num_frames == 2);
-	auto renderer = apng.renderer();
-	renderer.nextFrame();
-	assert(renderer.buffer[64, 32] == RGBA32(255, 0, 0, 255));
-	renderer.nextFrame();
-	assert(renderer.buffer[64, 32] == RGBA32(0, 255, 0, 255));
-  }
 }
 
 /++
@@ -775,8 +775,8 @@ void writeApngToData(ApngAnimation apng, scope void delegate(in ubyte[] data) si
 
 		buffer[0] = (sequenceNumber >> 24) & 0xff;
 		buffer[1] = (sequenceNumber >> 16) & 0xff;
-		buffer[2] = (sequenceNumber >>  8) & 0xff;
-		buffer[3] = (sequenceNumber >>  0) & 0xff;
+		buffer[2] = (sequenceNumber >> 8) & 0xff;
+		buffer[3] = (sequenceNumber >> 0) & 0xff;
 
 		sequenceNumber++;
 
@@ -817,24 +817,24 @@ ubyte[] getApngBytes(ApngAnimation apng) {
 
 /*@safe*/ unittest {
 	import std.file : read;
-  {
-	auto apng = readApng(getApngBytes(readApng(cast(ubyte[])read("testdata/test.apng"))));
-	assert(apng.acc.num_frames == 2); // 2 frames, 300 ms each
-	with (apng.frames[0]) {
-		populateData();
-		assert(frameControlChunk.delay_num == 300);
-		assert(frameData[0, 0] == RGBA32(0, 0, 255, 255));
-		assert(frameData[128, 0] == RGBA32(0, 255, 0, 255));
-		assert(frameData[0, 128] == RGBA32(255, 0, 0, 255));
-		assert(frameData[128, 128] == RGBA32(0, 0, 0, 0));
+	{
+		auto apng = readApng(getApngBytes(readApng(cast(ubyte[])read("testdata/test.apng"))));
+		assert(apng.acc.num_frames == 2); // 2 frames, 300 ms each
+		with (apng.frames[0]) {
+			populateData();
+			assert(frameControlChunk.delay_num == 300);
+			assert(frameData[0, 0] == RGBA32(0, 0, 255, 255));
+			assert(frameData[128, 0] == RGBA32(0, 255, 0, 255));
+			assert(frameData[0, 128] == RGBA32(255, 0, 0, 255));
+			assert(frameData[128, 128] == RGBA32(0, 0, 0, 0));
+		}
+		with (apng.frames[1]) {
+			populateData();
+			assert(frameControlChunk.delay_num == 300);
+			assert(frameData[0, 0] == RGBA32(255, 0, 0, 255));
+			assert(frameData[128, 0] == RGBA32(0, 0, 255, 255));
+			assert(frameData[0, 128] == RGBA32(0, 255, 0, 255));
+			assert(frameData[128, 128] == RGBA32(0, 0, 0, 0));
+		}
 	}
-	with (apng.frames[1]) {
-		populateData();
-		assert(frameControlChunk.delay_num == 300);
-		assert(frameData[0, 0] == RGBA32(255, 0, 0, 255));
-		assert(frameData[128, 0] == RGBA32(0, 0, 255, 255));
-		assert(frameData[0, 128] == RGBA32(0, 255, 0, 255));
-		assert(frameData[128, 128] == RGBA32(0, 0, 0, 0));
-	}
-  }
 }

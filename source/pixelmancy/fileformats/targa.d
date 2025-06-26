@@ -328,18 +328,14 @@ private MemoryImage loadTga(const(ubyte)[] fl) @safe {
 
 	{
 		// read image data
-		immutable bool xflip = hdr.xflip, yflip = hdr.yflip;
-		RGBA32[] pixdata = tcimg.colours[];
-		size_t index1 = 0;
-		if (yflip) index1 = (hdr.height - 1) * hdr.width;
-		foreach (immutable y; 0..hdr.height) {
-			size_t index = 0;
-			if (xflip) index = hdr.width - index;
-			foreach (immutable x; 0 .. hdr.width) {
-				pixdata[index1 + index] = readColor(&readByte);
-				if (xflip) --index; else index++;
+		size_t indexY = hdr.yflip ? (hdr.height - 1) : 0;
+		foreach (y; 0..hdr.height) {
+			size_t indexX = hdr.xflip ? (hdr.width - 1) : 0;
+			foreach (x; 0 .. hdr.width) {
+				tcimg.colours[indexX, indexY] = readColor(&readByte);
+				indexX += hdr.xflip ? -1 : 1;
 			}
-			if (yflip) index1 -= hdr.width.native; else index1 += hdr.width.native;
+			indexY += hdr.yflip ? -1 : 1;
 		}
 	}
 

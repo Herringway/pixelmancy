@@ -5,7 +5,7 @@ import pixelmancy.colours.formats;
 import pixelmancy.fileformats.color;
 import pixelmancy.util;
 import std.algorithm.comparison : min;
-
+import std.exception;
 
 // ////////////////////////////////////////////////////////////////////////// //
 deprecated alias loadTgaMem = loadTga;
@@ -190,18 +190,18 @@ private MemoryImage loadTga(const(ubyte)[] fl) @safe {
 	}
 	auto orig = fl;
 
-	if (!detect(fl)) throw new Exception("not a TGA");
+	enforce(detect(fl), "Not a TGA");
 	auto hdr = fl.read!TGAHeader();
 	// parse header
 	// arbitrary size limits
-	if (hdr.width == 0 || hdr.width > 32000) throw new Exception("invalid tga width");
-	if (hdr.height == 0 || hdr.height > 32000) throw new Exception("invalid tga height");
+	enforce((hdr.width > 0) && (hdr.width <= 32000), "Invalid TGA width");
+	enforce((hdr.height > 0) && (hdr.height <= 32000), "Invalid TGA height");
 	switch (hdr.bpp) {
 		case 1: case 2: case 4: case 8: case 15: case 16: case 24: case 32: break;
-		default: throw new Exception("invalid tga bpp");
+		default: throw new Exception("Invalid TGA bpp");
 	}
 	uint bytesPerPixel = ((hdr.bpp)>>3);
-	if (bytesPerPixel == 0 || bytesPerPixel > 4) throw new Exception("invalid tga pixel size");
+	enforce((bytesPerPixel > 0) && (bytesPerPixel <= 4), "Invalid TGA pixel size");
 	bool loadCM = false;
 	// get the row reading function
 	ubyte readByte () { return fl.read!ubyte(); }
@@ -212,7 +212,7 @@ private MemoryImage loadTga(const(ubyte)[] fl) @safe {
 				case 2: readColor = &readColor16!false; break;
 				case 3: readColor = &readColorTrue!(false, 3); break;
 				case 4: readColor = &readColorTrue!(false, 4); break;
-				default: throw new Exception("invalid tga pixel size");
+				default: throw new Exception("Invalid TGA pixel size");
 			}
 			break;
 		case 10: // true color, rle
@@ -220,49 +220,49 @@ private MemoryImage loadTga(const(ubyte)[] fl) @safe {
 				case 2: readColor = &readColor16!true; break;
 				case 3: readColor = &readColorTrue!(true, 3); break;
 				case 4: readColor = &readColorTrue!(true, 4); break;
-				default: throw new Exception("invalid tga pixel size");
+				default: throw new Exception("Invalid TGA pixel size");
 			}
 			break;
 		case 3: // black&white, no rle
 			switch (bytesPerPixel) {
 				case 1: readColor = &readColorBM8!false; break;
 				case 2: readColor = &readColorBM16!false; break;
-				default: throw new Exception("invalid tga pixel size");
+				default: throw new Exception("Invalid TGA pixel size");
 			}
 			break;
 		case 11: // black&white, rle
 			switch (bytesPerPixel) {
 				case 1: readColor = &readColorBM8!true; break;
 				case 2: readColor = &readColorBM16!true; break;
-				default: throw new Exception("invalid tga pixel size");
+				default: throw new Exception("Invalid TGA pixel size");
 			}
 			break;
 		case 1: // colormap, no rle
-			if (bytesPerPixel != 1) throw new Exception("invalid tga pixel size");
+			enforce(bytesPerPixel == 1, "Invalid TGA pixel size");
 			loadCM = true;
 			readColor = &readColorCM8!false;
 			break;
 		case 9: // colormap, rle
-			if (bytesPerPixel != 1) throw new Exception("invalid tga pixel size");
+			enforce(bytesPerPixel == 1, "Invalid TGA pixel size");
 			loadCM = true;
 			readColor = &readColorCM8!true;
 			break;
-		default: throw new Exception("invalid tga format");
+		default: throw new Exception("Invalid TGA format");
 	}
 	// check for valid colormap
 	switch (hdr.cmapType) {
 		case 0:
-			if (hdr.cmapFirstIdx != 0 || hdr.cmapSize != 0) throw new Exception("invalid tga colormap type");
+			enforce((hdr.cmapFirstIdx == 0) && (hdr.cmapSize == 0), "Invalid TGA colormap type");
 			break;
 		case 1:
-			if (hdr.cmapElementSize != 15 && hdr.cmapElementSize != 16 && hdr.cmapElementSize != 24 && hdr.cmapElementSize != 32) throw new Exception("invalid tga colormap type");
-			if (hdr.cmapSize == 0) throw new Exception("invalid tga colormap type");
+			enforce((hdr.cmapElementSize == 15) || (hdr.cmapElementSize == 16) || (hdr.cmapElementSize == 24) || (hdr.cmapElementSize == 32), "Invalid TGA colormap type");
+			enforce(hdr.cmapSize != 0, "Invalid TGA colormap type");
 			break;
-		default: throw new Exception("invalid tga colormap type");
+		default: throw new Exception("Invalid TGA colormap type");
 	}
-	if (!hdr.zeroBits) throw new Exception("invalid tga header");
+	enforce(hdr.zeroBits, "Invalid TGA header");
 	void loadColormap () {
-		if (hdr.cmapType != 1) throw new Exception("invalid tga colormap type");
+		enforce(hdr.cmapType == 1, "Invalid TGA colormap type");
 		// calculate color map size
 		uint colorEntryBytes = 0;
 		switch (hdr.cmapElementSize) {
@@ -270,13 +270,13 @@ private MemoryImage loadTga(const(ubyte)[] fl) @safe {
 			case 16: colorEntryBytes = 2; break;
 			case 24: colorEntryBytes = 3; break;
 			case 32: colorEntryBytes = 4; break;
-			default: throw new Exception("invalid tga colormap type");
+			default: throw new Exception("Invalid TGA colormap type");
 		}
 		uint colorMapBytes = colorEntryBytes*hdr.cmapSize;
-		if (colorMapBytes == 0) throw new Exception("invalid tga colormap type");
+		enforce(colorMapBytes > 0, "Invalid TGA colormap type");
 		// if we're going to use the color map, read it in.
 		if (loadCM) {
-			if (hdr.cmapFirstIdx+hdr.cmapSize > 256) throw new Exception("invalid tga colormap type");
+			enforce(hdr.cmapFirstIdx+hdr.cmapSize <= 256, "Invalid TGA colormap type");
 			ubyte readCMB () {
 				if (colorMapBytes == 0) return 0;
 				--colorMapBytes;
@@ -304,7 +304,7 @@ private MemoryImage loadTga(const(ubyte)[] fl) @safe {
 						cmp[0].red = readCMB();
 						cmp[0].alpha = readCMB();
 						break;
-					default: throw new Exception("invalid tga colormap type");
+					default: throw new Exception("Invalid TGA colormap type");
 				}
 				cmp = cmp[1 .. $];
 			}
@@ -344,7 +344,7 @@ private MemoryImage loadTga(const(ubyte)[] fl) @safe {
 			fl = orig[extfooter.extofs .. $];
 			ext = fl.read!Extension();
 			// some idiotic writers set 494 instead 495, tolerate that
-			if (ext.size < 494) throw new Exception("invalid tga extension record");
+			enforce (ext.size >= 494, "Invalid TGA extension record");
 			if (ext.attrType == 4) {
 				// premultiplied alpha
 				foreach (ref RGBA32 clr; tcimg.colours[]) {

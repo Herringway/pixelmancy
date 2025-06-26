@@ -5,7 +5,6 @@ import pixelmancy.colours.formats;
 import pixelmancy.fileformats.color;
 import pixelmancy.util;
 import std.algorithm.comparison : min;
-import std.stdio : File; // sorry
 
 
 // ////////////////////////////////////////////////////////////////////////// //

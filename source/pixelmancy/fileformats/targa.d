@@ -1,99 +1,73 @@
 //ketmar: Adam didn't wrote this, don't blame him!
 module pixelmancy.fileformats.targa;
 
+import pixelmancy.colours.formats;
 import pixelmancy.fileformats.color;
-import pixelmancy.colours;
+import pixelmancy.util;
 import std.algorithm.comparison : min;
 import std.stdio : File; // sorry
 
 
 // ////////////////////////////////////////////////////////////////////////// //
-public MemoryImage loadTgaMem (const(void)[] buf, const(char)[] filename=null) {
-	static struct MemRO {
-		const(ubyte)[] data;
-		long pos;
+deprecated alias loadTgaMem = loadTga;
 
-		this (const(void)[] abuf) { data = cast(const(ubyte)[])abuf; }
-
-		long tell () @safe { return pos; }
-		long size () @safe { return data.length; }
-
-		void seek (long offset, int whence=Seek.Set) @safe {
-			switch (whence) {
-				case Seek.Set:
-					if (offset < 0 || offset > data.length) throw new Exception("invalid offset");
-					pos = offset;
-					break;
-				case Seek.Cur:
-					if (offset < -pos || offset > data.length-pos) throw new Exception("invalid offset");
-					pos += offset;
-					break;
-				case Seek.End:
-					pos = data.length+offset;
-					if (pos < 0 || pos > data.length) throw new Exception("invalid offset");
-					break;
-				default:
-					throw new Exception("invalid offset origin");
-			}
-		}
-
-		ptrdiff_t read (ubyte[] buf) @safe {
-			if (pos >= data.length) return 0;
-			if (buf.length > 0) {
-				long rlen = data.length-pos;
-				if (rlen >= buf.length) rlen = buf.length;
-				assert(rlen != 0);
-				buf[0 .. rlen] = data[pos .. pos + rlen];
-				pos += rlen;
-				return cast(ptrdiff_t)rlen;
-			} else {
-				return 0;
-			}
-		}
+public MemoryImage loadTga(const(char)[] fname) @safe {
+	static const(ubyte)[] trustedRead(const(char)[] fname) @trusted {
+		import std.file : read;
+		return cast(const(ubyte)[])read(fname);
 	}
-
-	auto rd = MemRO(buf);
-	return loadTga(rd, filename);
+	return loadTga(trustedRead(fname));
 }
-
-public MemoryImage loadTga (File fl) { return loadTgaImpl(fl, fl.name); }
-public MemoryImage loadTga(const(char)[] fname) {
-	static if (is(T == typeof(null))) {
-		throw new Exception("cannot load nameless tga");
-	} else {
-		static if (is(T == string)) {
-			return loadTga(File(fname), fname);
-		} else {
-			return loadTga(File(fname.idup), fname);
-		}
-	}
-}
-/*@safe*/ unittest {
-	{
+@safe unittest {
+	{ // 32-bit
 		const tga = loadTga("testdata/test.tga");
 		assert(tga[0, 0] == RGBA32(0, 0, 255, 255));
 		assert(tga[128, 0] == RGBA32(0, 255, 0, 255));
 		assert(tga[0, 128] == RGBA32(255, 0, 0, 255));
 		assert(tga[128, 128] == RGBA32(0, 0, 0, 0));
 	}
+	{ // 24-bit
+		const tga = loadTga("testdata/test-24.tga");
+		assert(tga[0, 0] == RGBA32(0, 0, 255, 255));
+		assert(tga[128, 0] == RGBA32(0, 255, 0, 255));
+		assert(tga[0, 128] == RGBA32(255, 0, 0, 255));
+		assert(tga[128, 128] == RGBA32(0, 0, 0, 255));
+	}
+	{ // 8-bit, paletted colour
+		const tga = loadTga("testdata/test-cm8.tga");
+		assert(tga[0, 0] == RGBA32(0, 0, 255, 255));
+		assert(tga[128, 0] == RGBA32(0, 255, 0, 255));
+		assert(tga[0, 128] == RGBA32(255, 0, 0, 255));
+		assert(tga[128, 128] == RGBA32(0, 0, 0, 255));
+	}
+	{ // 8-bit, grayscale
+		const tga = loadTga("testdata/test-bm8.tga");
+		assert(tga[0, 0] == RGBA32(18, 18, 18, 255));
+		assert(tga[128, 0] == RGBA32(182, 182, 182, 255));
+		assert(tga[0, 128] == RGBA32(54, 54, 54, 255));
+		assert(tga[128, 128] == RGBA32(0, 0, 0, 255));
+	}
+	{ // 16-bit, grayscale
+		const tga = loadTga("testdata/test-bm16.tga");
+		assert(tga[0, 0] == RGBA32(18, 18, 18, 255));
+		assert(tga[128, 0] == RGBA32(182, 182, 182, 255));
+		assert(tga[0, 128] == RGBA32(54, 54, 54, 255));
+		assert(tga[128, 128] == RGBA32(0, 0, 0, 255));
+	}
 }
-
-// pass filename to ease detection
-// hack around "has scoped destruction, cannot build closure"
-public MemoryImage loadTga(ST) (auto ref ST fl, const(char)[] filename=null) if (isReadableStream!ST && isSeekableStream!ST) { return loadTgaImpl(fl, filename); }
 
 static struct TGAHeader {
 	align(1):
 	ubyte idsize;
 	ubyte cmapType;
 	ubyte imgType;
-	ushort cmapFirstIdx;
-	ushort cmapSize;
+	LittleEndian!ushort cmapFirstIdx;
+	LittleEndian!ushort cmapSize;
 	ubyte cmapElementSize;
-	ushort originX;
-	ushort originY;
-	ushort width;
-	ushort height;
+	LittleEndian!ushort originX;
+	LittleEndian!ushort originY;
+	LittleEndian!ushort width;
+	LittleEndian!ushort height;
 	ubyte bpp;
 	ubyte imgdsc;
 
@@ -101,35 +75,36 @@ static struct TGAHeader {
 	bool xflip () const pure nothrow @safe @nogc { return ((imgdsc&0b010000) != 0); }
 	bool yflip () const pure nothrow @safe @nogc { return ((imgdsc&0b100000) == 0); }
 }
-private MemoryImage loadTgaImpl(ST) (auto ref ST fl, const(char)[] filename) {
+private MemoryImage loadTga(const(ubyte)[] fl) @safe {
 	enum TGAFILESIGNATURE = "TRUEVISION-XFILE.\x00";
 
 	static immutable ubyte[32] cmap16 = [0,8,16,25,33,41,49,58,66,74,82,90,99,107,115,123,132,140,148,156,165,173,181,189,197,206,214,222,230,239,247,255];
 
-
 	static struct ExtFooter {
+		align(1):
 		uint extofs;
 		uint devdirofs;
 		char[18] sign=0;
 	}
 
 	static struct Extension {
-		ushort size;
+		align(1):
+		LittleEndian!ushort size;
 		char[41] author=0;
 		char[324] comments=0;
-		ushort month, day, year;
-		ushort hour, minute, second;
+		LittleEndian!ushort month, day, year;
+		LittleEndian!ushort hour, minute, second;
 		char[41] jid=0;
-		ushort jhours, jmins, jsecs;
+		LittleEndian!ushort jhours, jmins, jsecs;
 		char[41] producer=0;
-		ushort prodVer;
+		LittleEndian!ushort prodVer;
 		ubyte prodSubVer;
 		ubyte keyR, keyG, keyB, keyZero;
-		ushort pixratioN, pixratioD;
-		ushort gammaN, gammaD;
-		uint ccofs;
-		uint wtfofs;
-		uint scanlineofs;
+		LittleEndian!ushort pixratioN, pixratioD;
+		LittleEndian!ushort gammaN, gammaD;
+		LittleEndian!uint ccofs;
+		LittleEndian!uint wtfofs;
+		LittleEndian!uint scanlineofs;
 		ubyte attrType;
 	}
 
@@ -137,13 +112,13 @@ private MemoryImage loadTgaImpl(ST) (auto ref ST fl, const(char)[] filename) {
 	uint rleBC, rleDC;
 	ubyte[4] rleLast;
 	RGBA32[256] cmap;
-
-	void readPixel(bool asRLE, uint bytesPerPixel) (ubyte[] pixel, scope ubyte delegate () readByte) {
+	alias ByteReadFunction = ubyte delegate() @safe;
+	void readPixel(bool asRLE, uint bytesPerPixel) (ubyte[] pixel, scope ByteReadFunction readByte) {
 		static if (asRLE) {
 			if (rleDC > 0) {
 				// still counting
-				static if (bytesPerPixel == 1) pixel.ptr[0] = rleLast.ptr[0];
-				else pixel.ptr[0..bytesPerPixel] = rleLast.ptr[0..bytesPerPixel];
+				static if (bytesPerPixel == 1) pixel[0] = rleLast[0];
+				else pixel[0..bytesPerPixel] = rleLast[0..bytesPerPixel];
 				--rleDC;
 				return;
 			}
@@ -153,85 +128,71 @@ private MemoryImage loadTgaImpl(ST) (auto ref ST fl, const(char)[] filename) {
 				ubyte b = readByte();
 				if (b&0x80) rleDC = (b&0x7f); else rleBC = (b&0x7f);
 			}
-			foreach (immutable idx; 0..bytesPerPixel) rleLast.ptr[idx] = pixel.ptr[idx] = readByte();
+			foreach (immutable idx; 0..bytesPerPixel) rleLast[idx] = pixel[idx] = readByte();
 		} else {
-			foreach (immutable idx; 0..bytesPerPixel) pixel.ptr[idx] = readByte();
+			foreach (immutable idx; 0..bytesPerPixel) pixel[idx] = readByte();
 		}
 	}
 
 	// 8 bit color-mapped row
-	RGBA32 readColorCM8(bool asRLE) (scope ubyte delegate () readByte) {
-		ubyte[1] pixel = void;
+	RGBA32 readColorCM8(bool asRLE)(scope ByteReadFunction readByte) {
+		ubyte[1] pixel;
 		readPixel!(asRLE, 1)(pixel[], readByte);
-		auto cmp = cast(const(ubyte)*)(cmap.ptr+pixel.ptr[0]);
-		return RGBA32(cmp[0], cmp[1], cmp[2]);
+		return cmap[pixel[0]];
 	}
 
 	// 8 bit greyscale
-	RGBA32 readColorBM8(bool asRLE) (scope ubyte delegate () readByte) {
-		ubyte[1] pixel = void;
+	RGBA32 readColorBM8(bool asRLE)(scope ByteReadFunction readByte) {
+		ubyte[1] pixel;
 		readPixel!(asRLE, 1)(pixel[], readByte);
-		return RGBA32(pixel.ptr[0], pixel.ptr[0], pixel.ptr[0]);
+		return RGBA32(pixel[0], pixel[0], pixel[0]);
 	}
 
 	// 16 bit greyscale
-	RGBA32 readColorBM16(bool asRLE) (scope ubyte delegate () readByte) {
-		ubyte[2] pixel = void;
+	RGBA32 readColorBM16(bool asRLE)(scope ByteReadFunction readByte) {
+		ubyte[2] pixel;
 		readPixel!(asRLE, 2)(pixel[], readByte);
-		immutable ubyte v = cast(ubyte)((pixel.ptr[0]|(pixel.ptr[1]<<8))>>8);
+		immutable ubyte v = cast(ubyte)(((pixel[1] << 8)) >> 8);
 		return RGBA32(v, v, v);
 	}
 
 	// 16 bit
-	RGBA32 readColor16(bool asRLE) (scope ubyte delegate () readByte) {
-		ubyte[2] pixel = void;
+	RGBA32 readColor16(bool asRLE)(scope ByteReadFunction readByte) {
+		ubyte[2] pixel;
 		readPixel!(asRLE, 2)(pixel[], readByte);
-		immutable v = pixel.ptr[0]+(pixel.ptr[1]<<8);
-		return RGBA32(cmap16.ptr[(v>>10)&0x1f], cmap16.ptr[(v>>5)&0x1f], cmap16.ptr[v&0x1f]);
+		immutable v = pixel[0] + (pixel[1] << 8);
+		return RGBA32(cmap16[(v >> 10) & 0x1f], cmap16[(v >> 5) & 0x1f], cmap16[v & 0x1f]);
 	}
 
 	// 24 bit or 32 bit
-	RGBA32 readColorTrue(bool asRLE, uint bytesPerPixel) (scope ubyte delegate () readByte) {
-		ubyte[bytesPerPixel] pixel = void;
+	RGBA32 readColorTrue(bool asRLE, uint bytesPerPixel)(scope ByteReadFunction readByte) {
+		ubyte[bytesPerPixel] pixel;
 		readPixel!(asRLE, bytesPerPixel)(pixel[], readByte);
+		ubyte r = pixel[2];
+		ubyte g = pixel[1];
+		ubyte b = pixel[0];
+		ubyte a = 255;
 		static if (bytesPerPixel == 4) {
-			return RGBA32(pixel.ptr[2], pixel.ptr[1], pixel.ptr[0], pixel.ptr[3]);
-		} else {
-			return RGBA32(pixel.ptr[2], pixel.ptr[1], pixel.ptr[0]);
+			a = pixel[3];
 		}
+		return RGBA32(r, g, b, a);
 	}
 
-	bool isGoodExtension (const(char)[] filename) {
-		if (filename.length >= 4) {
-			// try extension
-			auto ext = filename[$-4..$];
-			if (ext[0] == '.' && (ext[1] == 'T' || ext[1] == 't') && (ext[2] == 'G' || ext[2] == 'g') && (ext[3] == 'A' || ext[3] == 'a')) return true;
-		}
-		// try signature
-		return false;
-	}
-
-	bool detect(ST) (auto ref ST fl, const(char)[] filename) if (isReadableStream!ST && isSeekableStream!ST) {
-		bool goodext = false;
-		if (fl.size < 45) return false; // minimal 1x1 tga
-		if (filename.length) { goodext = isGoodExtension(filename); if (!goodext) return false; }
+	bool detect(const(ubyte)[] fl) {
+		if (fl.length < 45) return false; // minimal 1x1 tga
 		// try footer
-		fl.seek(-(4*2+18), Seek.End);
-		extfooter.extofs = fl.readNum!uint;
-		extfooter.devdirofs = fl.readNum!uint;
-		fl.rawReadExact(extfooter.sign[]);
+		fl = fl[$ - (4 * 2 + 18) .. $];
+		extfooter = fl.read!ExtFooter();
 		if (extfooter.sign != TGAFILESIGNATURE) {
-			//if (!goodext) return false;
 			extfooter = extfooter.init;
 			return true; // alas, footer is optional
 		}
 		return true;
 	}
+	auto orig = fl;
 
-	if (!detect(fl, filename)) throw new Exception("not a TGA");
-	fl.seek(0);
-	TGAHeader hdr;
-	fl.readStruct(hdr);
+	if (!detect(fl)) throw new Exception("not a TGA");
+	auto hdr = fl.read!TGAHeader();
 	// parse header
 	// arbitrary size limits
 	if (hdr.width == 0 || hdr.width > 32000) throw new Exception("invalid tga width");
@@ -244,8 +205,8 @@ private MemoryImage loadTgaImpl(ST) (auto ref ST fl, const(char)[] filename) {
 	if (bytesPerPixel == 0 || bytesPerPixel > 4) throw new Exception("invalid tga pixel size");
 	bool loadCM = false;
 	// get the row reading function
-	ubyte readByte () { ubyte b; fl.rawReadExact((&b)[0..1]); return b; }
-	scope RGBA32 delegate (scope ubyte delegate () readByte) readColor;
+	ubyte readByte () { return fl.read!ubyte(); }
+	scope RGBA32 delegate (scope ByteReadFunction readByte) @safe readColor;
 	switch (hdr.imgType) {
 		case 2: // true color, no rle
 			switch (bytesPerPixel) {
@@ -323,45 +284,39 @@ private MemoryImage loadTgaImpl(ST) (auto ref ST fl, const(char)[] filename) {
 				return readByte;
 			}
 			cmap[] = RGBA32(0, 0, 0, 255);
-			auto cmp = cmap.ptr;
-			switch (colorEntryBytes) {
-				case 2:
-					foreach (immutable n; 0..hdr.cmapSize) {
+			auto cmp = cmap[];
+			foreach (immutable n; 0..hdr.cmapSize) {
+				switch (colorEntryBytes) {
+					case 2:
 						uint v = readCMB();
 						v |= readCMB()<<8;
-						cmp.blue = cmap16.ptr[v&0x1f];
-						cmp.green = cmap16.ptr[(v>>5)&0x1f];
-						cmp.red = cmap16.ptr[(v>>10)&0x1f];
-						++cmp;
-					}
-					break;
-				case 3:
-					foreach (immutable n; 0..hdr.cmapSize) {
-						cmp.blue = readCMB();
-						cmp.green = readCMB();
-						cmp.red = readCMB();
-						++cmp;
-					}
-					break;
-				case 4:
-					foreach (immutable n; 0..hdr.cmapSize) {
-						cmp.blue = readCMB();
-						cmp.green = readCMB();
-						cmp.red = readCMB();
-						cmp.alpha = readCMB();
-						++cmp;
-					}
-					break;
-				default: throw new Exception("invalid tga colormap type");
+						cmp[0].blue = cmap16[v&0x1f];
+						cmp[0].green = cmap16[(v>>5)&0x1f];
+						cmp[0].red = cmap16[(v>>10)&0x1f];
+						break;
+					case 3:
+						cmp[0].blue = readCMB();
+						cmp[0].green = readCMB();
+						cmp[0].red = readCMB();
+						break;
+					case 4:
+						cmp[0].blue = readCMB();
+						cmp[0].green = readCMB();
+						cmp[0].red = readCMB();
+						cmp[0].alpha = readCMB();
+						break;
+					default: throw new Exception("invalid tga colormap type");
+				}
+				cmp = cmp[1 .. $];
 			}
 		} else {
 			// skip colormap
-			fl.seek(colorMapBytes, Seek.Cur);
+			fl = fl[colorMapBytes .. $];
 		}
 	}
 
 	// now load the data
-	fl.seek(hdr.idsize, Seek.Cur);
+	fl = fl[hdr.idsize .. $];
 	if (hdr.cmapType != 0) loadColormap();
 
 	// we don't know if alpha is premultiplied yet
@@ -370,29 +325,29 @@ private MemoryImage loadTgaImpl(ST) (auto ref ST fl, const(char)[] filename) {
 	bool premult = false;
 
 	auto tcimg = new TrueColorImage(hdr.width, hdr.height);
-	scope(failure) .destroy(tcimg);
 
 	{
 		// read image data
 		immutable bool xflip = hdr.xflip, yflip = hdr.yflip;
-		RGBA32* pixdata = tcimg.colours[].ptr;
-		if (yflip) pixdata += (hdr.height-1)*hdr.width;
+		RGBA32[] pixdata = tcimg.colours[];
+		size_t index1 = 0;
+		if (yflip) index1 = (hdr.height - 1) * hdr.width;
 		foreach (immutable y; 0..hdr.height) {
-			auto d = pixdata;
-			if (xflip) d += hdr.width-1;
-			foreach (immutable x; 0..hdr.width) {
-				*d = readColor(&readByte);
-				if (xflip) --d; else ++d;
+			size_t index = 0;
+			if (xflip) index = hdr.width - index;
+			foreach (immutable x; 0 .. hdr.width) {
+				pixdata[index1 + index] = readColor(&readByte);
+				if (xflip) --index; else index++;
 			}
-			if (yflip) pixdata -= hdr.width; else pixdata += hdr.width;
+			if (yflip) index1 -= hdr.width.native; else index1 += hdr.width.native;
 		}
 	}
 
 	if (hasAlpha) {
 		if (extfooter.extofs != 0) {
 			Extension ext;
-			fl.seek(extfooter.extofs);
-			fl.readStruct(ext);
+			fl = orig[extfooter.extofs .. $];
+			ext = fl.read!Extension();
 			// some idiotic writers set 494 instead 495, tolerate that
 			if (ext.size < 494) throw new Exception("invalid tga extension record");
 			if (ext.attrType == 4) {
@@ -415,244 +370,4 @@ private MemoryImage loadTgaImpl(ST) (auto ref ST fl, const(char)[] filename) {
 		if (!validAlpha) foreach (ref RGBA32 clr; tcimg.colours[]) clr.alpha = 255;
 	}
 	return tcimg;
-}
-
-
-// ////////////////////////////////////////////////////////////////////////// //
-private:
-import core.stdc.stdio : SEEK_SET, SEEK_CUR, SEEK_END;
-
-enum Seek : int {
-	Set = SEEK_SET,
-	Cur = SEEK_CUR,
-	End = SEEK_END,
-}
-
-
-// ////////////////////////////////////////////////////////////////////////// //
-// augmentation checks
-// is this "low-level" stream that can be read?
-enum isLowLevelStreamR(T) = is(typeof((inout int=0) {
-	auto t = T.init;
-	ubyte[1] b;
-	ptrdiff_t r = t.read(b[]);
-}));
-
-// is this "low-level" stream that can be written?
-enum isLowLevelStreamW(T) = is(typeof((inout int=0) {
-	auto t = T.init;
-	ubyte[1] b;
-	ptrdiff_t w = t.write(b.ptr, 1);
-}));
-
-
-// is this "low-level" stream that can be seeked?
-enum isLowLevelStreamS(T) = is(typeof((inout int=0) {
-	auto t = T.init;
-	long p = t.lseek(0, 0);
-}));
-
-
-// ////////////////////////////////////////////////////////////////////////// //
-// augment low-level streams with `rawRead`
-T[] rawRead(ST, T) (auto ref ST st, T[] buf) if (isLowLevelStreamR!ST && !is(T == const) && !is(T == immutable)) {
-	if (buf.length > 0) {
-		auto res = st.read(cast(ubyte[])buf);
-		if (res == -1 || res%T.sizeof != 0) throw new Exception("read error");
-		return buf[0..res/T.sizeof];
-	} else {
-		return buf[0..0];
-	}
-}
-
-// augment low-level streams with `rawWrite`
-void rawWrite(ST, T) (auto ref ST st, in T[] buf) if (isLowLevelStreamW!ST) {
-	if (buf.length > 0) {
-		auto res = st.write(buf.ptr, buf.length*T.sizeof);
-		if (res == -1 || res%T.sizeof != 0) throw new Exception("write error");
-	}
-}
-
-// read exact size or throw error
-package(pixelmancy.fileformats) T[] rawReadExact(ST, T) (auto ref ST st, T[] buf) if (isReadableStream!ST && !is(T == const) && !is(T == immutable)) {
-	if (buf.length == 0) return buf;
-	auto left = buf.length*T.sizeof;
-	auto dp = cast(ubyte*)buf.ptr;
-	while (left > 0) {
-		auto res = st.rawRead(cast(void[])(dp[0..left]));
-		if (res.length == 0) throw new Exception("read error");
-		dp += res.length;
-		left -= res.length;
-	}
-	return buf;
-}
-
-// write exact size or throw error (just for convenience)
-void rawWriteExact(ST, T) (auto ref ST st, in T[] buf) if (isWriteableStream!ST) { st.rawWrite(buf); }
-
-// if stream doesn't have `.size`, but can be seeked, emulate it
-long size(ST) (auto ref ST st) if (isSeekableStream!ST && !streamHasSize!ST) {
-	auto opos = st.tell;
-	st.seek(0, Seek.End);
-	auto res = st.tell;
-	st.seek(opos);
-	return res;
-}
-
-
-// ////////////////////////////////////////////////////////////////////////// //
-// check if a given stream supports `eof`
-enum streamHasEof(T) = is(typeof((inout int=0) {
-	auto t = T.init;
-	bool n = t.eof;
-}));
-
-// check if a given stream supports `seek`
-enum streamHasSeek(T) = is(typeof((inout int=0) {
-	import core.stdc.stdio : SEEK_END;
-	auto t = T.init;
-	t.seek(0);
-	t.seek(0, SEEK_END);
-}));
-
-// check if a given stream supports `tell`
-enum streamHasTell(T) = is(typeof((inout int=0) {
-	auto t = T.init;
-	long pos = t.tell;
-}));
-
-// check if a given stream supports `size`
-enum streamHasSize(T) = is(typeof((inout int=0) {
-	auto t = T.init;
-	long pos = t.size;
-}));
-
-// check if a given stream supports `rawRead()`.
-// it's enough to support `void[] rawRead (void[] buf)`
-enum isReadableStream(T) = is(typeof((inout int=0) {
-	auto t = T.init;
-	ubyte[1] b;
-	t.rawRead(b[]);
-}));
-
-// check if a given stream supports `rawWrite()`.
-// it's enough to support `inout(void)[] rawWrite (inout(void)[] buf)`
-enum isWriteableStream(T) = is(typeof((inout int=0) {
-	auto t = T.init;
-	ubyte[1] b;
-	t.rawWrite(cast(void[])b);
-}));
-
-// check if a given stream supports `.seek(ofs, [whence])`, and `.tell`
-enum isSeekableStream(T) = (streamHasSeek!T && streamHasTell!T);
-
-// check if we can get size of a given stream.
-// this can be done either with `.size`, or with `.seek` and `.tell`
-enum isSizedStream(T) = (streamHasSize!T || isSeekableStream!T);
-
-// ////////////////////////////////////////////////////////////////////////// //
-private enum isGoodEndianness(string s) = (s == "LE" || s == "le" || s == "BE" || s == "be");
-
-private template isLittleEndianness(string s) if (isGoodEndianness!s) {
-	enum isLittleEndianness = (s == "LE" || s == "le");
-}
-
-private template isBigEndianness(string s) if (isGoodEndianness!s) {
-	enum isLittleEndianness = (s == "BE" || s == "be");
-}
-
-private template isSystemEndianness(string s) if (isGoodEndianness!s) {
-	version(LittleEndian) {
-		enum isSystemEndianness = isLittleEndianness!s;
-	} else {
-		enum isSystemEndianness = isBigEndianness!s;
-	}
-}
-
-// read integer value of the given type, with the given endianness (default: little-endian)
-// usage: auto v = st.readNum!ubyte
-T readNum(T, string es="LE", ST) (auto ref ST st) if (isGoodEndianness!es && isReadableStream!ST && __traits(isIntegral, T)) {
-	static assert(T.sizeof <= 8); // just in case
-	static if (isSystemEndianness!es) {
-		T v = void;
-		st.rawReadExact((&v)[0..1]);
-		return v;
-	} else {
-		ubyte[T.sizeof] b = void;
-		st.rawReadExact(b[]);
-		T v = 0;
-		version(LittleEndian) {
-			// convert from big-endian
-			foreach (ubyte x; b) { v <<= 8; v |= x; }
-		} else {
-			// conver from little-endian
-			foreach_reverse (ubyte x; b) { v <<= 8; v |= x; }
-		}
-		return v;
-	}
-}
-
-
-private enum reverseBytesMixin = "
-	foreach (idx; 0..b.length/2) {
-		ubyte t = b[idx];
-		b[idx] = b[$-idx-1];
-		b[$-idx-1] = t;
-	}
-";
-
-// read floating value of the given type, with the given endianness (default: little-endian)
-// usage: auto v = st.readNum!float
-T readNum(T, string es="LE", ST) (auto ref ST st) if (isGoodEndianness!es && isReadableStream!ST && __traits(isFloating, T)) {
-	static assert(T.sizeof <= 8);
-	T v = void;
-	static if (isSystemEndianness!es) {
-		st.rawReadExact((&v)[0..1]);
-	} else {
-		ubyte[T.sizeof] b = void;
-		st.rawReadExact(b[]);
-		mixin(reverseBytesMixin);
-		(cast(ubyte*)&v)[0 .. T.sizeof] = b.ptr[0 .. T.sizeof];
-	}
-	return v;
-}
-
-
-// ////////////////////////////////////////////////////////////////////////// //
-void readStruct(string es="LE", SS, ST) (auto ref ST fl, ref SS st)
-if (is(SS == struct) && isGoodEndianness!es && isReadableStream!ST)
-{
-	void unserData(T) (ref T v) {
-		import std.traits : Unqual;
-		alias UT = Unqual!T;
-		static if (is(T : V[], V)) {
-			// array
-			static if (__traits(isStaticArray, T)) {
-				foreach (ref it; v) unserData(it);
-			} else static if (is(UT == char)) {
-				// special case: dynamic `char[]` array will be loaded as asciiz string
-				char c;
-				for (;;) {
-					if (fl.rawRead((&c)[0..1]).length == 0) break; // don't require trailing zero on eof
-					if (c == 0) break;
-					v ~= c;
-				}
-			} else {
-				assert(0, "cannot load dynamic arrays yet");
-			}
-		} else static if (is(T : V[K], K, V)) {
-			assert(0, "cannot load associative arrays yet");
-		} else static if (__traits(isIntegral, UT) || __traits(isFloating, UT)) {
-			// this takes care of `*char` and `bool` too
-			v = cast(UT)fl.readNum!(UT, es);
-		} else static if (is(T == struct)) {
-			// struct
-			import std.traits : FieldNameTuple, hasUDA;
-			foreach (string fldname; FieldNameTuple!T) {
-				unserData(__traits(getMember, v, fldname));
-			}
-		}
-	}
-
-	unserData(st);
 }

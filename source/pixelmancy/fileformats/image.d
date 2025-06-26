@@ -127,6 +127,8 @@ public ImageFileFormat guessImageFormatFromExtension (const(char)[] filename) @s
 	assert(guessImageFormatFromExtension("test.JPG") == ImageFileFormat.Jpeg);
 	assert(guessImageFormatFromExtension("test.jpeg") == ImageFileFormat.Jpeg);
 	assert(guessImageFormatFromExtension("test.JPEG") == ImageFileFormat.Jpeg);
+	assert(guessImageFormatFromExtension("test.pcx") == ImageFileFormat.Pcx);
+	assert(guessImageFormatFromExtension("test.PCX") == ImageFileFormat.Pcx);
 	assert(guessImageFormatFromExtension("test") == ImageFileFormat.Unknown);
 	assert(guessImageFormatFromExtension("nonimage.test") == ImageFileFormat.Unknown);
 	assert(guessImageFormatFromExtension("jpg") == ImageFileFormat.Unknown); // no extension
@@ -169,10 +171,10 @@ public ImageFileFormat guessImageFormatFromMemory (const(void)[] membuf) @safe {
 		}
 	}
 	// ok, try to guess targa by validating some header fields
-	bool guessTarga () nothrow @safe @nogc {
+	bool guessTarga () nothrow @safe {
 		if (buf.length < 45) return false; // minimal 1x1 tga
 		immutable header = (cast(const(TGAHeader)[])(buf[0 .. TGAHeader.sizeof]))[0];
-		if (header.width < 1 || header.height < 1 || header.width > 32000 || header.height > 32000) return false; // arbitrary limit
+		if (header.width.native < 1 || header.height.native < 1 || header.width.native > 32000 || header.height.native > 32000) return false; // arbitrary limit
 		immutable uint pixelsize = (header.bpp>>3);
 		switch (header.imgType) {
 			case 2: // truecolor, raw
@@ -211,7 +213,7 @@ public ImageFileFormat guessImageFormatFromMemory (const(void)[] membuf) @safe {
 	}
 	if (guessTarga()) return ImageFileFormat.Tga;
 
-	bool guessPcx() nothrow @safe @nogc {
+	bool guessPcx() nothrow @safe {
 		if (buf.length < PCXHeader.sizeof) return false; // we should have at least header
 		immutable header = (cast(const(PCXHeader)[])(buf[0 .. PCXHeader.sizeof]))[0];
 
@@ -220,8 +222,8 @@ public ImageFileFormat guessImageFormatFromMemory (const(void)[] membuf) @safe {
 		if (/*header.ver != 0 && header.ver != 2 && header.ver != 3 &&*/ header.ver != 5) return false;
 		if (header.encoding != 0 && header.encoding != 1) return false;
 
-		int wdt = header.xmax-header.xmin+1;
-		int hgt = header.ymax-header.ymin+1;
+		int wdt = header.xmax-header.xmin.native+1;
+		int hgt = header.ymax-header.ymin.native+1;
 
 		// arbitrary size limits
 		if (wdt < 1 || wdt > 32000) return false;
@@ -268,6 +270,7 @@ public ImageFileFormat guessImageFormatFromMemory (const(void)[] membuf) @safe {
 	assert(guessImageFormatFromMemory(read("testdata/test.dds")) == ImageFileFormat.Dds);
 	assert(guessImageFormatFromMemory(read("testdata/test.tga")) == ImageFileFormat.Tga);
 	assert(guessImageFormatFromMemory(read("testdata/test.svg")) == ImageFileFormat.Svg);
+	assert(guessImageFormatFromMemory(read("testdata/test.pcx")) == ImageFileFormat.Pcx);
 }
 
 
@@ -290,7 +293,7 @@ public MemoryImage loadImageFromFile(T:const(char)[]) (T filename) {
 				if (fsz > int.max/8) throw new Exception("image data too big");
 				auto data = new ubyte[](cast(uint)fsz);
 				scope(exit) { import core.memory : GC; GC.free(data.ptr); } // this should be safe, as image will copy data to it's internal storage
-				fl.rawReadExact(data);
+				fl.rawRead(data);
 				return loadImageFromMemory(data);
 			case ImageFileFormat.Png: static if (is(T == string)) return readPng(filename); else return readPng(filename.idup);
 			case ImageFileFormat.Bmp: static if (is(T == string)) return readBmp(filename); else return readBmp(filename.idup);
@@ -320,11 +323,9 @@ public MemoryImage loadImageFromMemory (const(void)[] membuf) {
 		case ImageFileFormat.Bmp: return readBmp(cast(const(ubyte)[])membuf);
 		case ImageFileFormat.Jpeg: return readJpegFromMemory(cast(const(ubyte)[])membuf);
 		case ImageFileFormat.Gif: throw new Exception("arsd has no GIF loader yet");
-		case ImageFileFormat.Tga: return loadTgaMem(membuf);
-		case ImageFileFormat.Pcx: return loadPcxMem(membuf);
+		case ImageFileFormat.Tga: return loadTga(cast(const(ubyte)[])membuf);
+		case ImageFileFormat.Pcx: return loadPcx(cast(const(ubyte)[])membuf);
 		case ImageFileFormat.Svg: return readSvg(cast(const(ubyte)[]) membuf);
 		case ImageFileFormat.Dds: return ddsLoadFromMemory(membuf);
 	}
 }
-
-// FYI: There used to be image resize code in here directly, but I moved it to `imageresize.d`.

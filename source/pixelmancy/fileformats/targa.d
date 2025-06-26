@@ -116,7 +116,9 @@ private MemoryImage loadTga(const(ubyte)[] fl) @safe {
 		static if (asRLE) {
 			if (rleDC > 0) {
 				// still counting
-				static if (bytesPerPixel == 1) pixel[0] = rleLast[0];
+				static if (bytesPerPixel == 1) {
+					pixel[0] = rleLast[0];
+				}
 				else pixel[0..bytesPerPixel] = rleLast[0..bytesPerPixel];
 				--rleDC;
 				return;
@@ -125,11 +127,19 @@ private MemoryImage loadTga(const(ubyte)[] fl) @safe {
 				--rleBC;
 			} else {
 				ubyte b = readByte();
-				if (b&0x80) rleDC = (b&0x7f); else rleBC = (b&0x7f);
+				if (b&0x80) {
+					rleDC = (b & 0x7f);
+				} else {
+					rleBC = (b & 0x7f);
+				}
 			}
-			foreach (immutable idx; 0..bytesPerPixel) rleLast[idx] = pixel[idx] = readByte();
+			foreach (immutable idx; 0..bytesPerPixel) {
+				rleLast[idx] = pixel[idx] = readByte();
+			}
 		} else {
-			foreach (immutable idx; 0..bytesPerPixel) pixel[idx] = readByte();
+			foreach (immutable idx; 0..bytesPerPixel) {
+				pixel[idx] = readByte();
+			}
 		}
 	}
 
@@ -178,7 +188,9 @@ private MemoryImage loadTga(const(ubyte)[] fl) @safe {
 	}
 
 	bool detect(const(ubyte)[] fl) {
-		if (fl.length < 45) return false; // minimal 1x1 tga
+		if (fl.length < 45) {
+			return false; // minimal 1x1 tga
+		}
 		// try footer
 		fl = fl[$ - (4 * 2 + 18) .. $];
 		extfooter = fl.read!ExtFooter();
@@ -204,7 +216,9 @@ private MemoryImage loadTga(const(ubyte)[] fl) @safe {
 	enforce((bytesPerPixel > 0) && (bytesPerPixel <= 4), "Invalid TGA pixel size");
 	bool loadCM = false;
 	// get the row reading function
-	ubyte readByte () { return fl.read!ubyte(); }
+	ubyte readByte () {
+		return fl.read!ubyte();
+	}
 	scope RGBA32 delegate (scope ByteReadFunction readByte) @safe readColor;
 	switch (hdr.imgType) {
 		case 2: // true color, no rle
@@ -278,7 +292,9 @@ private MemoryImage loadTga(const(ubyte)[] fl) @safe {
 		if (loadCM) {
 			enforce(hdr.cmapFirstIdx+hdr.cmapSize <= 256, "Invalid TGA colormap type");
 			ubyte readCMB () {
-				if (colorMapBytes == 0) return 0;
+				if (colorMapBytes == 0) {
+					return 0;
+				}
 				--colorMapBytes;
 				return readByte;
 			}
@@ -316,7 +332,9 @@ private MemoryImage loadTga(const(ubyte)[] fl) @safe {
 
 	// now load the data
 	fl = fl[hdr.idsize .. $];
-	if (hdr.cmapType != 0) loadColormap();
+	if (hdr.cmapType != 0) {
+		loadColormap();
+	}
 
 	// we don't know if alpha is premultiplied yet
 	bool hasAlpha = (bytesPerPixel == 4);
@@ -344,7 +362,7 @@ private MemoryImage loadTga(const(ubyte)[] fl) @safe {
 			fl = orig[extfooter.extofs .. $];
 			ext = fl.read!Extension();
 			// some idiotic writers set 494 instead 495, tolerate that
-			enforce (ext.size >= 494, "Invalid TGA extension record");
+			enforce(ext.size >= 494, "Invalid TGA extension record");
 			if (ext.attrType == 4) {
 				// premultiplied alpha
 				foreach (ref RGBA32 clr; tcimg.colours[]) {
@@ -360,9 +378,17 @@ private MemoryImage loadTga(const(ubyte)[] fl) @safe {
 		} else {
 			// some writers sets all alphas to zero, check for that
 			validAlpha = false;
-			foreach (ref RGBA32 clr; tcimg.colours[]) if (clr.alpha != 0) { validAlpha = true; break; }
+			foreach (ref RGBA32 clr; tcimg.colours[]) {
+				if (clr.alpha != 0) {
+					validAlpha = true; break;
+				}
+			}
 		}
-		if (!validAlpha) foreach (ref RGBA32 clr; tcimg.colours[]) clr.alpha = 255;
+		if (!validAlpha) {
+			foreach (ref RGBA32 clr; tcimg.colours[]) {
+				clr.alpha = 255;
+			}
+		}
 	}
 	return tcimg;
 }

@@ -174,8 +174,8 @@ public ImageFileFormat guessImageFormatFromMemory (const(void)[] membuf) @safe {
 	bool guessTarga () nothrow @safe {
 		if (buf.length < 45) return false; // minimal 1x1 tga
 		immutable header = (cast(const(TGAHeader)[])(buf[0 .. TGAHeader.sizeof]))[0];
-		if (header.width.native < 1 || header.height.native < 1 || header.width.native > 32000 || header.height.native > 32000) return false; // arbitrary limit
-		immutable uint pixelsize = (header.bpp>>3);
+		if (header.image.width.native < 1 || header.image.height.native < 1 || header.image.width.native > 32000 || header.image.height.native > 32000) return false; // arbitrary limit
+		immutable uint pixelsize = (header.image.bpp>>3);
 		switch (header.imgType) {
 			case 2: // truecolor, raw
 			case 10: // truecolor, rle
@@ -198,11 +198,11 @@ public ImageFileFormat guessImageFormatFromMemory (const(void)[] membuf) @safe {
 		// check for valid colormap
 		switch (header.cmapType) {
 			case 0:
-				if (header.cmapFirstIdx != 0 || header.cmapSize != 0) return 0;
+				if (header.cmap.firstIndex != 0 || header.cmap.size != 0) return 0;
 				break;
 			case 1:
-				if (header.cmapElementSize != 15 && header.cmapElementSize != 16 && header.cmapElementSize != 24 && header.cmapElementSize != 32) return false;
-				if (header.cmapSize == 0) return false;
+				if (header.cmap.elementSize != 15 && header.cmap.elementSize != 16 && header.cmap.elementSize != 24 && header.cmap.elementSize != 32) return false;
+				if (header.cmap.size == 0) return false;
 				break;
 			default: // invalid colormap type
 				return false;

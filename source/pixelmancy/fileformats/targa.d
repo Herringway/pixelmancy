@@ -5,6 +5,7 @@ import pixelmancy.colours.formats;
 import pixelmancy.fileformats.color;
 import pixelmancy.util;
 import std.algorithm.comparison : min;
+import std.bitmanip : bitfields;
 import std.exception;
 
 // ////////////////////////////////////////////////////////////////////////// //
@@ -80,20 +81,47 @@ static struct TGAHeader {
 	align(1):
 	ubyte idsize;
 	ubyte cmapType;
-	ubyte imgType;
-	LittleEndian!ushort cmapFirstIdx;
-	LittleEndian!ushort cmapSize;
-	ubyte cmapElementSize;
-	LittleEndian!ushort originX;
-	LittleEndian!ushort originY;
-	LittleEndian!ushort width;
-	LittleEndian!ushort height;
-	ubyte bpp;
-	ubyte imgdsc;
+	ImageType imgType;
+	ColourMapSpec cmap;
+	ImageSpec image;
+	enum ImageType : ubyte {
+		none = 0,
+		colourMapped = 1,
+		trueColour = 2,
+		grayscale = 3,
+		rle = 8,
+		colourMappedRLE = colourMapped | rle,
+		trueColourRLE = trueColour | rle,
+		grayscaleRLE = grayscale | rle,
+	}
+	static struct Descriptor {
+		align(1):
+		mixin(bitfields!(
+			ubyte, "alpha", 4,
+			bool, "xflip", 1,
+			bool, "yflip", 1,
+			ubyte, "reserved", 2,
+		));
+	}
+	static struct ColourMapSpec {
+		align(1):
+		LittleEndian!ushort firstIndex;
+		LittleEndian!ushort size;
+		ubyte elementSize;
+	}
+	static struct ImageSpec {
+		align(1):
+		LittleEndian!ushort originX;
+		LittleEndian!ushort originY;
+		LittleEndian!ushort width;
+		LittleEndian!ushort height;
+		ubyte bpp;
+		Descriptor descriptor;
+	}
 
-	bool zeroBits () const pure nothrow @safe @nogc { return ((imgdsc&0xc0) == 0); }
-	bool xflip () const pure nothrow @safe @nogc { return ((imgdsc&0b010000) != 0); }
-	bool yflip () const pure nothrow @safe @nogc { return ((imgdsc&0b100000) == 0); }
+	auto zeroBits() const => !image.descriptor.reserved;
+	auto xflip() const => image.descriptor.xflip;
+	auto yflip() const => !image.descriptor.yflip;
 }
 private MemoryImage loadTga(const(ubyte)[] fl) @safe {
 	enum TGAFILESIGNATURE = "TRUEVISION-XFILE.\x00";
@@ -227,13 +255,13 @@ private MemoryImage loadTga(const(ubyte)[] fl) @safe {
 	auto hdr = fl.read!TGAHeader();
 	// parse header
 	// arbitrary size limits
-	enforce((hdr.width > 0) && (hdr.width <= 32000), "Invalid TGA width");
-	enforce((hdr.height > 0) && (hdr.height <= 32000), "Invalid TGA height");
-	switch (hdr.bpp) {
+	enforce((hdr.image.width > 0) && (hdr.image.width <= 32000), "Invalid TGA width");
+	enforce((hdr.image.height > 0) && (hdr.image.height <= 32000), "Invalid TGA height");
+	switch (hdr.image.bpp) {
 		case 1: case 2: case 4: case 8: case 15: case 16: case 24: case 32: break;
 		default: throw new Exception("Invalid TGA bpp");
 	}
-	uint bytesPerPixel = ((hdr.bpp)>>3);
+	uint bytesPerPixel = ((hdr.image.bpp) >> 3);
 	enforce((bytesPerPixel > 0) && (bytesPerPixel <= 4), "Invalid TGA pixel size");
 	bool loadCM = false;
 	// get the row reading function
@@ -242,7 +270,7 @@ private MemoryImage loadTga(const(ubyte)[] fl) @safe {
 	}
 	scope RGBA32 delegate (scope ByteReadFunction readByte) @safe readColor;
 	switch (hdr.imgType) {
-		case 2: // true color, no rle
+		case TGAHeader.ImageType.trueColour:
 			switch (bytesPerPixel) {
 				case 2: readColor = &readColor16!false; break;
 				case 3: readColor = &readColorTrue!(false, 3); break;
@@ -250,7 +278,7 @@ private MemoryImage loadTga(const(ubyte)[] fl) @safe {
 				default: throw new Exception("Invalid TGA pixel size");
 			}
 			break;
-		case 10: // true color, rle
+		case TGAHeader.ImageType.trueColourRLE:
 			switch (bytesPerPixel) {
 				case 2: readColor = &readColor16!true; break;
 				case 3: readColor = &readColorTrue!(true, 3); break;
@@ -258,26 +286,26 @@ private MemoryImage loadTga(const(ubyte)[] fl) @safe {
 				default: throw new Exception("Invalid TGA pixel size");
 			}
 			break;
-		case 3: // black&white, no rle
+		case TGAHeader.ImageType.grayscale:
 			switch (bytesPerPixel) {
 				case 1: readColor = &readColorBM8!false; break;
 				case 2: readColor = &readColorBM16!false; break;
 				default: throw new Exception("Invalid TGA pixel size");
 			}
 			break;
-		case 11: // black&white, rle
+		case TGAHeader.ImageType.grayscaleRLE:
 			switch (bytesPerPixel) {
 				case 1: readColor = &readColorBM8!true; break;
 				case 2: readColor = &readColorBM16!true; break;
 				default: throw new Exception("Invalid TGA pixel size");
 			}
 			break;
-		case 1: // colormap, no rle
+		case TGAHeader.ImageType.colourMapped:
 			enforce(bytesPerPixel == 1, "Invalid TGA pixel size");
 			loadCM = true;
 			readColor = &readColorCM8!false;
 			break;
-		case 9: // colormap, rle
+		case TGAHeader.ImageType.colourMappedRLE:
 			enforce(bytesPerPixel == 1, "Invalid TGA pixel size");
 			loadCM = true;
 			readColor = &readColorCM8!true;
@@ -287,11 +315,11 @@ private MemoryImage loadTga(const(ubyte)[] fl) @safe {
 	// check for valid colormap
 	switch (hdr.cmapType) {
 		case 0:
-			enforce((hdr.cmapFirstIdx == 0) && (hdr.cmapSize == 0), "Invalid TGA colormap type");
+			enforce((hdr.cmap.firstIndex == 0) && (hdr.cmap.size == 0), "Invalid TGA colormap type");
 			break;
 		case 1:
-			enforce((hdr.cmapElementSize == 15) || (hdr.cmapElementSize == 16) || (hdr.cmapElementSize == 24) || (hdr.cmapElementSize == 32), "Invalid TGA colormap type");
-			enforce(hdr.cmapSize != 0, "Invalid TGA colormap type");
+			enforce((hdr.cmap.elementSize == 15) || (hdr.cmap.elementSize == 16) || (hdr.cmap.elementSize == 24) || (hdr.cmap.elementSize == 32), "Invalid TGA colormap type");
+			enforce(hdr.cmap.size != 0, "Invalid TGA colormap type");
 			break;
 		default: throw new Exception("Invalid TGA colormap type");
 	}
@@ -300,18 +328,18 @@ private MemoryImage loadTga(const(ubyte)[] fl) @safe {
 		enforce(hdr.cmapType == 1, "Invalid TGA colormap type");
 		// calculate color map size
 		uint colorEntryBytes = 0;
-		switch (hdr.cmapElementSize) {
+		switch (hdr.cmap.elementSize) {
 			case 15:
 			case 16: colorEntryBytes = 2; break;
 			case 24: colorEntryBytes = 3; break;
 			case 32: colorEntryBytes = 4; break;
 			default: throw new Exception("Invalid TGA colormap type");
 		}
-		uint colorMapBytes = colorEntryBytes*hdr.cmapSize;
+		uint colorMapBytes = colorEntryBytes*hdr.cmap.size;
 		enforce(colorMapBytes > 0, "Invalid TGA colormap type");
 		// if we're going to use the color map, read it in.
 		if (loadCM) {
-			enforce(hdr.cmapFirstIdx+hdr.cmapSize <= 256, "Invalid TGA colormap type");
+			enforce(hdr.cmap.firstIndex + hdr.cmap.size <= 256, "Invalid TGA colormap type");
 			ubyte readCMB () {
 				if (colorMapBytes == 0) {
 					return 0;
@@ -321,7 +349,7 @@ private MemoryImage loadTga(const(ubyte)[] fl) @safe {
 			}
 			cmap[] = RGBA32(0, 0, 0, 255);
 			auto cmp = cmap[];
-			foreach (immutable n; 0..hdr.cmapSize) {
+			foreach (immutable n; 0..hdr.cmap.size) {
 				switch (colorEntryBytes) {
 					case 2:
 						uint v = readCMB();
@@ -362,14 +390,14 @@ private MemoryImage loadTga(const(ubyte)[] fl) @safe {
 	bool validAlpha = hasAlpha;
 	bool premult = false;
 
-	auto tcimg = new TrueColorImage(hdr.width, hdr.height);
+	auto tcimg = new TrueColorImage(hdr.image.width, hdr.image.height);
 
 	{
 		// read image data
-		size_t indexY = hdr.yflip ? (hdr.height - 1) : 0;
-		foreach (y; 0..hdr.height) {
-			size_t indexX = hdr.xflip ? (hdr.width - 1) : 0;
-			foreach (x; 0 .. hdr.width) {
+		size_t indexY = hdr.yflip ? (hdr.image.height - 1) : 0;
+		foreach (y; 0..hdr.image.height) {
+			size_t indexX = hdr.xflip ? (hdr.image.width - 1) : 0;
+			foreach (x; 0 .. hdr.image.width) {
 				tcimg.colours[indexX, indexY] = readColor(&readByte);
 				indexX += hdr.xflip ? -1 : 1;
 			}

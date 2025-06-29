@@ -25,6 +25,27 @@ public MemoryImage loadTga(const(char)[] fname) @safe {
 		assert(tga[0, 128] == RGBA32(255, 0, 0, 255));
 		assert(tga[128, 128] == RGBA32(0, 0, 0, 0));
 	}
+	{ // 32-bit, vertically flipped
+		const tga = loadTga("testdata/test-v.tga");
+		assert(tga[0, 128] == RGBA32(0, 0, 255, 255));
+		assert(tga[128, 128] == RGBA32(0, 255, 0, 255));
+		assert(tga[0, 0] == RGBA32(255, 0, 0, 255));
+		assert(tga[128, 0] == RGBA32(0, 0, 0, 0));
+	}
+	{ // 32-bit, horizontally flipped
+		const tga = loadTga("testdata/test-h.tga");
+		assert(tga[128, 0] == RGBA32(0, 0, 255, 255));
+		assert(tga[0, 0] == RGBA32(0, 255, 0, 255));
+		assert(tga[128, 128] == RGBA32(255, 0, 0, 255));
+		assert(tga[0, 128] == RGBA32(0, 0, 0, 0));
+	}
+	{ // 32-bit, horizontally and vertically flipped
+		const tga = loadTga("testdata/test-hv.tga");
+		assert(tga[128, 128] == RGBA32(0, 0, 255, 255));
+		assert(tga[0, 128] == RGBA32(0, 255, 0, 255));
+		assert(tga[128, 0] == RGBA32(255, 0, 0, 255));
+		assert(tga[0, 0] == RGBA32(0, 0, 0, 0));
+	}
 	{ // 24-bit
 		const tga = loadTga("testdata/test-24.tga");
 		assert(tga[0, 0] == RGBA32(0, 0, 255, 255));

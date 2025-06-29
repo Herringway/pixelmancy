@@ -58,7 +58,6 @@ struct RGBGeneric(RGBChannel[] channels) {
 }
 
 struct RGBGeneric(T, Channel[] channels) {
-	import std.bitmanip : bitfields;
 	static foreach (channel; channels) {
 		static if (channel == Channel.red) {
 			T red;

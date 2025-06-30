@@ -124,7 +124,7 @@ static struct TGAHeader {
 	auto xflip() const => image.descriptor.xflip;
 	auto yflip() const => !image.descriptor.yflip;
 }
-private MemoryImage loadTga(const(ubyte)[] fl) @safe {
+MemoryImage loadTga(const(ubyte)[] fl) @safe {
 	enum expectedSignature = "TRUEVISION-XFILE.\x00";
 
 	static immutable ubyte[32] cmap16 = [0,8,16,25,33,41,49,58,66,74,82,90,99,107,115,123,132,140,148,156,165,173,181,189,197,206,214,222,230,239,247,255];

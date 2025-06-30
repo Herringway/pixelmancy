@@ -125,7 +125,7 @@ static struct TGAHeader {
 	auto yflip() const => !image.descriptor.yflip;
 }
 private MemoryImage loadTga(const(ubyte)[] fl) @safe {
-	enum TGAFILESIGNATURE = "TRUEVISION-XFILE.\x00";
+	enum expectedSignature = "TRUEVISION-XFILE.\x00";
 
 	static immutable ubyte[32] cmap16 = [0,8,16,25,33,41,49,58,66,74,82,90,99,107,115,123,132,140,148,156,165,173,181,189,197,206,214,222,230,239,247,255];
 
@@ -133,19 +133,19 @@ private MemoryImage loadTga(const(ubyte)[] fl) @safe {
 		align(1):
 		uint extofs;
 		uint devdirofs;
-		char[18] sign=0;
+		char[18] sign = expectedSignature;
 	}
 
 	static struct Extension {
 		align(1):
 		LittleEndian!ushort size;
-		char[41] author=0;
-		char[324] comments=0;
+		char[41] author = 0;
+		char[324] comments = 0;
 		LittleEndian!ushort month, day, year;
 		LittleEndian!ushort hour, minute, second;
-		char[41] jid=0;
+		char[41] jid = 0;
 		LittleEndian!ushort jhours, jmins, jsecs;
-		char[41] producer=0;
+		char[41] producer = 0;
 		LittleEndian!ushort prodVer;
 		ubyte prodSubVer;
 		ubyte keyR, keyG, keyB, keyZero;
@@ -243,7 +243,7 @@ private MemoryImage loadTga(const(ubyte)[] fl) @safe {
 		// try footer
 		fl = fl[$ - (4 * 2 + 18) .. $];
 		extfooter = fl.read!ExtFooter();
-		if (extfooter.sign != TGAFILESIGNATURE) {
+		if (extfooter.sign != expectedSignature) {
 			extfooter = extfooter.init;
 			return true; // alas, footer is optional
 		}

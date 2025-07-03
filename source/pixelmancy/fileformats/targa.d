@@ -131,8 +131,8 @@ MemoryImage loadTga(const(ubyte)[] fl) @safe {
 
 	static struct ExtFooter {
 		align(1):
-		uint extofs;
-		uint devdirofs;
+		LittleEndian!uint extofs;
+		LittleEndian!uint devdirofs;
 		char[18] sign = expectedSignature;
 	}
 

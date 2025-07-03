@@ -10,7 +10,7 @@ import std.conv;
 import std.range;
 
 ///
-alias BGR555 = RGBGeneric!([RGBChannel(Channel.red, 5), RGBChannel(Channel.green, 5), RGBChannel(Channel.blue, 5)]); // 0BBBBBGG GGGRRRRR
+alias BGR555 = RGBGeneric!([ChannelDefinition(Channel.red, 5), ChannelDefinition(Channel.green, 5), ChannelDefinition(Channel.blue, 5)]); // 0BBBBBGG GGGRRRRR
 static assert(BGR555.sizeof == 2);
 
 @safe pure unittest {
@@ -25,19 +25,19 @@ static assert(BGR555.sizeof == 2);
 }
 
 ///
-alias RGB555 = RGBGeneric!([RGBChannel(Channel.blue, 5), RGBChannel(Channel.green, 5), RGBChannel(Channel.red, 5)]); // 0RRRRRGG GGGBBBBB
+alias RGB555 = RGBGeneric!([ChannelDefinition(Channel.blue, 5), ChannelDefinition(Channel.green, 5), ChannelDefinition(Channel.red, 5)]); // 0RRRRRGG GGGBBBBB
 static assert(RGB555.sizeof == 2);
 
 ///
-alias BGR565 = RGBGeneric!([RGBChannel(Channel.red, 5), RGBChannel(Channel.green, 6), RGBChannel(Channel.blue, 5)]); // BBBBBGGG GGGRRRRR
+alias BGR565 = RGBGeneric!([ChannelDefinition(Channel.red, 5), ChannelDefinition(Channel.green, 6), ChannelDefinition(Channel.blue, 5)]); // BBBBBGGG GGGRRRRR
 static assert(BGR565.sizeof == 2);
 
 ///
-alias BGR222 = RGBGeneric!([RGBChannel(Channel.red, 2), RGBChannel(Channel.green, 2), RGBChannel(Channel.blue, 2)]); // 00BBGGRR
+alias BGR222 = RGBGeneric!([ChannelDefinition(Channel.red, 2), ChannelDefinition(Channel.green, 2), ChannelDefinition(Channel.blue, 2)]); // 00BBGGRR
 static assert(BGR222.sizeof == 1);
 
 ///
-alias BGR333MD = RGBGeneric!([RGBChannel(Channel.red, 3), RGBChannel(Channel.padding, 1), RGBChannel(Channel.green, 3), RGBChannel(Channel.padding, 1), RGBChannel(Channel.blue, 3)]); // 0000BBB0 GGG0RRR0
+alias BGR333MD = RGBGeneric!([ChannelDefinition(Channel.red, 3), ChannelDefinition(Channel.padding, 1), ChannelDefinition(Channel.green, 3), ChannelDefinition(Channel.padding, 1), ChannelDefinition(Channel.blue, 3)]); // 0000BBB0 GGG0RRR0
 static assert(BGR333MD.sizeof == 2);
 
 ///
@@ -80,11 +80,11 @@ alias ABGR32 = RGBGeneric!(ubyte, [Channel.alpha, Channel.blue, Channel.green, C
 static assert(ABGR32.sizeof == 4);
 
 ///
-alias RGBA8888 = RGBGeneric!([RGBChannel(Channel.alpha, 8), RGBChannel(Channel.blue, 8), RGBChannel(Channel.green, 8), RGBChannel(Channel.red, 8)]); // AAAAAAAA BBBBBBBB GGGGGGGG RRRRRRRR
+alias RGBA8888 = RGBGeneric!([ChannelDefinition(Channel.alpha, 8), ChannelDefinition(Channel.blue, 8), ChannelDefinition(Channel.green, 8), ChannelDefinition(Channel.red, 8)]); // AAAAAAAA BBBBBBBB GGGGGGGG RRRRRRRR
 static assert(RGBA8888.sizeof == 4);
 
 ///
-alias ARGB8888 = RGBGeneric!([RGBChannel(Channel.blue, 8), RGBChannel(Channel.green, 8), RGBChannel(Channel.red, 8), RGBChannel(Channel.alpha, 8)]); // BBBBBBBB GGGGGGGG RRRRRRRR AAAAAAAA
+alias ARGB8888 = RGBGeneric!([ChannelDefinition(Channel.blue, 8), ChannelDefinition(Channel.green, 8), ChannelDefinition(Channel.red, 8), ChannelDefinition(Channel.alpha, 8)]); // BBBBBBBB GGGGGGGG RRRRRRRR AAAAAAAA
 static assert(RGBA8888.sizeof == 4);
 
 @safe pure unittest {
@@ -103,11 +103,11 @@ static assert(RGBA8888.sizeof == 4);
 }
 
 ///
-alias BGRA8888 = RGBGeneric!([RGBChannel(Channel.alpha, 8), RGBChannel(Channel.red, 8), RGBChannel(Channel.green, 8), RGBChannel(Channel.blue, 8)]); // AAAAAAAA RRRRRRRR GGGGGGGG BBBBBBBB
+alias BGRA8888 = RGBGeneric!([ChannelDefinition(Channel.alpha, 8), ChannelDefinition(Channel.red, 8), ChannelDefinition(Channel.green, 8), ChannelDefinition(Channel.blue, 8)]); // AAAAAAAA RRRRRRRR GGGGGGGG BBBBBBBB
 static assert(BGRA8888.sizeof == 4);
 
 ///
-alias ABGR8888 = RGBGeneric!([RGBChannel(Channel.red, 8), RGBChannel(Channel.green, 8), RGBChannel(Channel.blue, 8), RGBChannel(Channel.alpha, 8)]); // RRRRRRRR GGGGGGGG BBBBBBBB AAAAAAAA
+alias ABGR8888 = RGBGeneric!([ChannelDefinition(Channel.red, 8), ChannelDefinition(Channel.green, 8), ChannelDefinition(Channel.blue, 8), ChannelDefinition(Channel.alpha, 8)]); // RRRRRRRR GGGGGGGG BBBBBBBB AAAAAAAA
 static assert(ABGR8888.sizeof == 4);
 
 ///

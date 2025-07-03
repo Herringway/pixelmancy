@@ -14,14 +14,14 @@ enum Channel {
 	padding,
 }
 
-struct RGBChannel {
+struct ChannelDefinition {
 	Channel channel;
 	ubyte bits;
 }
 
-private auto countTotalBits(RGBChannel[] channels) => channels.map!(x => x.bits).sum;
+private auto countTotalBits(ChannelDefinition[] channels) => channels.map!(x => x.bits).sum;
 
-template generateChannelMixin(RGBChannel[] channels) {
+template generateChannelMixin(ChannelDefinition[] channels) {
 	import std.meta : AliasSeq;
 	alias generateChannelMixin = AliasSeq!();
 	static foreach (channel; channels) {
@@ -31,7 +31,7 @@ template generateChannelMixin(RGBChannel[] channels) {
 	generateChannelMixin = AliasSeq!(generateChannelMixin, uint, "", ((totalBits + 7) / 8) * 8 - totalBits);
 }
 
-struct RGBGeneric(RGBChannel[] channels) {
+struct RGBGeneric(ChannelDefinition[] channels) {
 	import std.bitmanip : bitfields;
 	import std.meta : AliasSeq;
 	alias fields = generateChannelMixin!channels;

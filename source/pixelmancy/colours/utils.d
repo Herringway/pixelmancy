@@ -34,7 +34,6 @@ template generateChannelMixin(ChannelDefinition[] channels) {
 
 struct RGBGeneric(ChannelDefinition[] channels) {
 	import std.bitmanip : bitfields;
-	import std.meta : AliasSeq;
 	alias fields = generateChannelMixin!channels;
 	static foreach (channel; channels) {
 		static if (channel.channel == Channel.red) {

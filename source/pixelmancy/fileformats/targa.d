@@ -367,7 +367,6 @@ MemoryImage loadTga(const(ubyte)[] fl) @safe {
 	// we don't know if alpha is premultiplied yet
 	bool hasAlpha = (bytesPerPixel == 4);
 	bool validAlpha = hasAlpha;
-	bool premult = false;
 
 	auto tcimg = new TrueColorImage(hdr.image.width, hdr.image.height);
 

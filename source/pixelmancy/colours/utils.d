@@ -229,7 +229,7 @@ private Precision gammaCorrect(Precision)(const Precision input, const Precision
 	return input ^^ (1.0 / factor);
 }
 
-T colourConvert(T, size_t Size1, size_t Size2, Source)(Source val ) {
+T channelConvert(T, size_t Size1, size_t Size2, Source)(Source val ) {
 	static if (Size1 > Size2) {
 		return cast(T)(val << (Size1 - Size2));
 	} else static if (Size1 < Size2) {
@@ -238,7 +238,6 @@ T colourConvert(T, size_t Size1, size_t Size2, Source)(Source val ) {
 		return cast(T)val;
 	}
 }
-alias colorConvert = colourConvert;
 mixin template colourCommon() {
 	import pixelmancy.colours.formats : AnalogRGB, AnalogRGBA;
 	this(uint red, uint green, uint blue) pure @safe

@@ -481,16 +481,16 @@ Target convert(Target, Source)(Source from) if (isColourFormat!Source && isColou
 	} else {
 		Target output;
 		static if (hasRed!Source && hasRed!Target) {
-			output.red = colourConvert!(typeof(output.red), Target.redSize, Source.redSize)(from.red);
+			output.red = channelConvert!(typeof(output.red), Target.redSize, Source.redSize)(from.red);
 		}
 		static if (hasGreen!Source && hasGreen!Target) {
-			output.green = colourConvert!(typeof(output.green), Target.greenSize, Source.greenSize)(from.green);
+			output.green = channelConvert!(typeof(output.green), Target.greenSize, Source.greenSize)(from.green);
 		}
 		static if (hasBlue!Source && hasBlue!Target) {
-			output.blue = colourConvert!(typeof(output.blue), Target.blueSize, Source.blueSize)(from.blue);
+			output.blue = channelConvert!(typeof(output.blue), Target.blueSize, Source.blueSize)(from.blue);
 		}
 		static if (hasAlpha!Source && hasAlpha!Target) {
-			output.alpha = colourConvert!(typeof(output.alpha), Target.alphaSize, Source.alphaSize)(from.alpha);
+			output.alpha = channelConvert!(typeof(output.alpha), Target.alphaSize, Source.alphaSize)(from.alpha);
 		} else static if (hasAlpha!Target) {
 			output.alpha = maxAlpha!Target;
 		}

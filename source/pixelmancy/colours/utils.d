@@ -46,7 +46,7 @@ struct RGBGeneric(ChannelDefinition[] channels) {
 			enum alphaSize = channel.bits;
 		} else static if (channel.channel == Channel.padding) {
 		} else {
-			static assert(0, "Unknown channel");
+			static assert(0, "Unsupported channel");
 		}
 	}
 	void toString(S)(S sink) const {
@@ -72,7 +72,7 @@ struct RGBGeneric(T, Channel[] channels) {
 			T alpha;
 			enum alphaSize = T.sizeof * 8;
 		} else {
-			static assert(0, "Unknown channel");
+			static assert(0, "Unsupported channel");
 		}
 	}
 	void toString(S)(S sink) const {

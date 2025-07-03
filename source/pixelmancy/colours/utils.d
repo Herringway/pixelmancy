@@ -22,10 +22,11 @@ struct ChannelDefinition {
 private auto countTotalBits(ChannelDefinition[] channels) => channels.map!(x => x.bits).sum;
 
 template generateChannelMixin(ChannelDefinition[] channels) {
+	import std.conv : text;
 	import std.meta : AliasSeq;
 	alias generateChannelMixin = AliasSeq!();
 	static foreach (channel; channels) {
-		generateChannelMixin = AliasSeq!(generateChannelMixin, uint, ["red", "green", "blue", "alpha", ""][channel.channel], channel.bits);
+		generateChannelMixin = AliasSeq!(generateChannelMixin, uint, channel.channel == Channel.padding ? "" : channel.channel.text, channel.bits);
 	}
 	enum totalBits = countTotalBits(channels);
 	generateChannelMixin = AliasSeq!(generateChannelMixin, uint, "", ((totalBits + 7) / 8) * 8 - totalBits);

@@ -3,7 +3,7 @@ module pixelmancy.colours.properties;
 
 import pixelmancy.colours.utils;
 
-Precision relativeLuminosity(Precision = double, Colour)(const Colour colour) if(isColourFormat!Colour) {
+Precision relativeLuminosity(Precision = double, Colour)(const Colour colour) if(isRGBColourFormat!Colour) {
 	const linear = colour.asLinearRGB!Precision;
 	return 0.2126 * linear.red +
 		0.7152 * linear.green +
@@ -19,7 +19,7 @@ Precision relativeLuminosity(Precision = double, Colour)(const Colour colour) if
 	assert(BGR555(0, 16, 31).relativeLuminosity.isClose(0.2361773154));
 }
 
-Precision contrast(Precision = double, Colour1, Colour2)(const Colour1 colour1, const Colour2 colour2) if (isColourFormat!Colour1 && isColourFormat!Colour2) {
+Precision contrast(Precision = double, Colour1, Colour2)(const Colour1 colour1, const Colour2 colour2) if (isRGBColourFormat!Colour1 && isRGBColourFormat!Colour2) {
 	import std.algorithm.comparison : max, min;
 	const L1 = colour1.relativeLuminosity!Precision;
 	const L2 = colour2.relativeLuminosity!Precision;
@@ -35,7 +35,7 @@ Precision contrast(Precision = double, Colour1, Colour2)(const Colour1 colour1, 
 	assert(contrast(RGB24(255, 255, 255), RGB24(250, 112, 20)).isClose(2.8406907130));
 }
 
-Colour complementary(Colour)(const Colour colour) if (isColourFormat!Colour) {
+Colour complementary(Colour)(const Colour colour) if (isRGBColourFormat!Colour) {
 	Colour result;
 	static if (hasRed!Colour) {
 		result.red = colour.red^maxRed!Colour;

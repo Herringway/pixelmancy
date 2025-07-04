@@ -11,6 +11,7 @@ enum Channel {
 	green,
 	blue,
 	alpha,
+	luma,
 	padding,
 }
 
@@ -85,6 +86,44 @@ struct RGBGeneric(T, Channel[] channels) {
 	mixin colourCommon;
 }
 
+struct LumaChromaGeneric(ChannelDefinition[] channels) {
+	import std.bitmanip : bitfields;
+	alias fields = generateChannelMixin!channels;
+	static foreach (channel; channels) {
+		static if (channel.channel == Channel.luma) {
+			enum lumaSize = channel.bits;
+		} else static if (channel.channel == Channel.alpha) {
+			enum alphaSize = channel.bits;
+		} else static if (channel.channel == Channel.padding) {
+		} else {
+			static assert(0, "Unsupported channel");
+		}
+	}
+	void toString(S)(S sink) const {
+		import std.format : formattedWrite;
+		sink.formattedWrite("RGBA(%s, %s, %s, %s)", red, green, blue, alpha);
+	}
+	mixin(bitfields!(fields));
+}
+
+struct LumaChromaGeneric(T, Channel[] channels) {
+	static foreach (channel; channels) {
+		static if (channel == Channel.luma) {
+			T luma;
+			enum lumaSize = T.sizeof * 8;
+		} else static if (channel == Channel.alpha) {
+			T alpha;
+			enum alphaSize = T.sizeof * 8;
+		} else {
+			static assert(0, "Unsupported channel");
+		}
+	}
+	void toString(S)(S sink) const {
+		import std.format : formattedWrite;
+		sink.formattedWrite("RGBA(%s, %s, %s, %s)", red, green, blue, alpha);
+	}
+}
+
 template ClosestInteger(size_t bytes) {
 	import std.meta : AliasSeq;
 	static foreach (T; AliasSeq!(ubyte, ushort, uint, ulong)) {
@@ -128,12 +167,19 @@ ubyte[T.sizeof] asBytes(T)(T input) {
 	assert(BGR555(30, 31, 31).asBytes == [0xFE, 0x7F]);
 }
 
-enum isColourFormat(T) = hasRed!T && hasGreen!T && hasBlue!T;
-alias isColorFormat = isColourFormat;
+enum isLumaChromaColourFormat(T) = hasLuma!T;
+alias isLumaChromaColorFormat = isLumaChromaColourFormat;
+enum isRGBColourFormat(T) = hasRed!T && hasGreen!T && hasBlue!T;
+alias isRGBColorFormat = isRGBColourFormat;
+enum isColourFormat(T) = isRGBColourFormat!T || isLumaChromaColourFormat!T;
+alias isColorFormat = isRGBColourFormat;
 enum hasRed(T) = __traits(hasMember, T, "redSize") && (T.redSize > 0);
 enum hasGreen(T) = __traits(hasMember, T, "greenSize") && (T.greenSize > 0);
 enum hasBlue(T) = __traits(hasMember, T, "blueSize") && (T.blueSize > 0);
 enum hasAlpha(T) = __traits(hasMember, T, "alphaSize") && (T.alphaSize > 0);
+
+enum hasLuma(T) = __traits(hasMember, T, "lumaSize") && (T.lumaSize > 0);
+enum hasChroma(T) = false; //TODO
 
 enum maxValue(ulong Bits) = (1<<Bits) - 1;
 
@@ -321,7 +367,7 @@ mixin template colourCommon() {
 	+ ranges and tests if the channel of lesser precision falls within it. If channels have equal precision, this is
 	+ identical to equality.
 	+/
-	bool isSimilar(Colour)(Colour other) const @safe pure if (isColourFormat!Colour) {
+	bool isSimilar(Colour)(Colour other) const @safe pure if (isRGBColourFormat!Colour) {
 		bool channelSimilar(size_t thisSize, size_t otherSize)(uint thisValue, uint otherValue) {
 			static if (thisSize > otherSize) {
 				thisValue >>= thisSize - otherSize;
@@ -341,7 +387,7 @@ mixin template colourCommon() {
 	}
 	/++ isSimilar compares two colours for similarity.
 	+/
-	bool isSimilar(Colour)(Colour other, int tolerance) const @safe pure if (isColourFormat!Colour) {
+	bool isSimilar(Colour)(Colour other, int tolerance) const @safe pure if (isRGBColourFormat!Colour) {
 		bool channelSimilar(size_t thisSize, size_t otherSize)(uint thisValue, uint otherValue) {
 			static if (thisSize > otherSize) {
 				thisValue >>= thisSize - otherSize;

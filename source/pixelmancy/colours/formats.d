@@ -9,6 +9,12 @@ import std.bitmanip;
 import std.conv;
 import std.range;
 
+alias Y8 = LumaChromaGeneric!(ubyte, [Channel.luma]); // YYYYYYYY
+alias YA8 = LumaChromaGeneric!(ubyte, [Channel.luma, Channel.alpha]); // YYYYYYYY AAAAAAAA
+
+alias Y16 = LumaChromaGeneric!(ushort, [Channel.luma]); // YYYYYYYYYYYYYYYY
+alias YA16 = LumaChromaGeneric!(ushort, [Channel.luma, Channel.alpha]); // YYYYYYYYYYYYYYYY AAAAAAAAAAAAAAAA
+
 ///
 alias BGR555 = RGBGeneric!([ChannelDefinition(Channel.red, 5), ChannelDefinition(Channel.green, 5), ChannelDefinition(Channel.blue, 5)]); // 0BBBBBGG GGGRRRRR
 static assert(BGR555.sizeof == 2);
@@ -176,7 +182,7 @@ struct HSVA(Precision) {
 }
 
 ///
-HSV!Precision toHSV(Precision = double, Format)(Format input) if (isColourFormat!Format) {
+HSV!Precision toHSV(Precision = double, Format)(Format input) if (isRGBColourFormat!Format) {
 	import std.algorithm.comparison : max, min;
 	import std.math : isClose;
 	HSV!Precision result;
@@ -256,7 +262,7 @@ HSV!Precision toHSV(Precision = double, Format)(Format input) if (isColourFormat
 }
 
 ///
-HSVA!Precision toHSVA(Precision = double, Format)(Format input) if (isColourFormat!Format) {
+HSVA!Precision toHSVA(Precision = double, Format)(Format input) if (isRGBColourFormat!Format) {
 	const result = input.toHSV();
 	static if (hasAlpha!Format) {
 		return HSVA!Precision(result.hue, result.saturation, result.value, input.alphaFP);
@@ -289,7 +295,7 @@ HSVA!Precision toHSVA(Precision = double, Format)(Format input) if (isColourForm
 }
 
 ///
-Format toRGB(Format = RGB24, Precision = double)(HSV!Precision input) @safe if (isColourFormat!Format) {
+Format toRGB(Format = RGB24, Precision = double)(HSV!Precision input) @safe if (isRGBColourFormat!Format) {
 	static if (hasAlpha!Format) {
 		alias AnalogRGBT = AnalogRGBA!Precision;
 	} else {
@@ -397,7 +403,7 @@ Format toRGB(Format = RGB24, Precision = double)(HSV!Precision input) @safe if (
 	}
 }
 ///
-Format toRGB(Format = RGB24, Precision = double)(HSVA!Precision input) @safe if (isColourFormat!Format) {
+Format toRGB(Format = RGB24, Precision = double)(HSVA!Precision input) @safe if (isRGBColourFormat!Format) {
 	Format result = HSV!Precision(input.hue, input.saturation, input.value).toRGB!Format();
 	static if (hasAlpha!Format) {
 		result.alphaFP = input.alpha;
@@ -426,7 +432,7 @@ Format toRGB(Format = RGB24, Precision = double)(HSVA!Precision input) @safe if 
 }
 
 ///
-struct ColourPair(Foreground, Background) if (isColourFormat!Foreground && isColourFormat!Background) {
+struct ColourPair(Foreground, Background) if (isRGBColourFormat!Foreground && isRGBColourFormat!Background) {
 	Foreground foreground;
 	Background background;
 	Precision contrast(Precision = double)() const @safe pure {
@@ -444,7 +450,7 @@ struct ColourPair(Foreground, Background) if (isColourFormat!Foreground && isCol
 alias ColorPair = ColourPair;
 
 ///
-ColourPair!(Foreground, Background) colourPair(Foreground, Background)(Foreground foreground, Background background) if (isColourFormat!Foreground && isColourFormat!Background) {
+ColourPair!(Foreground, Background) colourPair(Foreground, Background)(Foreground foreground, Background background) if (isRGBColourFormat!Foreground && isRGBColourFormat!Background) {
 	return ColourPair!(Foreground, Background)(foreground, background);
 }
 /// ditto
@@ -476,26 +482,36 @@ alias colorPair = colourPair;
 
 ///
 Target convert(Target, Source)(Source from) if (isColourFormat!Source && isColourFormat!Target) {
+	Target output;
+	static if (hasAlpha!Source && hasAlpha!Target) {
+		output.alpha = channelConvert!(typeof(output.alpha), Target.alphaSize, Source.alphaSize)(from.alpha);
+	} else static if (hasAlpha!Target) {
+		output.alpha = maxAlpha!Target;
+	}
 	static if (is(Source : Target)) {
 		return from;
-	} else {
-		Target output;
-		static if (hasRed!Source && hasRed!Target) {
+	} else static if (isRGBColourFormat!Source) {
+		static if (isRGBColourFormat!Target) {
 			output.red = channelConvert!(typeof(output.red), Target.redSize, Source.redSize)(from.red);
-		}
-		static if (hasGreen!Source && hasGreen!Target) {
 			output.green = channelConvert!(typeof(output.green), Target.greenSize, Source.greenSize)(from.green);
-		}
-		static if (hasBlue!Source && hasBlue!Target) {
 			output.blue = channelConvert!(typeof(output.blue), Target.blueSize, Source.blueSize)(from.blue);
+		} else {
+			static assert(0, "Unsupported target format");
 		}
-		static if (hasAlpha!Source && hasAlpha!Target) {
-			output.alpha = channelConvert!(typeof(output.alpha), Target.alphaSize, Source.alphaSize)(from.alpha);
-		} else static if (hasAlpha!Target) {
-			output.alpha = maxAlpha!Target;
+	} else static if (isLumaChromaColourFormat!Source) {
+		static if (isRGBColourFormat!Target) {
+			static assert(hasLuma!Source, "Unsupported format: No luma channel");
+			static assert(!hasChroma!Source, "Chroma not yet supported");
+			output.red = channelConvert!(typeof(output.red), Target.redSize, Source.lumaSize)(from.luma);
+			output.green = channelConvert!(typeof(output.green), Target.greenSize, Source.lumaSize)(from.luma);
+			output.blue = channelConvert!(typeof(output.blue), Target.blueSize, Source.lumaSize)(from.luma);
+		} else {
+			static assert(0, "Unsupported target format");
 		}
-		return output;
+	} else {
+		static assert(0, "Unsupported source format");
 	}
+	return output;
 }
 ///
 @safe pure unittest {
@@ -505,10 +521,12 @@ Target convert(Target, Source)(Source from) if (isColourFormat!Source && isColou
 	assert(RGB24(248, 248, 248).convert!BGR555 == BGR555(31,31,31));
 	assert(RGB24(0, 0, 0).convert!BGR555 == BGR555(0, 0, 0));
 	assert(RGB24(0, 0, 0).convert!ABGR8888 == ABGR8888(0, 0, 0, 255));
+	assert(Y8(0).convert!RGB24 == RGB24(0, 0, 0));
+	assert(Y8(127).convert!RGB24 == RGB24(127, 127, 127));
 }
 
 ///
-Format fromHex(Format = RGB24)(const string colour) @safe pure if (isColourFormat!Format) {
+Format fromHex(Format = RGB24)(const string colour) @safe pure if (isRGBColourFormat!Format) {
 	Format output;
 	string tmpStr = colour[];
 	if (colour.empty) {

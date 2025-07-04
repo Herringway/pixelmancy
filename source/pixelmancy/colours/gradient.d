@@ -26,7 +26,7 @@ struct Gradient {
 	bool empty() @safe pure {
 		return index >= count;
 	}
-	this(T)(T from, T to, ulong steps) if(isColourFormat!T){
+	this(T)(T from, T to, ulong steps) if(isRGBColourFormat!T){
 		count = steps;
 		start = front = from.convert!RGB24;
 		end = to.convert!RGB24;

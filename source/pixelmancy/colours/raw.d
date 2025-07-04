@@ -35,13 +35,13 @@ enum SupportedFormat {
 +		ColourFormat = colour format to convert to
 + Returns: a colour in the specified format
 +/
-ColourFormat bytesToColour(ColourFormat = RGB24)(const ubyte[] data, SupportedFormat format) if (isColourFormat!ColourFormat) {
+ColourFormat bytesToColour(ColourFormat = RGB24)(const ubyte[] data, SupportedFormat format) if (isRGBColourFormat!ColourFormat) {
 	const result = bytesToColours!ColourFormat(data, format);
 	assert(result.length == 1);
 	return result[0];
 }
 /// ditto
-ColourFormat bytesToColour(ColourFormat = RGB24)(const ubyte[] data) if (isColourFormat!ColourFormat) {
+ColourFormat bytesToColour(ColourFormat = RGB24)(const ubyte[] data) if (isRGBColourFormat!ColourFormat) {
 	static foreach (format; EnumMembers!SupportedFormat) {
 		static if (is(mixin(format.stringof.toUpper) == ColourFormat)) {
 			return bytesToColour!ColourFormat(data, format);
@@ -60,7 +60,7 @@ alias bytesToColor = bytesToColour;
 * Reinterprets an array of bytes as an array of colours.
 * Params: data = Raw bytes to reinterpret
 */
-ColourFormat[] bytesToColours(ColourFormat = RGB24)(const ubyte[] data, SupportedFormat format) if (isColourFormat!ColourFormat) {
+ColourFormat[] bytesToColours(ColourFormat = RGB24)(const ubyte[] data, SupportedFormat format) if (isRGBColourFormat!ColourFormat) {
 	final switch (format) {
 		static foreach (fmt; EnumMembers!SupportedFormat) {
 			case fmt:
@@ -75,7 +75,7 @@ ColourFormat[] bytesToColours(ColourFormat = RGB24)(const ubyte[] data, Supporte
 	}
 }
 /// ditto
-ColourFormat[] bytesToColours(ColourFormat = RGB24)(const ubyte[] data) if (isColourFormat!ColourFormat) {
+ColourFormat[] bytesToColours(ColourFormat = RGB24)(const ubyte[] data) if (isRGBColourFormat!ColourFormat) {
 	static foreach (format; EnumMembers!SupportedFormat) {
 		static if (is(mixin(format.stringof.toUpper) == ColourFormat)) {
 			return bytesToColours!ColourFormat(data, format);
@@ -92,7 +92,7 @@ alias bytesToColors = bytesToColours;
 	assert(bytesToColours!RGB24([72, 244, 248]) == [RGB24(red: 72, green: 244, blue: 248)]);
 }
 
-ubyte[Format.sizeof] colourToBytes(Format)(Format data) if (isColourFormat!Format) {
+ubyte[Format.sizeof] colourToBytes(Format)(Format data) if (isRGBColourFormat!Format) {
 	import pixelmancy.colours.utils : asBytes;
 	return data.asBytes();
 }
@@ -105,7 +105,7 @@ alias colorToBytes = colourToBytes;
 	assert(colourToBytes(RGB24(red: 72, green: 232, blue: 248)) == [72, 232, 248]);
 }
 
-ubyte[] colourToBytes(T)(T data, SupportedFormat format) if (isColourFormat!T) {
+ubyte[] colourToBytes(T)(T data, SupportedFormat format) if (isRGBColourFormat!T) {
 	final switch (format) {
 		static foreach (fmt; EnumMembers!SupportedFormat) {
 			case fmt: return colourToBytes(data.convert!(mixin(fmt.stringof.toUpper)))[].dup;
@@ -133,7 +133,7 @@ size_t colourSize(SupportedFormat format) @safe pure {
 }
 
 ///
-ColourFormat integerToColour(ColourFormat, Endian endianness = endian)(ClosestInteger!(ColourFormat.sizeof) integer) if (isColourFormat!ColourFormat){
+ColourFormat integerToColour(ColourFormat, Endian endianness = endian)(ClosestInteger!(ColourFormat.sizeof) integer) if (isRGBColourFormat!ColourFormat){
 	import std.bitmanip : nativeToBigEndian, nativeToLittleEndian;
 	ubyte[typeof(integer).sizeof] bytes = endianness == Endian.littleEndian ? nativeToLittleEndian(integer) : nativeToBigEndian(integer);
 	return bytesToColour!ColourFormat(bytes[0 .. ColourFormat.sizeof]);
@@ -164,7 +164,7 @@ alias integerToColor = integerToColour;
 }
 
 ///
-ClosestInteger!(ColourFormat.sizeof) colourToInteger(Endian endianness = endian, ColourFormat)(ColourFormat colour) if (isColourFormat!ColourFormat) {
+ClosestInteger!(ColourFormat.sizeof) colourToInteger(Endian endianness = endian, ColourFormat)(ColourFormat colour) if (isRGBColourFormat!ColourFormat) {
 	import std.bitmanip : bigEndianToNative, littleEndianToNative;
 	ubyte[typeof(return).sizeof] raw;
 	raw[(!endian) * (typeof(return).sizeof - ColourFormat.sizeof) .. $ - (endian) * (typeof(return).sizeof - ColourFormat.sizeof)] = colourToBytes(colour);

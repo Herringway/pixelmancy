@@ -3,6 +3,7 @@ module pixelmancy.colours.formats;
 
 import pixelmancy.colours.raw;
 import pixelmancy.colours.utils;
+import pixelmancy.util;
 
 import std.algorithm;
 import std.bitmanip;
@@ -530,7 +531,7 @@ Format fromHex(Format = RGB24)(const string colour) @safe pure if (isRGBColourFo
 	Format output;
 	string tmpStr = colour[];
 	if (colour.empty) {
-		throw new Exception("Cannot parse an empty string");
+		throw new PixelmancyException("Cannot parse an empty string");
 	}
 	if (tmpStr.front == '#') {
 		tmpStr.popFront();

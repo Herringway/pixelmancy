@@ -21,9 +21,9 @@ ParsedImage loadImageFile(T)(const(ubyte)[] image, TileFormat tileFormat, const 
 	ParsedImage result;
 	result.arrangement = Array2D!TileAttributes(arrangement.width, arrangement.height);
 	auto img = cast(IndexedImage)readPngFromBytes(image);
-	enforce(img, "Invalid image");
+	enforce!PixelmancyException(img, "Invalid image");
 	if (((img.width % 8) != 0) || ((img.height % 8) != 0)) {
-		throw new Exception("Error: image dimensions are not multiples of 8!");
+		throw new PixelmancyException("Error: image dimensions are not multiples of 8!");
 	}
 	const tileWidth = img.width / 8;
 	const tileHeight = img.height / 8;

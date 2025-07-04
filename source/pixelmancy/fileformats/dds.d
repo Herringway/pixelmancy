@@ -33,10 +33,18 @@
 // D port and further changes by Ketmar // Invisible Vector
 module pixelmancy.fileformats.dds;
 
-import pixelmancy.fileformats.color : TrueColorImage;
 import pixelmancy.colours;
+import pixelmancy.fileformats.color : TrueColorImage;
+import pixelmancy.util;
 import std.algorithm.comparison : min;
+import std.exception;
 
+class DDSLoadException : ImageLoadException {
+	mixin basicExceptionCtors;
+}
+class DDSSaveException : ImageSaveException {
+	mixin basicExceptionCtors;
+}
 
 // ////////////////////////////////////////////////////////////////////////// //
 public bool ddsDetect (const(void)[] buf, int* width=null, int* height=null) nothrow @trusted @nogc {
@@ -81,7 +89,7 @@ public bool ddsDetect (const(void)[] buf, int* width=null, int* height=null) not
 // ////////////////////////////////////////////////////////////////////////// //
 public TrueColorImage ddsLoadFromMemory (const(void)[] buf) {
 	int w, h;
-	if (!ddsDetect(buf, &w, &h)) throw new Exception("not a DDS image");
+	enforce!DDSLoadException(ddsDetect(buf, &w, &h), "Invalid header");
 
 	//FIXME: check for OOB access in decoders
 	const(ddsBuffer_t)* dds = cast(const(ddsBuffer_t)*)buf.ptr;
@@ -89,7 +97,7 @@ public TrueColorImage ddsLoadFromMemory (const(void)[] buf) {
 	auto tc = new TrueColorImage(w, h);
 	scope(failure) .destroy(tc);
 
-	if (!DDSDecompress(dds, tc.colours[])) throw new Exception("invalid dds image");
+	enforce!DDSLoadException(DDSDecompress(dds, tc.colours[]), "Invalid image");
 
 	return tc;
 }
@@ -98,14 +106,14 @@ static import std.stdio;
 public TrueColorImage ddsLoadFromFile() (std.stdio.File fl) {
 	import core.stdc.stdlib : malloc, free;
 	auto fsize = fl.size-fl.tell;
-	if (fsize < 128 || fsize > int.max/8) throw new Exception("invalid dds size");
+	enforce!DDSLoadException((fsize >= 128) && (fsize <= int.max / 8), "Invalid size");
 	ddsBuffer_t* dds = cast(ddsBuffer_t*)malloc(cast(uint)fsize);
-	if (dds is null) throw new Exception("out of memory");
+	enforce!DDSLoadException(dds !is null, "out of memory");
 	scope(exit) free(dds);
 	ubyte[] lb = (cast(ubyte*)dds)[0..cast(uint)fsize];
 	while (lb.length > 0) {
 		auto rd = fl.rawRead(lb[]);
-		if (rd.length < 1) throw new Exception("read error");
+		enforce!DDSLoadException(rd.length >= 1, "Unexpected end of file");
 		lb = lb[rd.length..$];
 	}
 	return ddsLoadFromMemory((cast(ubyte*)dds)[0..cast(uint)fsize]);

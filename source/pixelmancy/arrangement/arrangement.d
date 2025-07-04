@@ -18,7 +18,7 @@ Array2D!T generateArrangement(T = TileAttributes)(ArrangementStyle style, size_t
 			dg = (size_t x) => x;
 			break;
 		case ArrangementStyle.columnMajor:
-			enforce(width > 0, "Must specify width!");
+			enforce!PixelmancyException(width > 0, "Must specify width!");
 			dg = (size_t x) => ((x % width) * width) + (x/width);
 			break;
 	}

@@ -29,6 +29,9 @@
 module pixelmancy.fileformats.imageresize;
 
 import pixelmancy.fileformats.color;
+import pixelmancy.util;
+
+import std.exception;
 
 // ////////////////////////////////////////////////////////////////////////// //
 // Separable filtering image rescaler v2.21, Rich Geldreich - richgel99@gmail.com
@@ -130,9 +133,9 @@ public TrueColorImage imageResize(int Components=4) (MemoryImage msrcimg, int ds
 public TrueColorImage imageResize(int Components=4) (MemoryImage msrcimg, int dstwdt, int dsthgt, int filter, float gamma=1.0f, float filterScale=1.0f) {
 	static assert(Components == 1 || Components == 3 || Components == 4, "invalid number of components in color");
 	if (msrcimg is null || msrcimg.width < 1 || msrcimg.height < 1 || msrcimg.width > ImageResizeMaxDimension || msrcimg.height > ImageResizeMaxDimension) {
-		throw new Exception("invalid source image");
+		throw new PixelmancyException("invalid source image");
 	}
-	if (dstwdt < 1 || dsthgt < 1 || dstwdt > ImageResizeMaxDimension || dsthgt > ImageResizeMaxDimension) throw new Exception("invalid destination image size");
+	enforce!PixelmancyException((dstwdt >= 1) && (dsthgt >= 1) && (dstwdt <= ImageResizeMaxDimension) && (dsthgt <= ImageResizeMaxDimension), "Invalid destination image size");
 	auto resimg = new TrueColorImage(dstwdt, dsthgt);
 	scope(failure) .destroy(resimg);
 	if (auto tc = cast(TrueColorImage)msrcimg) {
@@ -175,7 +178,7 @@ public void imageResize(int Components=4) (
 
 	if (srcwdt < 1 || srchgt < 1 || dstwdt < 1 || dsthgt < 1 ||
 			srcwdt > ImageResizeMaxDimension || srchgt > ImageResizeMaxDimension ||
-			dstwdt > ImageResizeMaxDimension || dsthgt > ImageResizeMaxDimension) throw new Exception("invalid image size");
+			dstwdt > ImageResizeMaxDimension || dsthgt > ImageResizeMaxDimension) throw new PixelmancyException("invalid image size");
 
 	if (filter < 0 || filter >= NumFilters) {
 		filter = resamplerFindFilterInternal(ImageResizeDefaultFilter);

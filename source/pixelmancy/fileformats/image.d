@@ -25,6 +25,7 @@ public import pixelmancy.fileformats.svg;
 
 public import pixelmancy.fileformats.imageresize;
 import pixelmancy.colours.formats;
+import pixelmancy.util;
 
 import core.memory;
 
@@ -277,11 +278,11 @@ public ImageFileFormat guessImageFormatFromMemory (const(void)[] membuf) @safe {
 /// Try to guess image format from file name and load that image.
 public MemoryImage loadImageFromFile(T:const(char)[]) (T filename) {
 	static if (is(T == typeof(null))) {
-		throw new Exception("cannot load image from unnamed file");
+		throw new PixelmancyException("cannot load image from unnamed file");
 	} else {
 		final switch (guessImageFormatFromExtension(filename)) {
 			case ImageFileFormat.Unknown:
-				//throw new Exception("cannot determine file format from extension");
+				//throw new PixelmancyException("cannot determine file format from extension");
 				import std.stdio;
 				static if (is(T == string)) {
 					auto fl = File(filename);
@@ -289,8 +290,8 @@ public MemoryImage loadImageFromFile(T:const(char)[]) (T filename) {
 					auto fl = File(filename.idup);
 				}
 				auto fsz = fl.size-fl.tell;
-				if (fsz < 4) throw new Exception("cannot determine file format");
-				if (fsz > int.max/8) throw new Exception("image data too big");
+				if (fsz < 4) throw new PixelmancyException("cannot determine file format");
+				if (fsz > int.max/8) throw new PixelmancyException("image data too big");
 				auto data = new ubyte[](cast(uint)fsz);
 				scope(exit) { import core.memory : GC; GC.free(data.ptr); } // this should be safe, as image will copy data to it's internal storage
 				fl.rawRead(data);
@@ -298,7 +299,7 @@ public MemoryImage loadImageFromFile(T:const(char)[]) (T filename) {
 			case ImageFileFormat.Png: static if (is(T == string)) return readPng(filename); else return readPng(filename.idup);
 			case ImageFileFormat.Bmp: static if (is(T == string)) return readBmp(filename); else return readBmp(filename.idup);
 			case ImageFileFormat.Jpeg: return readJpeg(filename);
-			case ImageFileFormat.Gif: throw new Exception("arsd has no GIF loader yet");
+			case ImageFileFormat.Gif: throw new PixelmancyException("arsd has no GIF loader yet");
 			case ImageFileFormat.Tga: return loadTga(filename);
 			case ImageFileFormat.Pcx: return loadPcx(filename);
 			case ImageFileFormat.Svg: static if (is(T == string)) return readSvg(filename); else return readSvg(filename.idup);
@@ -318,11 +319,11 @@ public MemoryImage loadImageFromFile(T:const(char)[]) (T filename) {
 /// Try to guess image format from data and load that image.
 public MemoryImage loadImageFromMemory (const(void)[] membuf) {
 	final switch (guessImageFormatFromMemory(membuf)) {
-		case ImageFileFormat.Unknown: throw new Exception("cannot determine file format");
+		case ImageFileFormat.Unknown: throw new PixelmancyException("cannot determine file format");
 		case ImageFileFormat.Png: return imageFromPng(readPng(cast(const(ubyte)[])membuf));
 		case ImageFileFormat.Bmp: return readBmp(cast(const(ubyte)[])membuf);
 		case ImageFileFormat.Jpeg: return readJpegFromMemory(cast(const(ubyte)[])membuf);
-		case ImageFileFormat.Gif: throw new Exception("arsd has no GIF loader yet");
+		case ImageFileFormat.Gif: throw new PixelmancyException("arsd has no GIF loader yet");
 		case ImageFileFormat.Tga: return loadTga(cast(const(ubyte)[])membuf);
 		case ImageFileFormat.Pcx: return loadPcx(cast(const(ubyte)[])membuf);
 		case ImageFileFormat.Svg: return readSvg(cast(const(ubyte)[]) membuf);

@@ -4,18 +4,26 @@
 +/
 module pixelmancy.fileformats.bmp;
 
-import pixelmancy.fileformats.color;
 import pixelmancy.colours.formats;
+import pixelmancy.fileformats.color;
+import pixelmancy.util;
 
 import std.conv;
+import std.exception;
+
+class BMPLoadException : ImageLoadException {
+	mixin basicExceptionCtors;
+}
+class BMPSaveException : ImageSaveException {
+	mixin basicExceptionCtors;
+}
 
 /// Reads a .bmp file from the given `filename`
 MemoryImage readBmp(string filename) {
 	import core.stdc.stdio;
 
 	FILE* fp = fopen((filename ~ "\0").ptr, "rb".ptr);
-	if(fp is null)
-		throw new Exception("can't open save file");
+	enforce!BMPLoadException(fp !is null, "Can't open save file");
 	scope(exit) fclose(fp);
 
 	void specialFread(void* tgt, size_t size) {
@@ -40,7 +48,7 @@ MemoryImage readBmp(in ubyte[] data, bool lookForFileHeader = true, bool hackAro
 	const(ubyte)[] current = data;
 	void specialFread(void* tgt, size_t size) {
 		while(size) {
-			if (current.length == 0) throw new Exception("out of bmp data"); // it's not *that* fatal, so don't throw RangeError
+			enforce!BMPLoadException(current.length != 0, "Unexpected end of file"); // it's not *that* fatal, so don't throw RangeError
 			//import std.stdio; writefln("%04x", position);
 			*cast(ubyte*)(tgt) = current[0];
 			current = current[1 .. $];
@@ -84,8 +92,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 			around that and load the file anyway.
 		+/
 		if(hackAround64BitLongs)
-			if(read4() != 0)
-				throw new Exception("hackAround64BitLongs is true, but the file doesn't appear to use 64 bit longs");
+			enforce!BMPLoadException(read4() == 0, "hackAround64BitLongs is true, but the file doesn't appear to use 64 bit longs");
 		return le;
 	}
 	ushort read2(){ ushort what; fread(&what, 2); return what; }
@@ -104,21 +111,13 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 	}
 
 	void require1(ubyte t, size_t line = __LINE__) {
-		if(read1() != t)
-			throw new Exception("didn't get expected byte value", __FILE__, line);
+		enforce!BMPLoadException(read1() == t, "Didn't get expected byte value", __FILE__, line);
 	}
 	void require2(ushort t) {
-		auto got = read2();
-		if(got != t) {
-			debug(pixelmancy) { import core.stdc.stdio; printf("expected: %d, got %d\n", cast(int) t, cast(int) got); }
-			throw new Exception("didn't get expected short value");
-		}
+		enforce!BMPLoadException(read2() == t, "Didn't get expected short value");
 	}
 	void require4(uint t, size_t line = __LINE__) {
-		auto got = read4();
-		//import std.conv;
-		if(got != t)
-			throw new Exception("didn't get expected int value " /*~ to!string(got)*/, __FILE__, line);
+		enforce!BMPLoadException(read4() == t, "Didn't get expected int value " /*~ to!string(got)*/, __FILE__, line);
 	}
 
 	if(lookForFileHeader) {
@@ -134,7 +133,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 	}
 
 	auto sizeOfBitmapInfoHeader = read4();
-	if (sizeOfBitmapInfoHeader < 12) throw new Exception("invalid bitmap header size");
+	enforce!BMPLoadException(sizeOfBitmapInfoHeader >= 12, "Invalid header size");
 
 	debug(pixelmancy) { import core.stdc.stdio; printf("size of bitmap info header: %d\n", cast(uint)sizeOfBitmapInfoHeader); }
 
@@ -144,7 +143,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 		width = read2();
 		rdheight = cast(short)read2();
 	} else {
-		if (sizeOfBitmapInfoHeader < 16) throw new Exception("invalid bitmap header size");
+		enforce!BMPLoadException(sizeOfBitmapInfoHeader >= 16, "Invalid header size");
 		sizeOfBitmapInfoHeader -= 4; // hack!
 		width = readLONG();
 		rdheight = cast(int)readLONG();
@@ -160,14 +159,14 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 	rdheight = (rdheight < 0 ? 1 : -1); // so we can use it as delta (note the inverted sign)
 
 	debug(pixelmancy) { import core.stdc.stdio; printf("size: %dx%d\n", cast(int)width, cast(int) height); }
-	if (width < 1 || height < 1) throw new Exception("invalid bitmap dimensions");
+	enforce!BMPLoadException((width >= 1) && (height >= 1), "Invalid dimensions");
 
 	require2(1); // planes
 
 	auto bitsPerPixel = read2();
 	switch (bitsPerPixel) {
 		case 1: case 2: case 4: case 8: case 16: case 24: case 32: break;
-		default: throw new Exception("invalid bitmap depth");
+		default: throw new BMPLoadException("Invalid depth");
 	}
 
 	/*
@@ -185,7 +184,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 
 	sizeOfBitmapInfoHeader -= 12;
 	if (sizeOfBitmapInfoHeader > 0) {
-		if (sizeOfBitmapInfoHeader < 6*4) throw new Exception("invalid bitmap header size");
+		enforce!BMPLoadException(sizeOfBitmapInfoHeader >= 6*4, "Invalid header size");
 		sizeOfBitmapInfoHeader -= 6*4;
 		compression = read4();
 		sizeOfUncompressedData = read4();
@@ -195,9 +194,9 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 		colorsImportant = read4();
 	}
 
-	if (compression > 3) throw new Exception(text("invalid bitmap compression: ", compression));
-	if (compression == 1 && bitsPerPixel != 8) throw new Exception("invalid bitmap compression");
-	if (compression == 2 && bitsPerPixel != 4) throw new Exception("invalid bitmap compression");
+	enforce!BMPLoadException(compression <= 3, text("invalid compression: ", compression));
+	enforce!BMPLoadException((compression != 1) || (bitsPerPixel == 8), "Invalid compression");
+	enforce!BMPLoadException((compression != 2) || (bitsPerPixel == 4), "Invalid compression");
 
 	debug(pixelmancy) { import core.stdc.stdio; printf("compression: %u; bpp: %u\n", compression, cast(uint)bitsPerPixel); }
 
@@ -206,7 +205,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 	uint blueMask;
 	uint alphaMask;
 	if (compression == 3) {
-		if (sizeOfBitmapInfoHeader < 4*4) throw new Exception("invalid bitmap compression");
+		enforce!BMPLoadException(sizeOfBitmapInfoHeader >= 4*4, "invalid compression");
 		sizeOfBitmapInfoHeader -= 4*4;
 		redMask = read4();
 		greenMask = read4();
@@ -342,7 +341,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 				}
 			}
 		} else if (compression == 2) {
-			throw new Exception("4RLE for bitmaps aren't supported yet");
+			throw new BMPLoadException("4RLE isn't supported yet");
 		} else {
 			for(int y = height; y > 0; y--) {
 				if (rdheight < 0) offsetStart -= width * bytesPerPixel;
@@ -430,7 +429,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 
 		return img;
 	} else {
-		if (compression != 0) throw new Exception(text("invalid bitmap compression: ", compression));
+		enforce!BMPLoadException(compression == 0, text("Invalid compression: ", compression));
 		// true color image
 		auto img = new TrueColorImage(width, height);
 
@@ -447,8 +446,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 					ubyte[8] buffer;
 					assert(bitsPerPixel / 8 < 8);
 					foreach(lol; 0 .. bitsPerPixel / 8) {
-						if(lol >= buffer.length)
-							throw new Exception("wtf");
+						assert(lol < buffer.length, "wtf");
 						buffer[lol] = read1();
 						b++;
 					}
@@ -533,8 +531,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 void writeBmp(MemoryImage img, string filename) {
 	import core.stdc.stdio;
 	FILE* fp = fopen((filename ~ "\0").ptr, "wb".ptr);
-	if(fp is null)
-		throw new Exception("can't open save file");
+	enforce!BMPLoadException(fp !is null, "can't open save file");
 	scope(exit) fclose(fp);
 
 	int written;
@@ -606,7 +603,7 @@ void writeBmpIndirect(MemoryImage img, scope void delegate(ubyte) fwrite, bool p
 			bitsPerPixel = 8;
 		data = pi.data[];
 		palette = pi.palette;
-	} else throw new Exception("I can't save this image type " ~ img.classinfo.name);
+	} else throw new BMPSaveException("I can't save this image type " ~ img.classinfo.name);
 
 	ushort offsetToBits;
 	if(bitsPerPixel == 8)

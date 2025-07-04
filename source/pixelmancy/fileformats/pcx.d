@@ -6,9 +6,15 @@ import pixelmancy.colours.formats;
 import pixelmancy.fileformats.color;
 import pixelmancy.util;
 
+import std.algorithm.comparison;
+import std.exception;
 
 // ////////////////////////////////////////////////////////////////////////// //
 alias loadPcxMem = loadPcx;
+
+class PCXLoadException : ImageLoadException {
+	mixin basicExceptionCtors;
+}
 
 public MemoryImage loadPcx(const(char)[] fname) @safe {
 	static const(ubyte)[] trustedRead(const(char)[] fname) @trusted {
@@ -54,42 +60,42 @@ struct PCXHeader {
 
 MemoryImage loadPcx(const(ubyte)[] fl) @safe {
 	// we should have at least header
-	if (fl.length < PCXHeader.sizeof + 1) throw new Exception("invalid pcx file size");
+	enforce!PCXLoadException(fl.length >= PCXHeader.sizeof + 1, "Invalid file size");
 
 	const hdr = fl.read!PCXHeader();
 
 	// check some header fields
-	if (hdr.manufacturer != 0x0a) throw new Exception("invalid pcx manufacturer");
-	if (/*header.ver != 0 && header.ver != 2 && header.ver != 3 &&*/ hdr.ver != 5) throw new Exception("invalid pcx version");
-	if (hdr.encoding != 0 && hdr.encoding != 1) throw new Exception("invalid pcx compresstion");
+	enforce!PCXLoadException(hdr.manufacturer == 0x0a, "Invalid manufacturer");
+	enforce!PCXLoadException(/*header.ver.among(0, 2, 3) ||*/ (hdr.ver == 5), "Invalid version");
+	enforce!PCXLoadException(hdr.encoding.among(0, 1), "Invalid compression");
 
 	int wdt = hdr.xmax-hdr.xmin+1;
 	int hgt = hdr.ymax-hdr.ymin+1;
 
 	// arbitrary size limits
-	if (wdt < 1 || wdt > 32000) throw new Exception("invalid pcx width");
-	if (hgt < 1 || hgt > 32000) throw new Exception("invalid pcx height");
+	enforce!PCXLoadException((wdt >= 1) && (wdt <= 32000), "Invalid width");
+	enforce!PCXLoadException((hgt >= 1) && (hgt <= 32000), "Invalid height");
 
-	if (hdr.bytesperline < wdt) throw new Exception("invalid pcx hdr");
+	enforce!PCXLoadException(hdr.bytesperline >= wdt, "Invalid header");
 
 	// if it's not a 256-color PCX file, and not 24-bit PCX file, gtfo
 	bool bpp24 = false;
 	bool hasAlpha = false;
 	if (hdr.colorplanes == 1) {
-		if (hdr.bitsperpixel != 8 && hdr.bitsperpixel != 24 && hdr.bitsperpixel != 32) throw new Exception("invalid pcx bpp");
+		enforce!PCXLoadException(hdr.bitsperpixel.among(8, 24, 32), "Invalid bpp");
 		bpp24 = (hdr.bitsperpixel == 24);
 		hasAlpha = (hdr.bitsperpixel == 32);
 	} else if (hdr.colorplanes == 3 || hdr.colorplanes == 4) {
-		if (hdr.bitsperpixel != 8) throw new Exception("invalid pcx bpp");
+		enforce!PCXLoadException(hdr.bitsperpixel == 8, "Invalid bpp");
 		bpp24 = true;
 		hasAlpha = (hdr.colorplanes == 4);
 	}
 
 	// additional checks
-	if (hdr.reserved != 0) throw new Exception("invalid pcx hdr");
+	enforce!PCXLoadException(hdr.reserved == 0, "Invalid hdr");
 
 	// 8bpp files MUST have palette
-	if (!bpp24 && fl.length < 1 + 769) throw new Exception("invalid pcx file size");
+	enforce!PCXLoadException(bpp24 || (fl.length >= 1 + 769), "Invalid file size");
 
 	void readLine (ubyte[] line) {
 		foreach (immutable p; 0..hdr.colorplanes) {
@@ -102,7 +108,7 @@ MemoryImage loadPcx(const(ubyte)[] fl) @safe {
 					if (hdr.encoding) {
 						if ((b&0xc0) == 0xc0) {
 							count = b&0x3f;
-							if (count == 0) throw new Exception("invalid pcx RLE data");
+							enforce!PCXLoadException(count > 0, "Invalid RLE data");
 							b = fl.read!ubyte();
 						} else {
 							count = 1;
@@ -173,7 +179,7 @@ MemoryImage loadPcx(const(ubyte)[] fl) @safe {
 	// read palette
 	if (!bpp24) {
 		fl = fl[$ - 769 .. $];
-		if (fl.read!ubyte != 12) throw new Exception("invalid pcx palette");
+		enforce!PCXLoadException(fl.read!ubyte == 12, "Invalid palette");
 		// it is guaranteed to have at least 768 bytes in `line`
 		line[0 .. 768] = fl[0 .. 768];
 		if (iimg.palette.length < 256) iimg.palette.length = 256;

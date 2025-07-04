@@ -20,6 +20,15 @@ import core.memory;
 import pixelmancy.colours.formats;
 import pixelmancy.util;
 
+import std.exception;
+
+class PNGLoadException : ImageLoadException {
+	mixin basicExceptionCtors;
+}
+class PNGSaveException : ImageSaveException {
+	mixin basicExceptionCtors;
+}
+
 private ubyte[] readTrusted(string filename) @trusted {
 	import std.file : read;
 	return cast(ubyte[]) read(filename);
@@ -387,7 +396,7 @@ PNG* pngFromImage(IndexedImage i) @safe {
 		h.depth = 4;
 	else if(i.numColors() <= 256)
 		h.depth = 8;
-	else throw new Exception("can't save this as an indexed png");
+	else throw new PNGSaveException("can't save this as an indexed png");
 
 	auto png = blankPNG(h);
 
@@ -558,7 +567,7 @@ struct PNG {
 			if(c.stype == what)
 				return &chunks[idx];
 		}
-		throw new Exception("no such chunk " ~ what);
+		throw new PNGLoadException("No such chunk: " ~ what);
 	}
 
 	/++
@@ -662,11 +671,9 @@ PngHeader getHeaderFromFile(string filename) @safe {
 	auto file = File(filename, "rb");
 	ubyte[12] initialBuffer; // file header + size of first chunk (should be IHDR)
 	auto data = trustedRead(file, initialBuffer);
-	if(data.length != 12)
-		throw new Exception("couldn't get png file header off " ~ filename);
+	enforce!PNGLoadException(data.length == 12, "Couldn't read header");
 
-	if(data[0..8] != [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
-		throw new Exception("file " ~ filename ~ " is not a png");
+	enforce!PNGLoadException(data[0..8] == [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], "Not a PNG");
 
 	size_t pos = 8;
 	size_t size;
@@ -682,8 +689,7 @@ PngHeader getHeaderFromFile(string filename) @safe {
 	more.length = size;
 
 	auto chunk = trustedRead(file, more);
-	if(chunk.length != size)
-		throw new Exception("couldn't get png image header off " ~ filename);
+	enforce!PNGLoadException(chunk.length == size, "Couldn't read chunk header");
 
 
 	more = data ~ chunk;
@@ -703,8 +709,7 @@ PNG* readPng(in ubyte[] data) @safe {
 	p.length = cast(int) data.length;
 	p.magic[0..8] = data[0..8];
 
-	if(p.magic != [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
-		throw new Exception("not a png, header wrong");
+	enforce!PNGLoadException(p.magic == [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], "Not a PNG");
 
 	size_t pos = 8;
 
@@ -717,10 +722,8 @@ PNG* readPng(in ubyte[] data) @safe {
 		n.type[0..4] = data[pos..pos+4];
 		pos += 4;
 		n.payload.length = n.size;
-		if(pos + n.size > data.length)
-			throw new Exception(format("malformed png, chunk '%s' %d @ %d longer than data %d", n.type, n.size, pos, data.length));
-		if(pos + n.size < pos)
-			throw new Exception("uint overflow: chunk too large");
+		enforce!PNGLoadException(pos + n.size <= data.length, format("Malformed png, chunk '%s' %d @ %d longer than data %d", n.type, n.size, pos, data.length));
+		enforce!PNGLoadException(pos + n.size >= pos, "Chunk too large");
 		n.payload[0..n.size] = data[pos..pos+n.size];
 		pos += n.size;
 
@@ -788,9 +791,9 @@ void addImageDatastreamToPng(const(ubyte)[] data, PNG* png, bool addIend = true)
 	PngHeader h = getHeader(png);
 
 	if(h.depth == 0)
-		throw new Exception("depth of zero makes no sense");
+		throw new PNGSaveException("depth of zero makes no sense");
 	if(h.width == 0)
-		throw new Exception("width zero?!!?!?!");
+		throw new PNGSaveException("width zero?!!?!?!");
 
 	int multiplier;
 	size_t bytesPerLine;
@@ -1251,11 +1254,11 @@ LazyPngChunks!(Range) readPngChunks(Range)(Range r)
 	// Then we'll lazily pull the chunks
 
 	while(r.front.length < 8) {
-		enforce(!r.empty(), "This isn't big enough to be a PNG file");
+		enforce!PNGLoadException(!r.empty(), "This isn't big enough to be a PNG file");
 		r.appendToFront();
 	}
 
-	enforce(r.front[0..8] == PNG_MAGIC_NUMBER,
+	enforce!PNGLoadException(r.front[0..8] == PNG_MAGIC_NUMBER,
 		"The file's magic number doesn't look like PNG");
 
 	r.consumeFromFront(8);
@@ -1303,10 +1306,10 @@ struct LazyPngChunks(T)
 	}
 
 	void popFront() {
-		enforce(!empty());
+		enforce!PNGLoadException(!empty());
 
 		while(bytes.front().length < 4) {
-			enforce(!bytes.empty,
+			enforce!PNGLoadException(!bytes.empty,
 				format("Malformed PNG file - chunk size too short (%s < 4)",
 					bytes.front().length));
 			bytes.appendToFront();
@@ -1321,7 +1324,7 @@ struct LazyPngChunks(T)
 		bytes.consumeFromFront(4);
 
 		while(bytes.front().length < n.size + 8) {
-			enforce(!bytes.empty,
+			enforce!PNGLoadException(!bytes.empty,
 				format("Malformed PNG file - chunk too short (%s < %s)",
 					bytes.front.length, n.size));
 			bytes.appendToFront();
@@ -1340,7 +1343,7 @@ struct LazyPngChunks(T)
 
 		bytes.consumeFromFront(4);
 
-		enforce(n.checksum == crcPng(n.stype, n.payload), "Chunk checksum didn't match");
+		enforce!PNGLoadException(n.checksum == crcPng(n.stype, n.payload), "Chunk checksum didn't match");
 
 		current = n;
 	}
@@ -1358,7 +1361,7 @@ struct LazyPngFile(LazyPngChunksProvider)
 	LazyPngChunksProvider chunks;
 
 	this(LazyPngChunksProvider chunks) {
-		enforce(!chunks.empty(), "There are no chunks in this png");
+		enforce!PNGLoadException(!chunks.empty(), "There are no chunks in this png");
 
 		header = PngHeader.fromChunk(chunks.front());
 		chunks.popFront();
@@ -1378,7 +1381,7 @@ struct LazyPngFile(LazyPngChunksProvider)
 
 					// FIXME: doesn't do greyscale palettes!
 
-					enforce(chunk.size % 3 == 0);
+					enforce!PNGLoadException(chunk.size % 3 == 0);
 					palette.length = chunk.size / 3;
 
 					auto offset = 0;
@@ -1411,7 +1414,7 @@ struct LazyPngFile(LazyPngChunksProvider)
 		}
 
 		this.chunks = chunks;
-		enforce(!chunks.empty() && chunks.front().stype == "IDAT",
+		enforce!PNGLoadException(!chunks.empty() && chunks.front().stype == "IDAT",
 			"Malformed PNG file - no image data is present");
 	}
 
@@ -1557,7 +1560,7 @@ struct LazyPngFile(LazyPngChunksProvider)
 							);
 						break;
 						default:
-							throw new Exception("invalid png file");
+							throw new PNGLoadException("invalid png file");
 					}
 				}
 
@@ -1660,7 +1663,7 @@ struct BufferedInputRange(Range)
 		// Is this really correct? Want to make sure r.front
 		// is valid but it doesn't necessarily need to have
 		// more elements...
-		enforce(!r.empty());
+		enforce!PNGLoadException(!r.empty());
 
 		buffer = r.front();
 		usingUnderlyingBuffer = true;
@@ -1683,7 +1686,7 @@ struct BufferedInputRange(Range)
 	/// underlying range. Be sure to call at least once to prime
 	/// the range (after checking if it is empty, of course)
 	void popFront() {
-		enforce(!empty());
+		enforce!PNGLoadException(!empty());
 		underlyingRange.popFront();
 		buffer = underlyingRange.front();
 		usingUnderlyingBuffer = true;
@@ -1704,7 +1707,7 @@ struct BufferedInputRange(Range)
 			// hopefully avoiding an extra allocation
 			popFront();
 		} else {
-			enforce(!underlyingRange.empty());
+			enforce!PNGLoadException(!underlyingRange.empty());
 
 			// need to make sure underlyingRange.popFront doesn't overwrite any
 			// of our buffer...
@@ -1840,15 +1843,13 @@ struct PngHeader {
 
 	pure @safe // @nogc with -dip1008 too......
 	static PngHeader fromChunk(in Chunk c) {
-		if(c.stype != "IHDR")
-			throw new Exception("The chunk is not an image header");
+		enforce!PNGLoadException(c.stype == "IHDR", "The chunk is not an image header");
 
 		PngHeader h;
 		auto data = c.payload;
 		int pos = 0;
 
-		if(data.length != 13)
-			throw new Exception("Malformed PNG file - the IHDR is the wrong size");
+		enforce!PNGLoadException(data.length == 13, "Malformed PNG file - the IHDR is the wrong size");
 
 		h.width |= data[pos++] << 24;
 		h.width |= data[pos++] << 16;
@@ -1913,8 +1914,8 @@ void writePngLazy(OutputRange, InputRange)(ref OutputRange where, InputRange ima
 	header.width = image.front.pixels.length;
 	header.height = image.length;
 
-	enforce(header.width > 0, "Image width <= 0");
-	enforce(header.height > 0, "Image height <= 0");
+	enforce!PNGSaveException(header.width > 0, "Image width <= 0");
+	enforce!PNGSaveException(header.height > 0, "Image height <= 0");
 
 	where.put(header.toChunk().toArray());
 
@@ -2010,7 +2011,7 @@ const(ubyte)[] unfilter(ubyte filterType, in ubyte[] data, in ubyte[] previousLi
 
 			return arr;
 		default:
-			throw new Exception("invalid PNG file, bad filter type");
+			throw new PNGLoadException("invalid PNG file, bad filter type");
 	}
 }
 

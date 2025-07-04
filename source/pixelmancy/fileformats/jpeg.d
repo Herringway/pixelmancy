@@ -44,6 +44,17 @@
 module pixelmancy.fileformats.jpeg;
 
 import pixelmancy.colours.formats;
+import pixelmancy.util;
+
+import std.exception;
+
+class JPEGLoadException : ImageLoadException {
+	mixin basicExceptionCtors;
+}
+
+class JPEGSaveException : ImageSaveException {
+	mixin basicExceptionCtors;
+}
 
 // Set to 1 to enable freq. domain chroma upsampling on images using H2V2 subsampling (0=faster nearest neighbor sampling).
 // This is slower, but results in higher quality on images with highly saturated colors.
@@ -1012,7 +1023,7 @@ private:
 		m_error_code = status;
 		free_all_blocks();
 		//longjmp(m_jmp_state, status);
-		throw new Exception("jpeg decoding error", __FILE__, line);
+		throw new JPEGLoadException("jpeg decoding error", __FILE__, line);
 	}
 
 	void* alloc (size_t nSize, bool zero=false) {
@@ -2991,7 +3002,7 @@ public bool detect_jpeg_image_from_file (const(char)[] filename, out int width, 
 	FILE* m_pFile;
 	bool m_eof_flag, m_error_flag;
 
-	if (filename.length == 0) throw new Exception("cannot open unnamed file");
+	enforce!JPEGLoadException(filename.length > 0, "Cannot open unnamed file");
 	if (filename.length < 512) {
 		char[513] buffer;
 		//import core.stdc.stdlib : alloca;
@@ -3007,7 +3018,7 @@ public bool detect_jpeg_image_from_file (const(char)[] filename, out int width, 
 			m_pFile = fopen(tfn.ptr, "rb");
 		}
 	}
-	if (m_pFile is null) throw new Exception("cannot open file '"~filename.idup~"'");
+	enforce!JPEGLoadException(m_pFile !is null, "Cannot open file");
 	scope(exit) if (m_pFile) fclose(m_pFile);
 
 	return detect_jpeg_image_from_stream(
@@ -3149,7 +3160,7 @@ public ubyte[] decompress_jpeg_image_from_file(const(char)[] filename, out int w
 	FILE* m_pFile;
 	bool m_eof_flag, m_error_flag;
 
-	if (filename.length == 0) throw new Exception("cannot open unnamed file");
+	enforce!JPEGLoadException(filename.length > 0, "Cannot open unnamed file");
 	if (filename.length < 512) {
 	char[513] buffer;
 		//import core.stdc.stdlib : alloca;
@@ -3165,7 +3176,7 @@ public ubyte[] decompress_jpeg_image_from_file(const(char)[] filename, out int w
 			m_pFile = fopen(tfn.ptr, "rb");
 		}
 	}
-	if (m_pFile is null) throw new Exception("cannot open file '"~filename.idup~"'");
+	enforce!JPEGLoadException(m_pFile !is null, "Cannot open file");
 	scope(exit) if (m_pFile) fclose(m_pFile);
 
 	return decompress_jpeg_image_from_stream(
@@ -3325,7 +3336,7 @@ public MemoryImage readJpeg (const(char)[] filename) {
 	FILE* m_pFile;
 	bool m_eof_flag, m_error_flag;
 
-	if (filename.length == 0) throw new Exception("cannot open unnamed file");
+	enforce!JPEGLoadException(filename.length > 0, "Cannot open unnamed file");
 	if (filename.length < 512) {
 	char[513] buffer;
 		//import core.stdc.stdlib : alloca;
@@ -3341,7 +3352,7 @@ public MemoryImage readJpeg (const(char)[] filename) {
 			m_pFile = fopen(tfn.ptr, "rb");
 		}
 	}
-	if (m_pFile is null) throw new Exception("cannot open file '"~filename.idup~"'");
+	enforce!JPEGLoadException(m_pFile !is null, "Cannot open file");
 	scope(exit) if (m_pFile) fclose(m_pFile);
 
 	return readJpegFromStream(
@@ -3384,7 +3395,7 @@ public MemoryImage readJpeg (const(char)[] filename) {
 +/
 public void writeJpeg(const(char)[] filename, TrueColorImage img, JpegParams params = JpegParams.init) {
 	if(!compress_image_to_jpeg_file(filename, img.width, img.height, 4, img.colours[], params))
-		throw new Exception("jpeg write failed"); // FIXME: check errno?
+		throw new JPEGSaveException("jpeg write failed"); // FIXME: check errno?
 }
 
 /++
@@ -3420,7 +3431,7 @@ public void encodeJpeg(scope bool delegate(const scope ubyte[]) dg, TrueColorIma
 	if(!compress_image_to_jpeg_stream(
 		dg,
 		img.width, img.height, 4, img.colours[], params))
-		throw new Exception("encode");
+		throw new JPEGSaveException("encode");
 }
 
 

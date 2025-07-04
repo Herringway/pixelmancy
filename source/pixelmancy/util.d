@@ -1,5 +1,11 @@
 module pixelmancy.util;
 
+import std.exception;
+
+class PixelmancyException : Exception { mixin basicExceptionCtors; }
+class ImageLoadException : PixelmancyException { mixin basicExceptionCtors; }
+class ImageSaveException : PixelmancyException { mixin basicExceptionCtors; }
+
 // from D documentation
 struct Array2D(E) {
 	import std.format : format;

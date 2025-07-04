@@ -35,8 +35,18 @@
 +/
 module pixelmancy.fileformats.ico;
 
-import pixelmancy.fileformats.png;
 import pixelmancy.fileformats.bmp;
+import pixelmancy.fileformats.png;
+import pixelmancy.util;
+
+import std.exception;
+
+class ICOLoadException : ImageLoadException {
+	mixin basicExceptionCtors;
+}
+class ICOSaveException : ImageSaveException {
+	mixin basicExceptionCtors;
+}
 
 /++
 	A representation of a cursor image as found in a .cur file.
@@ -110,8 +120,7 @@ MemoryImage[] loadIcoFromMemory(const(ubyte)[] data) {
 	loadIcoOrCurFromMemoryCallback(
 		data,
 		(int imageType, int numberOfImages) {
-			if(imageType > 1)
-				throw new Exception("Not an icon file - invalid image type header");
+			enforce!ICOLoadException(imageType <= 1, "Not an icon file - invalid image type header");
 
 			images.length = numberOfImages;
 		},
@@ -137,8 +146,7 @@ IcoCursor[] loadCurFromMemory(const(ubyte)[] data) {
 	loadIcoOrCurFromMemoryCallback(
 		data,
 		(int imageType, int numberOfImages) {
-			if(imageType != 2)
-				throw new Exception("Not an cursor file - invalid image type header");
+			enforce!ICOLoadException(imageType == 2, "Not a cursor file - invalid image type header");
 
 			images.length = numberOfImages;
 		},
@@ -162,8 +170,7 @@ void loadIcoOrCurFromMemoryCallback(
 	scope void delegate(MemoryImage mi, int hotspotX, int hotspotY) encounteredImage,
 ) {
 	IcoHeader header;
-	if(data.length < 6)
-		throw new Exception("Not an icon file - too short to have a header");
+	enforce!ICOLoadException(data.length >= 6, "Header is missing");
 	header.reserved |= data[0];
 	header.reserved |= data[1] << 8;
 
@@ -173,8 +180,7 @@ void loadIcoOrCurFromMemoryCallback(
 	header.numberOfImages |= data[4];
 	header.numberOfImages |= data[5] << 8;
 
-	if(header.reserved != 0)
-		throw new Exception("Not an icon file - first bytes incorrect");
+	enforce!ICOLoadException(header.reserved == 0, "First bytes incorrect");
 
 	imageTypeChecker(header.imageType, header.numberOfImages);
 
@@ -182,8 +188,7 @@ void loadIcoOrCurFromMemoryCallback(
 	data = data[6 .. $];
 
 	ubyte nextByte() {
-		if(data.length == 0)
-			throw new Exception("Invalid icon file, it too short");
+		enforce!ICOLoadException(data.length > 0, "Unexpected end of file");
 		ubyte b = data[0];
 		data = data[1 .. $];
 		return b;
@@ -220,15 +225,12 @@ void loadIcoOrCurFromMemoryCallback(
 		ides ~= readDirEntry();
 
 	foreach(image; ides) {
-		if(image.imageDataOffset >= originalData.length)
-			throw new Exception("Invalid icon file - image data offset beyond file size");
-		if(image.imageDataOffset + image.imageDataSize > originalData.length)
-			throw new Exception("Invalid icon file - image data extends beyond file size");
+		enforce!ICOLoadException(image.imageDataOffset < originalData.length, "Image data offset beyond file size");
+		enforce!ICOLoadException(image.imageDataOffset + image.imageDataSize <= originalData.length, "Image data extends beyond file size");
 
 		auto idata = originalData[image.imageDataOffset .. image.imageDataOffset + image.imageDataSize];
 
-		if(idata.length < 4)
-			throw new Exception("Invalid image, not long enough to identify");
+		enforce!ICOLoadException(idata.length >= 4, "Not long enough to identify");
 
 		if(idata[0 .. 4] == "\x89PNG") {
 			encounteredImage(readPngFromBytes(idata), image.planesOrHotspotX, image.bppOrHotspotY);
@@ -279,8 +281,7 @@ ubyte[] encodeIcoOrCur(bool isCursor, int count, scope IcoCursor delegate(int) g
 	IcoHeader header;
 	header.reserved = 0;
 	header.imageType = isCursor ? 2 : 1;
-	if(count > ushort.max)
-		throw new Exception("too many images for icon file");
+	enforce!ICOLoadException(count <= ushort.max, "Too many images for icon file");
 	header.numberOfImages = cast(ushort) count;
 
 	enum headerSize = 6;
@@ -294,8 +295,7 @@ ubyte[] encodeIcoOrCur(bool isCursor, int count, scope IcoCursor delegate(int) g
 	pngs.length = count;
 	foreach(idx, ref entry; dirEntries) {
 		auto image = getImageAndHotspots(cast(int) idx);
-		if(image.image.width > 256 || image.image.height > 256)
-			throw new Exception("image too big for icon file");
+		enforce!ICOLoadException((image.image.width) <= 256 && (image.image.height <= 256), "image too big for icon file");
 		entry.width = image.image.width == 256 ? 0 : cast(ubyte) image.image.width;
 		entry.height = image.image.height == 256 ? 0 : cast(ubyte) image.image.height;
 

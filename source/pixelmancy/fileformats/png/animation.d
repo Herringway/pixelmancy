@@ -13,6 +13,8 @@
 module pixelmancy.fileformats.png.animation;
 import pixelmancy.colours.formats;
 
+import std.exception;
+
 /// Demo creating one from scratch
 unittest {
 	import pixelmancy.fileformats.png.animation;
@@ -628,8 +630,7 @@ ApngAnimation readApng(in ubyte[] data, bool strictApng = false, scope ApngAnima
 				assert(offset == chunk.payload.length);
 
 				import std.conv;
-				if(expectedSequenceNumber != c.sequence_number)
-					throw new Exception("malformed apng file expected fcTL seq " ~ to!string(expectedSequenceNumber) ~ " got " ~ to!string(c.sequence_number));
+				enforce!PNGLoadException(expectedSequenceNumber == c.sequence_number, "Malformed apng file expected fcTL seq " ~ to!string(expectedSequenceNumber) ~ " got " ~ to!string(c.sequence_number));
 
 				expectedSequenceNumber++;
 
@@ -650,8 +651,7 @@ ApngAnimation readApng(in ubyte[] data, bool strictApng = false, scope ApngAnima
 				sequence_number |= chunk.payload[offset++] << 0;
 
 				import std.conv;
-				if(expectedSequenceNumber != sequence_number)
-					throw new Exception("malformed apng file expected fdAT seq " ~ to!string(expectedSequenceNumber) ~ " got " ~ to!string(sequence_number));
+				enforce!PNGLoadException(expectedSequenceNumber == sequence_number, "Malformed apng file expected fdAT seq " ~ to!string(expectedSequenceNumber) ~ " got " ~ to!string(sequence_number));
 
 				expectedSequenceNumber++;
 

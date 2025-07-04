@@ -85,8 +85,6 @@ MemoryImage loadPcx(const(ubyte)[] fl) @safe {
 		hasAlpha = (hdr.colorplanes == 4);
 	}
 
-	debug(pixelmancy) { import core.stdc.stdio; printf("colorplanes=%u; bitsperpixel=%u; bytesperline=%u\n", cast(uint)hdr.colorplanes, cast(uint)hdr.bitsperpixel, cast(uint)hdr.bytesperline); }
-
 	// additional checks
 	if (hdr.reserved != 0) throw new Exception("invalid pcx hdr");
 

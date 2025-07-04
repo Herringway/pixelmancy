@@ -14,17 +14,16 @@
 +/
 module pixelmancy.fileformats.image;
 
-public import pixelmancy.fileformats.color;
-public import pixelmancy.fileformats.png;
-public import pixelmancy.fileformats.jpeg;
-public import pixelmancy.fileformats.bmp;
-public import pixelmancy.fileformats.targa;
-public import pixelmancy.fileformats.pcx;
-public import pixelmancy.fileformats.dds;
-public import pixelmancy.fileformats.svg;
-
-public import pixelmancy.fileformats.imageresize;
 import pixelmancy.colours.formats;
+import pixelmancy.fileformats.bmp;
+import pixelmancy.fileformats.color;
+import pixelmancy.fileformats.dds;
+import pixelmancy.fileformats.imageresize;
+import pixelmancy.fileformats.jpeg;
+import pixelmancy.fileformats.pcx;
+import pixelmancy.fileformats.png;
+import pixelmancy.fileformats.svg;
+import pixelmancy.fileformats.targa;
 import pixelmancy.util;
 
 import core.memory;

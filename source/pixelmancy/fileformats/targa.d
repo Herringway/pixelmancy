@@ -161,14 +161,15 @@ MemoryImage loadTga(const(ubyte)[] fl) @safe {
 	uint rleBC, rleDC;
 	ubyte[4] rleLast;
 	RGBA32[256] cmap;
-	void readPixel(bool asRLE, uint bytesPerPixel) (ubyte[] pixel) {
+	void readPixel(bool asRLE, Format)(Format[] pixel) {
+		ubyte[] rawBytes = cast(ubyte[])pixel;
 		static if (asRLE) {
 			if (rleDC > 0) {
 				// still counting
-				static if (bytesPerPixel == 1) {
-					pixel[0] = rleLast[0];
+				static if (Format.sizeof == 1) {
+					rawBytes[0] = rleLast[0];
 				}
-				else pixel[0..bytesPerPixel] = rleLast[0..bytesPerPixel];
+				else rawBytes[0 .. Format.sizeof] = rleLast[0 .. Format.sizeof];
 				--rleDC;
 				return;
 			}
@@ -182,12 +183,12 @@ MemoryImage loadTga(const(ubyte)[] fl) @safe {
 					rleBC = (b & 0x7f);
 				}
 			}
-			foreach (immutable idx; 0..bytesPerPixel) {
-				rleLast[idx] = pixel[idx] = fl.read!ubyte();
+			foreach (immutable idx; 0..Format.sizeof) {
+				rleLast[idx] = rawBytes[idx] = fl.read!ubyte();
 			}
 		} else {
-			foreach (immutable idx; 0..bytesPerPixel) {
-				pixel[idx] = fl.read!ubyte();
+			foreach (immutable idx; 0..Format.sizeof) {
+				rawBytes[idx] = fl.read!ubyte();
 			}
 		}
 	}
@@ -195,45 +196,15 @@ MemoryImage loadTga(const(ubyte)[] fl) @safe {
 	// 8 bit color-mapped row
 	RGBA32 readColorCM8(bool asRLE)() {
 		ubyte[1] pixel;
-		readPixel!(asRLE, 1)(pixel[]);
+		readPixel!asRLE(pixel[]);
 		return cmap[pixel[0]];
 	}
 
-	// 8 bit greyscale
-	RGBA32 readColorBM8(bool asRLE)() {
-		ubyte[1] pixel;
-		readPixel!(asRLE, 1)(pixel[]);
-		return RGBA32(pixel[0], pixel[0], pixel[0]);
-	}
-
-	// 16 bit greyscale
-	RGBA32 readColorBM16(bool asRLE)() {
-		ubyte[2] pixel;
-		readPixel!(asRLE, 2)(pixel[]);
-		immutable ubyte v = cast(ubyte)(((pixel[1] << 8)) >> 8);
-		return RGBA32(v, v, v);
-	}
-
 	// 16 bit
-	RGBA32 readColor16(bool asRLE)() {
-		ubyte[2] pixel;
-		readPixel!(asRLE, 2)(pixel[]);
-		immutable v = pixel[0] + (pixel[1] << 8);
-		return RGBA32(cmap16[(v >> 10) & 0x1f], cmap16[(v >> 5) & 0x1f], cmap16[v & 0x1f]);
-	}
-
-	// 24 bit or 32 bit
-	RGBA32 readColorTrue(bool asRLE, uint bytesPerPixel)() {
-		ubyte[bytesPerPixel] pixel;
-		readPixel!(asRLE, bytesPerPixel)(pixel[]);
-		ubyte r = pixel[2];
-		ubyte g = pixel[1];
-		ubyte b = pixel[0];
-		ubyte a = 255;
-		static if (bytesPerPixel == 4) {
-			a = pixel[3];
-		}
-		return RGBA32(r, g, b, a);
+	RGBA32 readColorPixel(bool asRLE, T)() {
+		T[1] pixel;
+		readPixel!asRLE(pixel[]);
+		return pixel[0].convert!RGBA32;
 	}
 
 	bool detect(const(ubyte)[] fl) {
@@ -269,31 +240,31 @@ MemoryImage loadTga(const(ubyte)[] fl) @safe {
 	switch (hdr.imgType) {
 		case TGAHeader.ImageType.trueColour:
 			switch (bytesPerPixel) {
-				case 2: readColor = &readColor16!false; break;
-				case 3: readColor = &readColorTrue!(false, 3); break;
-				case 4: readColor = &readColorTrue!(false, 4); break;
+				case 2: readColor = &readColorPixel!(false, LittleEndian!BGR555); break;
+				case 3: readColor = &readColorPixel!(false, BGR24); break;
+				case 4: readColor = &readColorPixel!(false, BGRA32); break;
 				default: throw new Exception("Invalid TGA pixel size");
 			}
 			break;
 		case TGAHeader.ImageType.trueColourRLE:
 			switch (bytesPerPixel) {
-				case 2: readColor = &readColor16!true; break;
-				case 3: readColor = &readColorTrue!(true, 3); break;
-				case 4: readColor = &readColorTrue!(true, 4); break;
+				case 2: readColor = &readColorPixel!(true, LittleEndian!BGR555); break;
+				case 3: readColor = &readColorPixel!(true, BGR24); break;
+				case 4: readColor = &readColorPixel!(true, BGRA32); break;
 				default: throw new Exception("Invalid TGA pixel size");
 			}
 			break;
 		case TGAHeader.ImageType.grayscale:
 			switch (bytesPerPixel) {
-				case 1: readColor = &readColorBM8!false; break;
-				case 2: readColor = &readColorBM16!false; break;
+				case 1: readColor = &readColorPixel!(false, Y8); break;
+				case 2: readColor = &readColorPixel!(false, LittleEndian!Y16); break;
 				default: throw new Exception("Invalid TGA pixel size");
 			}
 			break;
 		case TGAHeader.ImageType.grayscaleRLE:
 			switch (bytesPerPixel) {
-				case 1: readColor = &readColorBM8!true; break;
-				case 2: readColor = &readColorBM16!true; break;
+				case 1: readColor = &readColorPixel!(true, Y8); break;
+				case 2: readColor = &readColorPixel!(true, LittleEndian!Y16); break;
 				default: throw new Exception("Invalid TGA pixel size");
 			}
 			break;

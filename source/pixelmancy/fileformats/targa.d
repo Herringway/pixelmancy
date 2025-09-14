@@ -14,10 +14,6 @@ class TGALoadException : ImageLoadException {
 }
 
 public MemoryImage loadTga(const(char)[] fname) @safe {
-	static const(ubyte)[] trustedRead(const(char)[] fname) @trusted {
-		import std.file : read;
-		return cast(const(ubyte)[])read(fname);
-	}
 	return loadTga(trustedRead(fname));
 }
 @safe unittest {

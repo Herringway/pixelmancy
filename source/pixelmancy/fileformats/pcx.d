@@ -17,10 +17,6 @@ class PCXLoadException : ImageLoadException {
 }
 
 public MemoryImage loadPcx(const(char)[] fname) @safe {
-	static const(ubyte)[] trustedRead(const(char)[] fname) @trusted {
-		import std.file : read;
-		return cast(const(ubyte)[])read(fname);
-	}
 	return loadPcx(trustedRead(fname));
 }
 

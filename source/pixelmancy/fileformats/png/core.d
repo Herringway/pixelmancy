@@ -29,14 +29,6 @@ class PNGSaveException : ImageSaveException {
 	mixin basicExceptionCtors;
 }
 
-private ubyte[] readTrusted(string filename) @trusted {
-	import std.file : read;
-	return cast(ubyte[]) read(filename);
-}
-private void writeTrusted(string filename, const(ubyte)[] data) @trusted {
-	import std.file : write;
-	write(filename, data);
-}
 /++
 	Easily reads a png file into a [MemoryImage]
 
@@ -48,7 +40,7 @@ private void writeTrusted(string filename, const(ubyte)[] data) @trusted {
 		Greyscale pngs and bit depths other than 8 are converted for the ease of the MemoryImage interface. If you need more detail, try [PNG] and [getDatastream] etc.
 +/
 MemoryImage readPng(string filename) @safe {
-	return imageFromPng(readPng(readTrusted(filename)));
+	return imageFromPng(readPng(trustedRead(filename)));
 }
 
 @safe unittest {
@@ -86,7 +78,7 @@ MemoryImage readPngFromBytes(const(ubyte)[] bytes) @safe {
 +/
 void writePng(string filename, MemoryImage mi) @safe {
 	// FIXME: it would be nice to write the file lazily so we don't have so many intermediate buffers here
-	writeTrusted(filename, writePngToArray(mi));
+	trustedWrite(filename, writePngToArray(mi));
 }
 
 /++
@@ -665,9 +657,6 @@ ubyte[] writePng(PNG* p) @safe {
 +/
 PngHeader getHeaderFromFile(string filename) @safe {
 	import std.stdio : File;
-	static ubyte[] trustedRead(scope File file, scope return ubyte[] buffer) @trusted {
-		return file.rawRead(buffer);
-	}
 	auto file = File(filename, "rb");
 	ubyte[12] initialBuffer; // file header + size of first chunk (should be IHDR)
 	auto data = trustedRead(file, initialBuffer);

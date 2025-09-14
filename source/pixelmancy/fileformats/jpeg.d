@@ -46,6 +46,7 @@ module pixelmancy.fileformats.jpeg;
 import pixelmancy.colours.formats;
 import pixelmancy.util;
 
+import std.algorithm.comparison;
 import std.exception;
 
 class JPEGLoadException : ImageLoadException {
@@ -73,22 +74,6 @@ alias JpegStreamReadFunc = int delegate (void* pBuf, int max_bytes_to_read, bool
 
 // ////////////////////////////////////////////////////////////////////////// //
 private:
-void *jpgd_malloc (size_t nSize) { import core.stdc.stdlib : malloc; return malloc(nSize); }
-void jpgd_free (void *p) { import core.stdc.stdlib : free; if (p !is null) free(p); }
-
-// Success/failure error codes.
-alias jpgd_status = int;
-enum /*jpgd_status*/ {
-	JPGD_SUCCESS = 0, JPGD_FAILED = -1, JPGD_DONE = 1,
-	JPGD_BAD_DHT_COUNTS = -256, JPGD_BAD_DHT_INDEX, JPGD_BAD_DHT_MARKER, JPGD_BAD_DQT_MARKER, JPGD_BAD_DQT_TABLE,
-	JPGD_BAD_PRECISION, JPGD_BAD_HEIGHT, JPGD_BAD_WIDTH, JPGD_TOO_MANY_COMPONENTS,
-	JPGD_BAD_SOF_LENGTH, JPGD_BAD_VARIABLE_MARKER, JPGD_BAD_DRI_LENGTH, JPGD_BAD_SOS_LENGTH,
-	JPGD_BAD_SOS_COMP_ID, JPGD_W_EXTRA_BYTES_BEFORE_MARKER, JPGD_NO_ARITHMITIC_SUPPORT, JPGD_UNEXPECTED_MARKER,
-	JPGD_NOT_JPEG, JPGD_UNSUPPORTED_MARKER, JPGD_BAD_DQT_LENGTH, JPGD_TOO_MANY_BLOCKS,
-	JPGD_UNDEFINED_QUANT_TABLE, JPGD_UNDEFINED_HUFF_TABLE, JPGD_NOT_SINGLE_SCAN, JPGD_UNSUPPORTED_COLORSPACE,
-	JPGD_UNSUPPORTED_SAMP_FACTORS, JPGD_DECODE_ERROR, JPGD_BAD_RESTART_MARKER, JPGD_ASSERTION_ERROR,
-	JPGD_BAD_SOS_SPECTRAL, JPGD_BAD_SOS_SUCCESSIVE, JPGD_STREAM_READ, JPGD_NOTENOUGHMEM,
-}
 
 enum {
 	JPGD_IN_BUF_SIZE = 8192, JPGD_MAX_BLOCKS_PER_MCU = 10, JPGD_MAX_HUFF_TABLES = 8, JPGD_MAX_QUANT_TABLES = 4,
@@ -134,8 +119,8 @@ ubyte CLAMP() (int i) { pragma(inline, true); return cast(ubyte)(cast(uint)i > 2
 
 // Compiler creates a fast path 1D IDCT for X non-zero columns
 struct Row(int NONZERO_COLS) {
-pure nothrow @trusted @nogc:
-	static void idct(int* pTemp, const(jpeg_decoder.jpgd_block_t)* pSrc) {
+pure nothrow @nogc:
+	static void idct(int* pTemp, const(jpeg_decoder.jpgd_block_t)* pSrc) @system {
 		static if (NONZERO_COLS == 0) {
 			// nothing
 		} else static if (NONZERO_COLS == 1) {
@@ -196,8 +181,8 @@ pure nothrow @trusted @nogc:
 
 // Compiler creates a fast path 1D IDCT for X non-zero rows
 struct Col (int NONZERO_ROWS) {
-pure nothrow @trusted @nogc:
-	static void idct(ubyte* pDst_ptr, const(int)* pTemp) {
+pure nothrow @nogc:
+	static void idct(ubyte* pDst_ptr, const(int)* pTemp) @system {
 		static assert(NONZERO_ROWS > 0);
 		static if (NONZERO_ROWS == 1) {
 			int dcval = DESCALE_ZEROSHIFT(pTemp[0], PASS1_BITS+3);
@@ -285,7 +270,7 @@ static immutable ubyte[512] s_idct_row_table = [
 
 static immutable ubyte[64] s_idct_col_table = [ 1, 1, 2, 3, 3, 3, 3, 3, 3, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8 ];
 
-void idct() (const(jpeg_decoder.jpgd_block_t)* pSrc_ptr, ubyte* pDst_ptr, int block_max_zag) {
+void idct() (const(jpeg_decoder.jpgd_block_t)* pSrc_ptr, ubyte* pDst_ptr, int block_max_zag) @system {
 	assert(block_max_zag >= 1);
 	assert(block_max_zag <= 64);
 
@@ -480,98 +465,82 @@ private:
 	int[256] m_cbg;
 	ubyte* m_pScan_line_0;
 	ubyte* m_pScan_line_1;
-	jpgd_status m_error_code;
 	bool m_ready_flag;
 	int m_total_bytes_read;
 
 public:
 	// Inspect `error_code` after constructing to determine if the stream is valid or not. You may look at the `width`, `height`, etc.
 	// methods after the constructor is called. You may then either destruct the object, or begin decoding the image by calling begin_decoding(), then decode() on each scanline.
-	this (JpegStreamReadFunc rfn) @safe { decode_init(rfn); }
+	this (JpegStreamReadFunc rfn) @system { decode_init(rfn); }
 
-	~this () @trusted { free_all_blocks(); }
+	~this () @system { free_all_blocks(); }
 
 	@disable this (this); // no copies
 
 	// Call this method after constructing the object to begin decompression.
 	// If JPGD_SUCCESS is returned you may then call decode() on each scanline.
-	int begin_decoding () {
-		if (m_ready_flag) return JPGD_SUCCESS;
-		if (m_error_code) return JPGD_FAILED;
-		try {
-			decode_start();
-			m_ready_flag = true;
-			return JPGD_SUCCESS;
-		} catch (Exception e) {
-			//debug(pixelmancy) {{ import core.stdc.stdio; stderr.fprintf("ERROR: %.*s...\n", cast(int)e.msg.length, e.msg.ptr); }}
-			debug(pixelmancy) {{ import std.stdio; stderr.writeln(e.toString); }}
-		}
-		return JPGD_FAILED;
+	void begin_decoding () @system {
+		if (m_ready_flag) return;
+		decode_start();
+		m_ready_flag = true;
 	}
 
 	// Returns the next scan line.
 	// For grayscale images, pScan_line will point to a buffer containing 8-bit pixels (`bytes_per_pixel` will return 1).
 	// Otherwise, it will always point to a buffer containing 32-bit RGBA pixels (A will always be 255, and `bytes_per_pixel` will return 4).
-	// Returns JPGD_SUCCESS if a scan line has been returned.
-	// Returns JPGD_DONE if all scan lines have been returned.
-	// Returns JPGD_FAILED if an error occurred. Inspect `error_code` for a more info.
-	int decode (/*const void** */void** pScan_line, uint* pScan_line_len) {
-		if (m_error_code || !m_ready_flag) return JPGD_FAILED;
-		if (m_total_lines_left == 0) return JPGD_DONE;
-		try {
-			if (m_mcu_lines_left == 0) {
-				if (m_progressive_flag) load_next_row(); else decode_next_row();
-				// Find the EOI marker if that was the last row.
-				if (m_total_lines_left <= m_max_mcu_y_size) find_eoi();
-				m_mcu_lines_left = m_max_mcu_y_size;
+	// Returns false if a scan line has been returned.
+	// Returns true if all scan lines have been returned.
+	bool decode (/*const void** */void** pScan_line, uint* pScan_line_len) @system {
+		if (m_total_lines_left == 0) return true;
+		if (m_mcu_lines_left == 0) {
+			if (m_progressive_flag) load_next_row(); else decode_next_row();
+			// Find the EOI marker if that was the last row.
+			if (m_total_lines_left <= m_max_mcu_y_size) find_eoi();
+			m_mcu_lines_left = m_max_mcu_y_size;
+		}
+		if (m_freq_domain_chroma_upsample) {
+			expanded_convert();
+			*pScan_line = m_pScan_line_0;
+		} else {
+			switch (m_scan_type) {
+				case JPGD_YH2V2:
+					if ((m_mcu_lines_left & 1) == 0) {
+						H2V2Convert();
+						*pScan_line = m_pScan_line_0;
+					} else {
+						*pScan_line = m_pScan_line_1;
+					}
+					break;
+				case JPGD_YH2V1:
+					H2V1Convert();
+					*pScan_line = m_pScan_line_0;
+					break;
+				case JPGD_YH1V2:
+					if ((m_mcu_lines_left & 1) == 0) {
+						H1V2Convert();
+						*pScan_line = m_pScan_line_0;
+					} else {
+						*pScan_line = m_pScan_line_1;
+					}
+					break;
+				case JPGD_YH1V1:
+					H1V1Convert();
+					*pScan_line = m_pScan_line_0;
+					break;
+				case JPGD_GRAYSCALE:
+					gray_convert();
+					*pScan_line = m_pScan_line_0;
+					break;
+				default:
 			}
-			if (m_freq_domain_chroma_upsample) {
-				expanded_convert();
-				*pScan_line = m_pScan_line_0;
-			} else {
-				switch (m_scan_type) {
-					case JPGD_YH2V2:
-						if ((m_mcu_lines_left & 1) == 0) {
-							H2V2Convert();
-							*pScan_line = m_pScan_line_0;
-						} else {
-							*pScan_line = m_pScan_line_1;
-						}
-						break;
-					case JPGD_YH2V1:
-						H2V1Convert();
-						*pScan_line = m_pScan_line_0;
-						break;
-					case JPGD_YH1V2:
-						if ((m_mcu_lines_left & 1) == 0) {
-							H1V2Convert();
-							*pScan_line = m_pScan_line_0;
-						} else {
-							*pScan_line = m_pScan_line_1;
-						}
-						break;
-					case JPGD_YH1V1:
-						H1V1Convert();
-						*pScan_line = m_pScan_line_0;
-						break;
-					case JPGD_GRAYSCALE:
-						gray_convert();
-						*pScan_line = m_pScan_line_0;
-						break;
-					default:
-				}
-			}
-			*pScan_line_len = m_real_dest_bytes_per_scan_line;
-			--m_mcu_lines_left;
-			--m_total_lines_left;
-			return JPGD_SUCCESS;
-		} catch (Exception) {}
-		return JPGD_FAILED;
+		}
+		*pScan_line_len = m_real_dest_bytes_per_scan_line;
+		--m_mcu_lines_left;
+		--m_total_lines_left;
+		return false;
 	}
 
-	const pure nothrow @trusted @nogc {
-		jpgd_status error_code () { pragma(inline, true); return m_error_code; }
-
+	const pure nothrow @nogc {
 		int width () { pragma(inline, true); return m_image_x_size; }
 		int height () { pragma(inline, true); return m_image_y_size; }
 
@@ -586,7 +555,7 @@ public:
 
 private:
 	// Retrieve one character from the input stream.
-	uint get_char () @trusted {
+	uint get_char () @system {
 		// Any bytes remaining in buffer?
 		if (!m_in_buf_left) {
 			// Try to get more bytes.
@@ -605,7 +574,7 @@ private:
 	}
 
 	// Same as previous method, except can indicate if the character is a pad character or not.
-	uint get_char (bool* pPadding_flag) @trusted {
+	uint get_char (bool* pPadding_flag) @system {
 		if (!m_in_buf_left) {
 			prep_in_buffer();
 			if (!m_in_buf_left) {
@@ -622,13 +591,13 @@ private:
 	}
 
 	// Inserts a previously retrieved character back into the input buffer.
-	void stuff_char (ubyte q) {
+	void stuff_char (ubyte q) @system {
 		*(--m_pIn_buf_ofs) = q;
 		m_in_buf_left++;
 	}
 
 	// Retrieves one character from the input stream, but does not read past markers. Will continue to return 0xFF when a marker is encountered.
-	ubyte get_octet () {
+	ubyte get_octet () @system {
 		bool padding_flag;
 		int c = get_char(&padding_flag);
 		if (c == 0xFF) {
@@ -644,7 +613,7 @@ private:
 	}
 
 	// Retrieves a variable number of bits from the input stream. Does not recognize markers.
-	uint get_bits (int num_bits) @safe {
+	uint get_bits (int num_bits) @system {
 		if (!num_bits) return 0;
 		uint i = m_bit_buf >> (32 - num_bits);
 		if ((m_bits_left -= num_bits) <= 0) {
@@ -662,7 +631,7 @@ private:
 	}
 
 	// Retrieves a variable number of bits from the input stream. Markers will not be read into the input bit buffer. Instead, an infinite number of all 1's will be returned when a marker is encountered.
-	uint get_bits_no_markers (int num_bits) {
+	uint get_bits_no_markers (int num_bits) @system {
 		if (!num_bits) return 0;
 		uint i = m_bit_buf >> (32 - num_bits);
 		if ((m_bits_left -= num_bits) <= 0) {
@@ -686,7 +655,7 @@ private:
 	}
 
 	// Decodes a Huffman encoded symbol.
-	int huff_decode (huff_tables *pH) {
+	int huff_decode (huff_tables *pH) @system {
 		int symbol;
 		// Check first 8-bits: do we have a complete symbol?
 		if ((symbol = pH.look_up.ptr[m_bit_buf >> 24]) < 0) {
@@ -704,7 +673,7 @@ private:
 	}
 
 	// Decodes a Huffman encoded symbol.
-	int huff_decode (huff_tables *pH, ref int extra_bits) {
+	int huff_decode (huff_tables *pH, ref int extra_bits) @system {
 		int symbol;
 		// Check first 8-bits: do we have a complete symbol?
 		if ((symbol = pH.look_up2.ptr[m_bit_buf >> 24]) < 0) {
@@ -743,7 +712,7 @@ private:
 	static immutable int[18] s_extend_mask = [ 0, (1<<0), (1<<1), (1<<2), (1<<3), (1<<4), (1<<5), (1<<6), (1<<7), (1<<8), (1<<9), (1<<10), (1<<11), (1<<12), (1<<13), (1<<14), (1<<15), (1<<16) ];
 	// The logical AND's in this macro are to shut up static code analysis (aren't really necessary - couldn't find another way to do this)
 	//#define JPGD_HUFF_EXTEND(x, s) (((x) < s_extend_test[s & 15]) ? ((x) + s_extend_offset[s & 15]) : (x))
-	static JPGD_HUFF_EXTEND (int x, int s) nothrow @trusted @nogc { pragma(inline, true); return (((x) < s_extend_test.ptr[s & 15]) ? ((x) + s_extend_offset.ptr[s & 15]) : (x)); }
+	static JPGD_HUFF_EXTEND (int x, int s) nothrow @system @nogc { pragma(inline, true); return (((x) < s_extend_test.ptr[s & 15]) ? ((x) + s_extend_offset.ptr[s & 15]) : (x)); }
 
 	// Clamps a value between 0-255.
 	//static ubyte clamp (int i) { if (cast(uint)(i) > 255) i = (((~i) >> 31) & 0xFF); return cast(ubyte)(i); }
@@ -752,20 +721,20 @@ private:
 	static struct DCT_Upsample {
 	static:
 		static struct Matrix44 {
-		pure nothrow @trusted @nogc:
+		pure nothrow @nogc:
 			alias Element_Type = int;
 			enum { NUM_ROWS = 4, NUM_COLS = 4 }
 
 			Element_Type[NUM_COLS][NUM_ROWS] v;
 
-			this() (const scope auto ref Matrix44 m) {
+			this() (const scope auto ref Matrix44 m) @safe {
 				foreach (immutable r; 0..NUM_ROWS) v[r][] = m.v[r][];
 			}
 
 			//int rows () const { pragma(inline, true); return NUM_ROWS; }
 			//int cols () const { pragma(inline, true); return NUM_COLS; }
 
-			ref inout(Element_Type) at (int r, int c) inout { pragma(inline, true); return v.ptr[r].ptr[c]; }
+			ref inout(Element_Type) at (int r, int c) inout @system { pragma(inline, true); return v.ptr[r].ptr[c]; }
 
 			ref Matrix44 opOpAssign(string op:"+") (const scope auto ref Matrix44 a) {
 				foreach (int r; 0..NUM_ROWS) {
@@ -845,8 +814,8 @@ private:
 
 		// NUM_ROWS/NUM_COLS = # of non-zero rows/cols in input matrix
 		static struct P_Q(int NUM_ROWS, int NUM_COLS) {
-			static void calc (ref Matrix44 P, ref Matrix44 Q, const(jpgd_block_t)* pSrc) {
-				//auto AT (int c, int r) nothrow @trusted @nogc { return (c >= NUM_COLS || r >= NUM_ROWS ? 0 : pSrc[c+r*8]); }
+			static void calc (ref Matrix44 P, ref Matrix44 Q, const(jpgd_block_t)* pSrc) @system {
+				//auto AT (int c, int r) nothrow @nogc { return (c >= NUM_COLS || r >= NUM_ROWS ? 0 : pSrc[c+r*8]); }
 				template AT(int c, int r) {
 					static if (c >= NUM_COLS || r >= NUM_ROWS) enum AT = "0"; else enum AT = "pSrc["~c.stringof~"+"~r.stringof~"*8]";
 				}
@@ -925,8 +894,8 @@ private:
 		}
 
 		static struct R_S(int NUM_ROWS, int NUM_COLS) {
-			static void calc(ref Matrix44 R, ref Matrix44 S, const(jpgd_block_t)* pSrc) {
-				//auto AT (int c, int r) nothrow @trusted @nogc { return (c >= NUM_COLS || r >= NUM_ROWS ? 0 : pSrc[c+r*8]); }
+			static void calc(ref Matrix44 R, ref Matrix44 S, const(jpgd_block_t)* pSrc) @system {
+				//auto AT (int c, int r) nothrow @nogc { return (c >= NUM_COLS || r >= NUM_ROWS ? 0 : pSrc[c+r*8]); }
 				template AT(int c, int r) {
 					static if (c >= NUM_COLS || r >= NUM_ROWS) enum AT = "0"; else enum AT = "pSrc["~c.stringof~"+"~r.stringof~"*8]";
 				}
@@ -1006,27 +975,17 @@ private:
 	} // end namespace DCT_Upsample
 
 	// Unconditionally frees all allocated m_blocks.
-	void free_all_blocks () @trusted {
+	void free_all_blocks () @safe {
 		//m_pStream = null;
 		readfn = null;
 		for (mem_block *b = m_pMem_blocks; b; ) {
 			mem_block* n = b.m_pNext;
-			jpgd_free(b);
 			b = n;
 		}
 		m_pMem_blocks = null;
 	}
 
-	// This method handles all errors. It will never return.
-	// It could easily be changed to use C++ exceptions.
-	/*JPGD_NORETURN*/ void stop_decoding (jpgd_status status, size_t line=__LINE__) {
-		m_error_code = status;
-		free_all_blocks();
-		//longjmp(m_jmp_state, status);
-		throw new JPEGLoadException("jpeg decoding error", __FILE__, line);
-	}
-
-	void* alloc (size_t nSize, bool zero=false) {
+	void* alloc (size_t nSize, bool zero=false) @system {
 		nSize = (JPGD_MAX(nSize, 1) + 3) & ~3;
 		char *rv = null;
 		for (mem_block *b = m_pMem_blocks; b; b = b.m_pNext)
@@ -1041,8 +1000,7 @@ private:
 		if (!rv)
 		{
 			size_t capacity = JPGD_MAX(32768 - 256, (nSize + 2047) & ~2047);
-			mem_block *b = cast(mem_block*)jpgd_malloc(mem_block.sizeof + capacity);
-			if (!b) { stop_decoding(JPGD_NOTENOUGHMEM); }
+			mem_block* b = &(new mem_block[](mem_block.sizeof + capacity))[0];
 			b.m_pNext = m_pMem_blocks; m_pMem_blocks = b;
 			b.m_used_count = nSize;
 			b.m_size = capacity;
@@ -1052,7 +1010,7 @@ private:
 		return rv;
 	}
 
-	void word_clear (void *p, ushort c, uint n) {
+	void word_clear (void *p, ushort c, uint n) @system {
 		ubyte *pD = cast(ubyte*)p;
 		immutable ubyte l = c & 0xFF, h = (c >> 8) & 0xFF;
 		while (n)
@@ -1065,7 +1023,7 @@ private:
 	// Refill the input buffer.
 	// This method will sit in a loop until (A) the buffer is full or (B)
 	// the stream's read() method reports and end of file condition.
-	void prep_in_buffer () @trusted {
+	void prep_in_buffer () @system {
 		m_in_buf_left = 0;
 		m_pIn_buf_ofs = m_in_buf.ptr;
 
@@ -1075,8 +1033,7 @@ private:
 		do
 		{
 			int bytes_read = readfn(m_in_buf.ptr + m_in_buf_left, JPGD_IN_BUF_SIZE - m_in_buf_left, &m_eof_flag);
-			if (bytes_read == -1)
-				stop_decoding(JPGD_STREAM_READ);
+			enforce!JPEGLoadException(bytes_read != -1, "Unexpected end of stream");
 
 			m_in_buf_left += bytes_read;
 		} while ((m_in_buf_left < JPGD_IN_BUF_SIZE) && (!m_eof_flag));
@@ -1089,15 +1046,14 @@ private:
 	}
 
 	// Read a Huffman code table.
-	void read_dht_marker () {
+	void read_dht_marker () @system {
 		int i, index, count;
 		ubyte[17] huff_num;
 		ubyte[256] huff_val;
 
 		uint num_left = get_bits(16);
 
-		if (num_left < 2)
-			stop_decoding(JPGD_BAD_DHT_MARKER);
+		enforce!JPEGLoadException(num_left >= 2, "Bad DHT marker");
 
 		num_left -= 2;
 
@@ -1115,26 +1071,22 @@ private:
 				count += huff_num.ptr[i];
 			}
 
-			if (count > 255)
-				stop_decoding(JPGD_BAD_DHT_COUNTS);
+			enforce!JPEGLoadException(count <= 255, "Bad DHT counts");
 
 			for (i = 0; i < count; i++)
 				huff_val.ptr[i] = cast(ubyte)(get_bits(8));
 
 			i = 1 + 16 + count;
 
-			if (num_left < cast(uint)i)
-				stop_decoding(JPGD_BAD_DHT_MARKER);
+			enforce!JPEGLoadException(num_left >= cast(uint)i, "Bad DHT marker");
 
 			num_left -= i;
 
-			if ((index & 0x10) > 0x10)
-				stop_decoding(JPGD_BAD_DHT_INDEX);
+			enforce!JPEGLoadException((index & 0x10) <= 0x10, "Bad DHT index");
 
 			index = (index & 0x0F) + ((index & 0x10) >> 4) * (JPGD_MAX_HUFF_TABLES >> 1);
 
-			if (index >= JPGD_MAX_HUFF_TABLES)
-				stop_decoding(JPGD_BAD_DHT_INDEX);
+			enforce!JPEGLoadException(index < JPGD_MAX_HUFF_TABLES, "Bad DHT index");
 
 			if (!m_huff_num.ptr[index])
 				m_huff_num.ptr[index] = cast(ubyte*)alloc(17);
@@ -1149,15 +1101,14 @@ private:
 	}
 
 	// Read a quantization table.
-	void read_dqt_marker () {
+	void read_dqt_marker () @system {
 		int n, i, prec;
 		uint num_left;
 		uint temp;
 
 		num_left = get_bits(16);
 
-		if (num_left < 2)
-			stop_decoding(JPGD_BAD_DQT_MARKER);
+		enforce!JPEGLoadException(num_left >= 2, "Bad DQT marker");
 
 		num_left -= 2;
 
@@ -1167,8 +1118,7 @@ private:
 			prec = n >> 4;
 			n &= 0x0F;
 
-			if (n >= JPGD_MAX_QUANT_TABLES)
-				stop_decoding(JPGD_BAD_DQT_TABLE);
+			enforce!JPEGLoadException(n < JPGD_MAX_QUANT_TABLES, "Bad DQT table");
 
 			if (!m_quant.ptr[n])
 				m_quant.ptr[n] = cast(jpgd_quant_t*)alloc(64 * jpgd_quant_t.sizeof);
@@ -1189,40 +1139,34 @@ private:
 			if (prec)
 				i += 64;
 
-			if (num_left < cast(uint)i)
-				stop_decoding(JPGD_BAD_DQT_LENGTH);
+			enforce!JPEGLoadException(num_left >= cast(uint)i, "Bad DQT length");
 
 			num_left -= i;
 		}
 	}
 
 	// Read the start of frame (SOF) marker.
-	void read_sof_marker () {
+	void read_sof_marker () @system {
 		int i;
 		uint num_left;
 
 		num_left = get_bits(16);
 
-		if (get_bits(8) != 8) /* precision: sorry, only 8-bit precision is supported right now */
-			stop_decoding(JPGD_BAD_PRECISION);
+		enforce!JPEGLoadException(get_bits(8) == 8, "Bad precision"); /* precision: sorry, only 8-bit precision is supported right now */
 
 		m_image_y_size = get_bits(16);
 
-		if ((m_image_y_size < 1) || (m_image_y_size > JPGD_MAX_HEIGHT))
-			stop_decoding(JPGD_BAD_HEIGHT);
+		enforce!JPEGLoadException((m_image_y_size >= 1) && (m_image_y_size <= JPGD_MAX_HEIGHT), "Height out of range");
 
 		m_image_x_size = get_bits(16);
 
-		if ((m_image_x_size < 1) || (m_image_x_size > JPGD_MAX_WIDTH))
-			stop_decoding(JPGD_BAD_WIDTH);
+		enforce!JPEGLoadException((m_image_x_size >= 1) && (m_image_x_size <= JPGD_MAX_WIDTH), "Width out of range");
 
 		m_comps_in_frame = get_bits(8);
 
-		if (m_comps_in_frame > JPGD_MAX_COMPONENTS)
-			stop_decoding(JPGD_TOO_MANY_COMPONENTS);
+		enforce!JPEGLoadException(m_comps_in_frame <= JPGD_MAX_COMPONENTS, "Too many components");
 
-		if (num_left != cast(uint)(m_comps_in_frame * 3 + 8))
-			stop_decoding(JPGD_BAD_SOF_LENGTH);
+		enforce!JPEGLoadException(num_left == cast(uint)(m_comps_in_frame * 3 + 8), "Bad SOF length");
 
 		for (i = 0; i < m_comps_in_frame; i++)
 		{
@@ -1234,13 +1178,12 @@ private:
 	}
 
 	// Used to skip unrecognized markers.
-	void skip_variable_marker () {
+	void skip_variable_marker () @system {
 		uint num_left;
 
 		num_left = get_bits(16);
 
-		if (num_left < 2)
-			stop_decoding(JPGD_BAD_VARIABLE_MARKER);
+		enforce!JPEGLoadException(num_left >= 2, "Bad variable marker");
 
 		num_left -= 2;
 
@@ -1252,15 +1195,14 @@ private:
 	}
 
 	// Read a define restart interval (DRI) marker.
-	void read_dri_marker () {
-		if (get_bits(16) != 4)
-			stop_decoding(JPGD_BAD_DRI_LENGTH);
+	void read_dri_marker () @system {
+		enforce!JPEGLoadException(get_bits(16) == 4, "Bad DRI length");
 
 		m_restart_interval = get_bits(16);
 	}
 
 	// Read a start of scan (SOS) marker.
-	void read_sos_marker () {
+	void read_sos_marker () @system {
 		uint num_left;
 		int i, ci, n, c, cc;
 
@@ -1272,8 +1214,7 @@ private:
 
 		num_left -= 3;
 
-		if ( (num_left != cast(uint)(n * 2 + 3)) || (n < 1) || (n > JPGD_MAX_COMPS_IN_SCAN) )
-			stop_decoding(JPGD_BAD_SOS_LENGTH);
+		enforce!JPEGLoadException( (num_left == cast(uint)(n * 2 + 3)) && (n >= 1) && (n <= JPGD_MAX_COMPS_IN_SCAN), "Bad SOS length");
 
 		for (i = 0; i < n; i++)
 		{
@@ -1285,8 +1226,7 @@ private:
 				if (cc == m_comp_ident.ptr[ci])
 					break;
 
-			if (ci >= m_comps_in_frame)
-				stop_decoding(JPGD_BAD_SOS_COMP_ID);
+			enforce!JPEGLoadException(ci < m_comps_in_frame, "Bad SOS component ID");
 
 			m_comp_list.ptr[i] = ci;
 			m_comp_dc_tab.ptr[ci] = (c >> 4) & 15;
@@ -1315,7 +1255,7 @@ private:
 	}
 
 	// Finds the next marker.
-	int next_marker () {
+	int next_marker () @system {
 		uint c, bytes;
 
 		bytes = 0;
@@ -1342,7 +1282,7 @@ private:
 
 	// Process markers. Returns when an SOFx, SOI, EOI, or SOS marker is
 	// encountered.
-	int process_markers (bool allow_restarts = false) {
+	int process_markers (bool allow_restarts = false) @system {
 		int c;
 
 		for ( ; ; ) {
@@ -1373,8 +1313,7 @@ private:
 					break;
 				// No arithmitic support - dumb patents!
 				case M_DAC:
-					stop_decoding(JPGD_NO_ARITHMITIC_SUPPORT);
-					break;
+					throw new JPEGLoadException("No arithmetic support");
 				case M_DQT:
 					read_dqt_marker();
 					break;
@@ -1397,8 +1336,7 @@ private:
 			goto case;
 				case M_JPG:
 				case M_TEM:
-					stop_decoding(JPGD_UNEXPECTED_MARKER);
-					break;
+					throw new JPEGLoadException("Unexpected marker");
 				default: /* must be DNL, DHP, EXP, APPn, JPGn, COM, or RESn or APP0 */
 					skip_variable_marker();
 					break;
@@ -1411,7 +1349,7 @@ private:
 	// Finds the start of image (SOI) marker.
 	// This code is rather defensive: it only checks the first 512 bytes to avoid
 	// false positives.
-	void locate_soi_marker () {
+	void locate_soi_marker () @system {
 		uint lastchar, thischar;
 		uint bytesleft;
 
@@ -1428,8 +1366,7 @@ private:
 
 		for ( ; ; )
 		{
-			if (--bytesleft == 0)
-				stop_decoding(JPGD_NOT_JPEG);
+			enforce!JPEGLoadException(--bytesleft != 0, "Not a JPEG");
 
 			lastchar = thischar;
 
@@ -1439,20 +1376,18 @@ private:
 			{
 				if (thischar == M_SOI)
 					break;
-				else if (thischar == M_EOI) // get_bits will keep returning M_EOI if we read past the end
-					stop_decoding(JPGD_NOT_JPEG);
+				enforce!JPEGLoadException(thischar != M_EOI, "Not a JPEG"); // get_bits will keep returning M_EOI if we read past the end
 			}
 		}
 
 		// Check the next character after marker: if it's not 0xFF, it can't be the start of the next marker, so the file is bad.
 		thischar = (m_bit_buf >> 24) & 0xFF;
 
-		if (thischar != 0xFF)
-			stop_decoding(JPGD_NOT_JPEG);
+		enforce!JPEGLoadException(thischar == 0xFF, "Not a JPEG");
 	}
 
 	// Find a start of frame (SOF) marker.
-	void locate_sof_marker () @trusted {
+	void locate_sof_marker () @system {
 		locate_soi_marker();
 
 		int c = process_markers();
@@ -1467,24 +1402,21 @@ private:
 				read_sof_marker();
 				break;
 			case M_SOF9: /* Arithmitic coding */
-				stop_decoding(JPGD_NO_ARITHMITIC_SUPPORT);
-				break;
+				throw new JPEGLoadException("No arithmetic support");
 			default:
-				stop_decoding(JPGD_UNSUPPORTED_MARKER);
-				break;
+				throw new JPEGLoadException("Unsupported marker");
 		}
 	}
 
 	// Find a start of scan (SOS) marker.
-	int locate_sos_marker () {
+	int locate_sos_marker () @system {
 		int c;
 
 		c = process_markers();
 
 		if (c == M_EOI)
 			return false;
-		else if (c != M_SOS)
-			stop_decoding(JPGD_UNEXPECTED_MARKER);
+		enforce!JPEGLoadException(c == M_SOS, "Unexpected marker");
 
 		read_sos_marker();
 
@@ -1492,9 +1424,8 @@ private:
 	}
 
 	// Reset everything to default/uninitialized state.
-	void initit (JpegStreamReadFunc rfn) @safe {
+	void initit (JpegStreamReadFunc rfn) @system {
 		m_pMem_blocks = null;
-		m_error_code = JPGD_SUCCESS;
 		m_ready_flag = false;
 		m_image_x_size = m_image_y_size = 0;
 		readfn = rfn;
@@ -1598,7 +1529,7 @@ private:
 	enum FIX(float x) = (cast(int)((x) * (1L<<SCALEBITS) + 0.5f));
 
 	// Create a few tables that allow us to quickly convert YCbCr to RGB.
-	void create_look_ups () {
+	void create_look_ups () @system {
 		for (int i = 0; i <= 255; i++)
 		{
 			int k = i - 128;
@@ -1611,7 +1542,7 @@ private:
 
 	// This method throws back into the stream any bytes that where read
 	// into the bit buffer during initial marker scanning.
-	void fix_in_buffer () {
+	void fix_in_buffer () @system {
 		// In case any 0xFF's where pulled into the buffer during marker scanning.
 		assert((m_bits_left & 7) == 0);
 
@@ -1629,7 +1560,7 @@ private:
 		get_bits_no_markers(16);
 	}
 
-	void transform_mcu (int mcu_row) {
+	void transform_mcu (int mcu_row) @system {
 		jpgd_block_t* pSrc_ptr = m_pMCU_coefficients;
 		ubyte* pDst_ptr = m_pSample_buf + mcu_row * m_blocks_per_mcu * 64;
 
@@ -1648,7 +1579,7 @@ private:
 		136, 136, 136, 136, 136, 136, 136, 136, 136, 136, 136, 136
 	];
 
-	void transform_mcu_expand (int mcu_row) {
+	void transform_mcu_expand (int mcu_row) @system {
 		jpgd_block_t* pSrc_ptr = m_pMCU_coefficients;
 		ubyte* pDst_ptr = m_pSample_buf + mcu_row * m_expanded_blocks_per_mcu * 64;
 
@@ -1858,19 +1789,16 @@ private:
 			if (get_char() == 0xFF)
 				break;
 
-		if (i == 0)
-			stop_decoding(JPGD_BAD_RESTART_MARKER);
+		enforce!JPEGLoadException(i > 0, "Bad restart marker");
 
 		for ( ; i > 0; i--)
 			if ((c = get_char()) != 0xFF)
 				break;
 
-		if (i == 0)
-			stop_decoding(JPGD_BAD_RESTART_MARKER);
+		enforce!JPEGLoadException(i > 0, "Bad restart marker");
 
 		// Is it the expected marker? If not, something bad happened.
-		if (c != (m_next_restart_num + M_RST0))
-			stop_decoding(JPGD_BAD_RESTART_MARKER);
+		enforce!JPEGLoadException(c == (m_next_restart_num + M_RST0), "Bad restart marker");
 
 		// Reset each component's DC prediction values.
 		memset(&m_last_dc_val, 0, m_comps_in_frame * uint.sizeof);
@@ -1930,8 +1858,7 @@ private:
 					{
 						if (r)
 						{
-							if ((k + r) > 63)
-								stop_decoding(JPGD_DECODE_ERROR);
+							enforce!JPEGLoadException((k + r) <= 63, "Decoding error");
 
 							if (k < prev_num_set)
 							{
@@ -1954,8 +1881,7 @@ private:
 					{
 						if (r == 15)
 						{
-							if ((k + 16) > 64)
-								stop_decoding(JPGD_DECODE_ERROR);
+							enforce!JPEGLoadException((k + 16) <= 64, "Decoding error");
 
 							if (k < prev_num_set)
 							{
@@ -2389,19 +2315,16 @@ private:
 	// Verifies the quantization tables needed for this scan are available.
 	void check_quant_tables () {
 		for (int i = 0; i < m_comps_in_scan; i++)
-			if (m_quant.ptr[m_comp_quant.ptr[m_comp_list.ptr[i]]] == null)
-				stop_decoding(JPGD_UNDEFINED_QUANT_TABLE);
+			enforce!JPEGLoadException(m_quant.ptr[m_comp_quant.ptr[m_comp_list.ptr[i]]] != null, "Undefined quantization table");
 	}
 
 	// Verifies that all the Huffman tables needed for this scan are available.
 	void check_huff_tables () {
 		for (int i = 0; i < m_comps_in_scan; i++)
 		{
-			if ((m_spectral_start == 0) && (m_huff_num.ptr[m_comp_dc_tab.ptr[m_comp_list.ptr[i]]] == null))
-				stop_decoding(JPGD_UNDEFINED_HUFF_TABLE);
+			enforce!JPEGLoadException((m_spectral_start != 0) || (m_huff_num.ptr[m_comp_dc_tab.ptr[m_comp_list.ptr[i]]] != null), "Undefined Huffman table");
 
-			if ((m_spectral_end > 0) && (m_huff_num.ptr[m_comp_ac_tab.ptr[m_comp_list.ptr[i]]] == null))
-				stop_decoding(JPGD_UNDEFINED_HUFF_TABLE);
+			enforce!JPEGLoadException((m_spectral_end <= 0) || (m_huff_num.ptr[m_comp_ac_tab.ptr[m_comp_list.ptr[i]]] != null), "Undefined Huffman table");
 		}
 
 		for (int i = 0; i < JPGD_MAX_HUFF_TABLES; i++)
@@ -2535,14 +2458,14 @@ private:
 			// code -231 brings us here
 			//import std.conv;
 			//assert(0, to!string(m_comp_h_samp) ~ to!string(m_comp_v_samp));
-				stop_decoding(JPGD_UNSUPPORTED_SAMP_FACTORS);
+				throw new JPEGLoadException("Unsupported sampling factor");
 			}
 		}
 		else if (m_comps_in_frame == 3)
 		{
 			if ( ((m_comp_h_samp.ptr[1] != 1) || (m_comp_v_samp.ptr[1] != 1)) ||
 					 ((m_comp_h_samp.ptr[2] != 1) || (m_comp_v_samp.ptr[2] != 1)) )
-				stop_decoding(JPGD_UNSUPPORTED_SAMP_FACTORS);
+				throw new JPEGLoadException("Unsupported sampling factor");
 
 			if ((m_comp_h_samp.ptr[0] == 1) && (m_comp_v_samp.ptr[0] == 1))
 			{
@@ -2574,10 +2497,10 @@ private:
 				m_max_mcu_y_size = 16;
 			}
 			else
-				stop_decoding(JPGD_UNSUPPORTED_SAMP_FACTORS);
+				throw new JPEGLoadException("Unsupported sampling factor");
 		}
 		else
-			stop_decoding(JPGD_UNSUPPORTED_COLORSPACE);
+			throw new JPEGLoadException("Unsupported colourspace");
 
 		m_max_mcus_per_row = (m_image_x_size + (m_max_mcu_x_size - 1)) / m_max_mcu_x_size;
 		m_max_mcus_per_col = (m_image_y_size + (m_max_mcu_y_size - 1)) / m_max_mcu_y_size;
@@ -2600,8 +2523,7 @@ private:
 		m_max_blocks_per_row = m_max_mcus_per_row * m_max_blocks_per_mcu;
 
 		// Should never happen
-		if (m_max_blocks_per_row > JPGD_MAX_BLOCKS_PER_ROW)
-			stop_decoding(JPGD_ASSERTION_ERROR);
+		enforce!JPEGLoadException(m_max_blocks_per_row <= JPGD_MAX_BLOCKS_PER_ROW, "Invalid blocks per row");
 
 		// Allocate the coefficient buffer, enough for one MCU
 		m_pMCU_coefficients = cast(jpgd_block_t*)alloc(m_max_blocks_per_mcu * 64 * jpgd_block_t.sizeof);
@@ -2697,8 +2619,7 @@ private:
 
 			if (s)
 			{
-				if ((k += r) > 63)
-					pD.stop_decoding(JPGD_DECODE_ERROR);
+				enforce!JPEGLoadException((k += r) <= 63, "Decoding error");
 
 				r = pD.get_bits_no_markers(s);
 				s = JPGD_HUFF_EXTEND(r, s);
@@ -2709,8 +2630,7 @@ private:
 			{
 				if (r == 15)
 				{
-					if ((k += 15) > 63)
-						pD.stop_decoding(JPGD_DECODE_ERROR);
+					enforce!JPEGLoadException((k += 15) <= 63, "Decoding error");
 				}
 				else
 				{
@@ -2748,8 +2668,7 @@ private:
 
 				if (s)
 				{
-					if (s != 1)
-						pD.stop_decoding(JPGD_DECODE_ERROR);
+					enforce!JPEGLoadException(s == 1, "Decoding error");
 
 					if (pD.get_bits_no_markers(1))
 						s = p1;
@@ -2892,8 +2811,7 @@ private:
 	void init_progressive () {
 		int i;
 
-		if (m_comps_in_frame == 4)
-			stop_decoding(JPGD_UNSUPPORTED_COLORSPACE);
+		enforce!JPEGLoadException(m_comps_in_frame != 4, "Unsupported colourspace");
 
 		// Allocate the coefficient buffers.
 		for (i = 0; i < m_comps_in_frame; i++)
@@ -2913,19 +2831,16 @@ private:
 			dc_only_scan = (m_spectral_start == 0);
 			refinement_scan = (m_successive_high != 0);
 
-			if ((m_spectral_start > m_spectral_end) || (m_spectral_end > 63))
-				stop_decoding(JPGD_BAD_SOS_SPECTRAL);
+			enforce!JPEGLoadException((m_spectral_start <= m_spectral_end) && (m_spectral_end <= 63), "Bad SOS spectral");
 
 			if (dc_only_scan)
 			{
-				if (m_spectral_end)
-					stop_decoding(JPGD_BAD_SOS_SPECTRAL);
+				enforce!JPEGLoadException(!m_spectral_end, "Bad SOS spectral");
 			}
 			else if (m_comps_in_scan != 1) /* AC scans can only contain one component */
-				stop_decoding(JPGD_BAD_SOS_SPECTRAL);
+				throw new JPEGLoadException("Bad SOS spectral");
 
-			if ((refinement_scan) && (m_successive_low != m_successive_high - 1))
-				stop_decoding(JPGD_BAD_SOS_SUCCESSIVE);
+			enforce!JPEGLoadException(!refinement_scan || (m_successive_low == m_successive_high - 1), "Bad SOS successive");
 
 			if (dc_only_scan)
 			{
@@ -2957,12 +2872,11 @@ private:
 		calc_mcu_block_order();
 	}
 
-	void init_sequential () {
-		if (!init_scan())
-			stop_decoding(JPGD_UNEXPECTED_MARKER);
+	void init_sequential () @system {
+		enforce!JPEGLoadException(init_scan(), "Unexpected marker");
 	}
 
-	void decode_start () {
+	void decode_start () @system {
 		init_frame();
 
 		if (m_progressive_flag)
@@ -2971,7 +2885,7 @@ private:
 			init_sequential();
 	}
 
-	void decode_init (JpegStreamReadFunc rfn) @safe {
+	void decode_init (JpegStreamReadFunc rfn) @system {
 		initit(rfn);
 		locate_sof_marker();
 	}
@@ -2981,22 +2895,24 @@ private:
 // ////////////////////////////////////////////////////////////////////////// //
 /// read JPEG image header, determine dimensions and number of components.
 /// return `false` if image is not JPEG (i hope).
-public bool detect_jpeg_image_from_stream (scope JpegStreamReadFunc rfn, out int width, out int height, out int actual_comps) @safe {
+public bool detect_jpeg_image_from_stream (scope JpegStreamReadFunc rfn, out int width, out int height, out int actual_comps) @system {
 	if (rfn is null) return false;
-	auto decoder = jpeg_decoder(rfn);
-	debug(pixelmancy) { import core.stdc.stdio : printf; printf("%u bytes read.\n", cast(uint)decoder.total_bytes_read); }
-	if (decoder.error_code != JPGD_SUCCESS) return false;
-	width = decoder.width;
-	height = decoder.height;
-	actual_comps = decoder.num_components;
-	return true;
+	try {
+		auto decoder = jpeg_decoder(rfn);
+		width = decoder.width;
+		height = decoder.height;
+		actual_comps = decoder.num_components;
+		return true;
+	} catch (JPEGLoadException) {
+		return false;
+	}
 }
 
 
 // ////////////////////////////////////////////////////////////////////////// //
 /// read JPEG image header, determine dimensions and number of components.
 /// return `false` if image is not JPEG (i hope).
-public bool detect_jpeg_image_from_file (const(char)[] filename, out int width, out int height, out int actual_comps) {
+public bool detect_jpeg_image_from_file (const(char)[] filename, out int width, out int height, out int actual_comps) @system {
 	import core.stdc.stdio;
 
 	FILE* m_pFile;
@@ -3047,7 +2963,7 @@ public bool detect_jpeg_image_from_file (const(char)[] filename, out int width, 
 // ////////////////////////////////////////////////////////////////////////// //
 /// read JPEG image header, determine dimensions and number of components.
 /// return `false` if image is not JPEG (i hope).
-public bool detect_jpeg_image_from_memory (const(void)[] buf, out int width, out int height, out int actual_comps) @safe {
+public bool detect_jpeg_image_from_memory (const(void)[] buf, out int width, out int height, out int actual_comps) @trusted {
 	size_t bufpos;
 	return detect_jpeg_image_from_stream(
 		delegate int (void* pBuf, int max_bytes_to_read, bool *pEOF_flag) {
@@ -3067,13 +2983,12 @@ public bool detect_jpeg_image_from_memory (const(void)[] buf, out int width, out
 // ////////////////////////////////////////////////////////////////////////// //
 /// decompress JPEG image, what else?
 /// you can specify required color components in `req_comps` (3 for RGB or 4 for RGBA), or leave it as is to use image value.
-public ubyte[] decompress_jpeg_image_from_stream(scope JpegStreamReadFunc rfn, out int width, out int height, out int actual_comps, int req_comps=-1) {
+public ubyte[] decompress_jpeg_image_from_stream(scope JpegStreamReadFunc rfn, out int width, out int height, out int actual_comps, int req_comps=-1) @system {
 	//actual_comps = 0;
 	if (rfn is null) return null;
 	if (req_comps != -1 && req_comps != 1 && req_comps != 3 && req_comps != 4) return null;
 
 	auto decoder = jpeg_decoder(rfn);
-	if (decoder.error_code != JPGD_SUCCESS) return null;
 	debug(pixelmancy) scope(exit) { import core.stdc.stdio : printf; printf("%u bytes read.\n", cast(uint)decoder.total_bytes_read); }
 
 	immutable int image_width = decoder.width;
@@ -3083,23 +2998,17 @@ public ubyte[] decompress_jpeg_image_from_stream(scope JpegStreamReadFunc rfn, o
 	actual_comps = decoder.num_components;
 	if (req_comps < 0) req_comps = decoder.num_components;
 
-	if (decoder.begin_decoding() != JPGD_SUCCESS) return null;
+	decoder.begin_decoding();
 
 	immutable int dst_bpl = image_width*req_comps;
 
 	auto idata = new ubyte[](dst_bpl*image_height);
 	auto pImage_data = idata.ptr;
 
-	scope(failure) {
-		idata = null;
-	}
-
 	for (int y = 0; y < image_height; ++y) {
 		const(ubyte)* pScan_line;
 		uint scan_line_len;
-		if (decoder.decode(/*(const void**)*/cast(void**)&pScan_line, &scan_line_len) != JPGD_SUCCESS) {
-			import core.memory : GC;
-			GC.free(idata.ptr);
+		if (decoder.decode(/*(const void**)*/cast(void**)&pScan_line, &scan_line_len)) {
 			idata = null;
 			return null;
 		}
@@ -3154,7 +3063,7 @@ public ubyte[] decompress_jpeg_image_from_stream(scope JpegStreamReadFunc rfn, o
 // ////////////////////////////////////////////////////////////////////////// //
 /// decompress JPEG image from disk file.
 /// you can specify required color components in `req_comps` (3 for RGB or 4 for RGBA), or leave it as is to use image value.
-public ubyte[] decompress_jpeg_image_from_file(const(char)[] filename, out int width, out int height, out int actual_comps, int req_comps=-1) {
+public ubyte[] decompress_jpeg_image_from_file(const(char)[] filename, out int width, out int height, out int actual_comps, int req_comps=-1) @system {
 	import core.stdc.stdio;
 
 	FILE* m_pFile;
@@ -3205,7 +3114,7 @@ public ubyte[] decompress_jpeg_image_from_file(const(char)[] filename, out int w
 // ////////////////////////////////////////////////////////////////////////// //
 /// decompress JPEG image from memory buffer.
 /// you can specify required color components in `req_comps` (3 for RGB or 4 for RGBA), or leave it as is to use image value.
-public ubyte[] decompress_jpeg_image_from_memory(const(void)[] buf, out int width, out int height, out int actual_comps, int req_comps=-1) {
+public ubyte[] decompress_jpeg_image_from_memory(const(void)[] buf, out int width, out int height, out int actual_comps, int req_comps=-1) @system {
 	size_t bufpos;
 	return decompress_jpeg_image_from_stream(
 		delegate int (void* pBuf, int max_bytes_to_read, bool *pEOF_flag) {
@@ -3236,13 +3145,12 @@ import pixelmancy.fileformats.color;
 
 // ////////////////////////////////////////////////////////////////////////// //
 /// decompress JPEG image, what else?
-public MemoryImage readJpegFromStream (scope JpegStreamReadFunc rfn) {
+public MemoryImage readJpegFromStream (scope JpegStreamReadFunc rfn) @system {
 	enum req_comps = 4;
 
 	if (rfn is null) return null;
 
 	auto decoder = jpeg_decoder(rfn);
-	if (decoder.error_code != JPGD_SUCCESS) { lastJpegError = LastJpegError(1, decoder.error_code); return null; }
 	debug(pixelmancy) scope(exit) { import core.stdc.stdio : printf; printf("%u bytes read.\n", cast(uint)decoder.total_bytes_read); }
 
 	immutable int image_width = decoder.width;
@@ -3253,11 +3161,7 @@ public MemoryImage readJpegFromStream (scope JpegStreamReadFunc rfn) {
 
 	debug(pixelmancy) {{ import core.stdc.stdio; stderr.fprintf("starting (%dx%d)...\n", image_width, image_height); }}
 
-	auto err = decoder.begin_decoding();
-	if (err != JPGD_SUCCESS || image_width < 1 || image_height < 1) {
-		lastJpegError = LastJpegError(2, err, decoder.m_error_code);
-		return null;
-	}
+	decoder.begin_decoding();
 
 	immutable int dst_bpl = image_width*req_comps;
 	auto img = new TrueColorImage(image_width, image_height);
@@ -3269,14 +3173,7 @@ public MemoryImage readJpegFromStream (scope JpegStreamReadFunc rfn) {
 
 		const(ubyte)* pScan_line;
 		uint scan_line_len;
-		err = decoder.decode(/*(const void**)*/cast(void**)&pScan_line, &scan_line_len);
-		if (err != JPGD_SUCCESS) {
-			lastJpegError = LastJpegError(3, err);
-			img.clearInternal();
-			img = null;
-			//jpgd_free(pImage_data);
-			return null;
-		}
+		decoder.decode(/*(const void**)*/cast(void**)&pScan_line, &scan_line_len);
 
 		RGBA32* pDst = pImage_data+(y*dst_bpl / 4);
 
@@ -3330,7 +3227,7 @@ public MemoryImage readJpegFromStream (scope JpegStreamReadFunc rfn) {
 // ////////////////////////////////////////////////////////////////////////// //
 /// decompress JPEG image from disk file.
 /// Returns null if loading failed for any reason.
-public MemoryImage readJpeg (const(char)[] filename) {
+public MemoryImage readJpeg (const(char)[] filename) @system {
 	import core.stdc.stdio;
 
 	FILE* m_pFile;
@@ -3346,11 +3243,8 @@ public MemoryImage readJpeg (const(char)[] filename) {
 		m_pFile = fopen(tfn.ptr, "rb");
 	} else {
 		import core.stdc.stdlib : malloc, free;
-		auto tfn = (cast(char*)malloc(filename.length+1))[0..filename.length+1];
-		if (tfn !is null) {
-			scope(exit) free(tfn.ptr);
-			m_pFile = fopen(tfn.ptr, "rb");
-		}
+		auto tfn = new char[](filename.length+1);
+		m_pFile = fopen(tfn.ptr, "rb");
 	}
 	enforce!JPEGLoadException(m_pFile !is null, "Cannot open file");
 	scope(exit) if (m_pFile) fclose(m_pFile);
@@ -3377,7 +3271,7 @@ public MemoryImage readJpeg (const(char)[] filename) {
 	);
 }
 
-/*@safe*/ unittest {
+@system unittest {
 	{
 		const jpeg = readJpeg("testdata/test.jpg");
 		// we won't have exact colours, but they'll be very close
@@ -3390,21 +3284,12 @@ public MemoryImage readJpeg (const(char)[] filename) {
 
 
 /++
-	History:
-		Added January 22, 2021 (release version 9.2)
-+/
-public void writeJpeg(const(char)[] filename, TrueColorImage img, JpegParams params = JpegParams.init) {
-	if(!compress_image_to_jpeg_file(filename, img.width, img.height, 4, img.colours[], params))
-		throw new JPEGSaveException("jpeg write failed"); // FIXME: check errno?
-}
-
-/++
 		Encodes an image as jpeg in memory.
 
 	History:
 		Added January 22, 2021 (release version 9.2)
 +/
-public ubyte[] encodeJpeg(TrueColorImage img, JpegParams params = JpegParams.init) {
+public ubyte[] encodeJpeg(TrueColorImage img, JpegParams params = JpegParams.init) @system {
 		ubyte[] data;
 	encodeJpeg((const scope ubyte[] i) {
 		data ~= i;
@@ -3414,7 +3299,7 @@ public ubyte[] encodeJpeg(TrueColorImage img, JpegParams params = JpegParams.ini
 	return data;
 }
 
-/*@safe*/ unittest {
+@system unittest {
 	{
 		// round trip it
 		const jpeg = readJpegFromMemory(encodeJpeg(readJpeg("testdata/test.jpg").getAsTrueColorImage));
@@ -3427,7 +3312,7 @@ public ubyte[] encodeJpeg(TrueColorImage img, JpegParams params = JpegParams.ini
 }
 
 /// ditto
-public void encodeJpeg(scope bool delegate(const scope ubyte[]) dg, TrueColorImage img, JpegParams params = JpegParams.init) {
+public void encodeJpeg(scope bool delegate(const scope ubyte[]) dg, TrueColorImage img, JpegParams params = JpegParams.init) @system {
 	if(!compress_image_to_jpeg_stream(
 		dg,
 		img.width, img.height, 4, img.colours[], params))
@@ -3437,7 +3322,7 @@ public void encodeJpeg(scope bool delegate(const scope ubyte[]) dg, TrueColorIma
 
 // ////////////////////////////////////////////////////////////////////////// //
 /// decompress JPEG image from memory buffer.
-public MemoryImage readJpegFromMemory (const(void)[] buf) {
+public MemoryImage readJpegFromMemory (const(void)[] buf) @system {
 	size_t bufpos;
 	return readJpegFromStream(
 		delegate int (void* pBuf, int max_bytes_to_read, bool *pEOF_flag) {
@@ -3518,13 +3403,6 @@ public struct JpegParams {
 
 	///
 	bool twoPass = true;
-
-	///
-	bool check () const pure nothrow @trusted @nogc {
-		if (quality < 1 || quality > 100) return false;
-		if (cast(uint)subsampling > cast(uint)JpegSubsampling.H2V2) return false;
-		return true;
-	}
 }
 
 
@@ -3532,63 +3410,30 @@ public struct JpegParams {
 /// Writes JPEG image to file.
 /// num_channels must be 1 (Y), 3 (RGB), 4 (RGBA), image pitch must be width*num_channels.
 /// note that alpha will not be stored in jpeg file.
-bool compress_image_to_jpeg_stream (scope jpeg_encoder.WriteFunc wfn, int width, int height, int num_channels, const(RGBA32)[] pImage_data) { return compress_image_to_jpeg_stream(wfn, width, height, num_channels, pImage_data, JpegParams()); }
+bool compress_image_to_jpeg_stream (scope jpeg_encoder.WriteFunc wfn, int width, int height, int num_channels, const(RGBA32)[] pImage_data) @system { return compress_image_to_jpeg_stream(wfn, width, height, num_channels, pImage_data, JpegParams()); }
 
 /// Writes JPEG image to file.
 /// num_channels must be 1 (Y), 3 (RGB), 4 (RGBA), image pitch must be width*num_channels.
 /// note that alpha will not be stored in jpeg file.
-bool compress_image_to_jpeg_stream (scope jpeg_encoder.WriteFunc wfn, int width, int height, int num_channels, const(RGBA32)[] pImage_data, in JpegParams comp_params) {
+bool compress_image_to_jpeg_stream (scope jpeg_encoder.WriteFunc wfn, int width, int height, int num_channels, const(RGBA32)[] pImage_data, in JpegParams comp_params) @system {
 	jpeg_encoder dst_image;
-	if (!dst_image.setup(wfn, width, height, num_channels, comp_params)) return false;
+	dst_image.setup(wfn, width, height, num_channels, comp_params);
 	for (uint pass_index = 0; pass_index < dst_image.total_passes(); pass_index++) {
 		for (int i = 0; i < height; i++) {
 			const(RGBA32)* pBuf = pImage_data.ptr+i*width*num_channels / 4;
-			if (!dst_image.process_scanline(pBuf)) return false;
+			dst_image.process_scanline(pBuf);
 		}
-		if (!dst_image.process_scanline(null)) return false;
+		dst_image.process_scanline(null);
 	}
-	dst_image.deinit();
+	dst_image.clear();
 	//return dst_stream.close();
 	return true;
 }
 
 
-/// Writes JPEG image to file.
-/// num_channels must be 1 (Y), 3 (RGB), 4 (RGBA), image pitch must be width*num_channels.
-/// note that alpha will not be stored in jpeg file.
-bool compress_image_to_jpeg_file (const(char)[] fname, int width, int height, int num_channels, const(RGBA32)[] pImage_data) { return compress_image_to_jpeg_file(fname, width, height, num_channels, pImage_data, JpegParams()); }
-
-/// Writes JPEG image to file.
-/// num_channels must be 1 (Y), 3 (RGB), 4 (RGBA), image pitch must be width*num_channels.
-/// note that alpha will not be stored in jpeg file.
-bool compress_image_to_jpeg_file() (const(char)[] fname, int width, int height, int num_channels, const(RGBA32)[] pImage_data, const scope auto ref JpegParams comp_params) {
-	import std.internal.cstring;
-	import core.stdc.stdio : FILE, fopen, fclose, fwrite;
-	FILE* fl = fopen(fname.tempCString, "wb");
-	if (fl is null) return false;
-	scope(exit) if (fl !is null) fclose(fl);
-	auto res = compress_image_to_jpeg_stream(
-		delegate bool (scope const(ubyte)[] buf) {
-			if (fwrite(buf.ptr, 1, buf.length, fl) != buf.length) return false;
-			return true;
-		}, width, height, num_channels, pImage_data, comp_params);
-	if (res) {
-		if (fclose(fl) != 0) res = false;
-		fl = null;
-	}
-	return res;
-}
-
-
 // ////////////////////////////////////////////////////////////////////////// //
 private:
-nothrow @trusted @nogc {
-auto JPGE_MIN(T) (T a, T b) pure nothrow @safe @nogc { pragma(inline, true); return (a < b ? a : b); }
-auto JPGE_MAX(T) (T a, T b) pure nothrow @safe @nogc { pragma(inline, true); return (a > b ? a : b); }
-
-void *jpge_malloc (size_t nSize) { import core.stdc.stdlib : malloc; return malloc(nSize); }
-void jpge_free (void *p) { import core.stdc.stdlib : free; if (p !is null) free(p); }
-
+nothrow @nogc {
 
 // Various JPEG enums and tables.
 enum { DC_LUM_CODES = 12, AC_LUM_CODES = 256, DC_CHROMA_CODES = 12, AC_CHROMA_CODES = 256, MAX_HUFF_SYMBOLS = 257, MAX_HUFF_CODESIZE = 32 }
@@ -3619,14 +3464,11 @@ static immutable ubyte[AC_CHROMA_CODES] s_ac_chroma_val = [
 	0xf9,0xfa
 ];
 
-// Low-level helper functions.
-//template <class T> inline void clear_obj(T &obj) { memset(&obj, 0, sizeof(obj)); }
-
 enum YR = 19595, YG = 38470, YB = 7471, CB_R = -11059, CB_G = -21709, CB_B = 32768, CR_R = 32768, CR_G = -27439, CR_B = -5329; // int
 //ubyte clamp (int i) { if (cast(uint)(i) > 255U) { if (i < 0) i = 0; else if (i > 255) i = 255; } return cast(ubyte)(i); }
-ubyte clamp() (int i) { pragma(inline, true); return cast(ubyte)(cast(uint)i > 255 ? (((~i)>>31)&0xFF) : i); }
+ubyte clamp() (int i) @safe { pragma(inline, true); return cast(ubyte)(cast(uint)i > 255 ? (((~i)>>31)&0xFF) : i); }
 
-void RGB_to_YCC (ubyte* pDst, const(ubyte)* pSrc, int num_pixels) {
+void RGB_to_YCC (ubyte* pDst, const(ubyte)* pSrc, int num_pixels) @system {
 	for (; num_pixels; pDst += 3, pSrc += 3, --num_pixels) {
 		immutable int r = pSrc[0], g = pSrc[1], b = pSrc[2];
 		pDst[0] = cast(ubyte)((r*YR+g*YG+b*YB+32768)>>16);
@@ -3635,13 +3477,13 @@ void RGB_to_YCC (ubyte* pDst, const(ubyte)* pSrc, int num_pixels) {
 	}
 }
 
-void RGB_to_Y (ubyte* pDst, const(ubyte)* pSrc, int num_pixels) {
+void RGB_to_Y (ubyte* pDst, const(ubyte)* pSrc, int num_pixels) @system {
 	for (; num_pixels; ++pDst, pSrc += 3, --num_pixels) {
 		pDst[0] = cast(ubyte)((pSrc[0]*YR+pSrc[1]*YG+pSrc[2]*YB+32768)>>16);
 	}
 }
 
-void RGBA_to_YCC (ubyte* pDst, const(ubyte)* pSrc, int num_pixels) {
+void RGBA_to_YCC (ubyte* pDst, const(ubyte)* pSrc, int num_pixels) @system {
 	for (; num_pixels; pDst += 3, pSrc += 4, --num_pixels) {
 		immutable int r = pSrc[0], g = pSrc[1], b = pSrc[2];
 		pDst[0] = cast(ubyte)((r*YR+g*YG+b*YB+32768)>>16);
@@ -3650,20 +3492,20 @@ void RGBA_to_YCC (ubyte* pDst, const(ubyte)* pSrc, int num_pixels) {
 	}
 }
 
-void RGBA_to_Y (ubyte* pDst, const(ubyte)* pSrc, int num_pixels) {
+void RGBA_to_Y (ubyte* pDst, const(ubyte)* pSrc, int num_pixels) @system {
 	for (; num_pixels; ++pDst, pSrc += 4, --num_pixels) {
 		pDst[0] = cast(ubyte)((pSrc[0]*YR+pSrc[1]*YG+pSrc[2]*YB+32768)>>16);
 	}
 }
 
-void Y_to_YCC (ubyte* pDst, const(ubyte)* pSrc, int num_pixels) {
+void Y_to_YCC (ubyte* pDst, const(ubyte)* pSrc, int num_pixels) @system {
 	for (; num_pixels; pDst += 3, ++pSrc, --num_pixels) { pDst[0] = pSrc[0]; pDst[1] = 128; pDst[2] = 128; }
 }
 
 // Forward DCT - DCT derived from jfdctint.
 enum { ROW_BITS = 2 }
 //#define DCT_DESCALE(x, n) (((x)+(((int)1)<<((n)-1)))>>(n))
-int DCT_DESCALE() (int x, int n) { pragma(inline, true); return (((x)+((cast(int)1)<<((n)-1)))>>(n)); }
+int DCT_DESCALE() (int x, int n) @safe { pragma(inline, true); return (((x)+((cast(int)1)<<((n)-1)))>>(n)); }
 //#define DCT_MUL(var, c) (cast(short)(var)*cast(int)(c))
 
 //#define DCT1D(s0, s1, s2, s3, s4, s5, s6, s7)
@@ -3684,7 +3526,7 @@ enum DCT1D = q{{
 	s0 = t10+t11; s1 = t7+u1+u4; s3 = t6+u2+u3; s4 = t10-t11; s5 = t5+u2+u4; s7 = t4+u1+u3;
 }};
 
-void DCT2D (int* p) {
+void DCT2D (int* p) @system {
 	int c;
 	int* q = p;
 	for (c = 7; c >= 0; --c, q += 8) {
@@ -3706,10 +3548,9 @@ void DCT2D (int* p) {
 struct sym_freq { uint m_key, m_sym_index; }
 
 // Radix sorts sym_freq[] array by 32-bit key m_key. Returns ptr to sorted values.
-sym_freq* radix_sort_syms (uint num_syms, sym_freq* pSyms0, sym_freq* pSyms1) {
+sym_freq* radix_sort_syms (uint num_syms, sym_freq* pSyms0, sym_freq* pSyms1) @system {
 	const uint cMaxPasses = 4;
 	uint[256*cMaxPasses] hist;
-	//clear_obj(hist);
 	for (uint i = 0; i < num_syms; i++) {
 		uint freq = pSyms0[i].m_key;
 		++hist[freq&0xFF];
@@ -3732,7 +3573,7 @@ sym_freq* radix_sort_syms (uint num_syms, sym_freq* pSyms0, sym_freq* pSyms1) {
 }
 
 // calculate_minimum_redundancy() originally written by: Alistair Moffat, alistair@cs.mu.oz.au, Jyrki Katajainen, jyrki@diku.dk, November 1996.
-void calculate_minimum_redundancy (sym_freq* A, int n) {
+void calculate_minimum_redundancy (sym_freq* A, int n) @system {
 	int root, leaf, next, avbl, used, dpth;
 	if (n == 0) return;
 	if (n == 1) { A[0].m_key = 1; return; }
@@ -3754,7 +3595,7 @@ void calculate_minimum_redundancy (sym_freq* A, int n) {
 }
 
 // Limits canonical Huffman code table's max code size to max_code_size.
-void huffman_enforce_max_code_size (int* pNum_codes, int code_list_len, int max_code_size) {
+void huffman_enforce_max_code_size (int* pNum_codes, int code_list_len, int max_code_size) @system {
 	if (code_list_len <= 1) return;
 	for (int i = max_code_size+1; i <= MAX_HUFF_CODESIZE; i++) pNum_codes[max_code_size] += pNum_codes[i];
 	uint total = 0;
@@ -3776,7 +3617,6 @@ struct jpeg_encoder {
 public:
 	alias WriteFunc = bool delegate (scope const(ubyte)[] buf);
 
-nothrow /*@trusted @nogc*/:
 private:
 	alias sample_array_t = int;
 
@@ -3808,11 +3648,10 @@ private:
 	uint m_bit_buffer;
 	uint m_bits_in;
 	ubyte m_pass_num;
-	bool m_all_stream_writes_succeeded = true;
 
 private:
 	// Generates an optimized offman table.
-	void optimize_huffman_table (int table_num, int table_len) {
+	void optimize_huffman_table (int table_num, int table_len) @system {
 		sym_freq[MAX_HUFF_SYMBOLS] syms0;
 		sym_freq[MAX_HUFF_SYMBOLS] syms1;
 		syms0[0].m_key = 1; syms0[0].m_sym_index = 0; // dummy symbol, assures that no valid code contains all 1's
@@ -3826,14 +3665,12 @@ private:
 
 		// Count the # of symbols of each code size.
 		int[1+MAX_HUFF_CODESIZE] num_codes;
-		//clear_obj(num_codes);
 		for (int i = 0; i < num_used_syms; i++) num_codes[pSyms[i].m_key]++;
 
 		enum JPGE_CODE_SIZE_LIMIT = 16u; // the maximum possible size of a JPEG Huffman code (valid range is [9,16] - 9 vs. 8 because of the dummy symbol)
 		huffman_enforce_max_code_size(num_codes.ptr, num_used_syms, JPGE_CODE_SIZE_LIMIT);
 
 		// Compute m_huff_bits array, which contains the # of symbols per code size.
-		//clear_obj(m_huff_bits[table_num]);
 		m_huff_bits[table_num][] = 0;
 		for (int i = 1; i <= cast(int)JPGE_CODE_SIZE_LIMIT; i++) m_huff_bits[table_num][i] = cast(ubyte)(num_codes[i]);
 
@@ -3846,37 +3683,33 @@ private:
 		for (int i = num_used_syms-1; i >= 1; i--) m_huff_val[table_num][num_used_syms-1-i] = cast(ubyte)(pSyms[i].m_sym_index-1);
 	}
 
-	bool put_obj(T) (T v) {
-		try {
-			return (m_pStream !is null && m_pStream((&v)[0..1]));
-		} catch (Exception) {}
-		return false;
+	void put_obj(T) (T v) {
+		enforce!JPEGSaveException(m_pStream !is null, "Missing stream function");
+		m_pStream((&v)[0..1]);
 	}
 
-	bool put_buf() (const(void)* v, uint len) {
-		try {
-			return (m_pStream !is null && m_pStream((cast(ubyte*)v)[0..len]));
-		} catch (Exception) {}
-		return false;
+	void put_buf() (const(void)* v, uint len) {
+		enforce!JPEGSaveException(m_pStream !is null, "Missing stream function");
+		m_pStream((cast(ubyte*)v)[0..len]);
 	}
 
 	// JPEG marker generation.
-	void emit_byte (ubyte i) {
-		m_all_stream_writes_succeeded = m_all_stream_writes_succeeded && put_obj(i);
+	void emit_byte (ubyte i) @system {
+		put_obj(i);
 	}
 
-	void emit_word(uint i) {
+	void emit_word(uint i) @system {
 		emit_byte(cast(ubyte)(i>>8));
 		emit_byte(cast(ubyte)(i&0xFF));
 	}
 
-	void emit_marker (int marker) {
+	void emit_marker (int marker) @system {
 		emit_byte(cast(ubyte)(0xFF));
 		emit_byte(cast(ubyte)(marker));
 	}
 
 	// Emit JFIF marker
-	void emit_jfif_app0 () {
+	void emit_jfif_app0 () @system {
 		emit_marker(M_APP0);
 		emit_word(2+4+1+2+1+2+2+1+1);
 		emit_byte(0x4A); emit_byte(0x46); emit_byte(0x49); emit_byte(0x46); /* Identifier: ASCII "JFIF" */
@@ -3891,7 +3724,7 @@ private:
 	}
 
 	// Emit quantization tables
-	void emit_dqt () {
+	void emit_dqt () @system {
 		for (int i = 0; i < (m_num_components == 3 ? 2 : 1); i++) {
 			emit_marker(M_DQT);
 			emit_word(64+1+2);
@@ -3901,7 +3734,7 @@ private:
 	}
 
 	// Emit start of frame marker
-	void emit_sof () {
+	void emit_sof () @system {
 		emit_marker(M_SOF0); /* baseline */
 		emit_word(3*m_num_components+2+5+1);
 		emit_byte(8); /* precision */
@@ -3916,7 +3749,7 @@ private:
 	}
 
 	// Emit Huffman table.
-	void emit_dht (ubyte* bits, ubyte* val, int index, bool ac_flag) {
+	void emit_dht (ubyte* bits, ubyte* val, int index, bool ac_flag) @system {
 		emit_marker(M_DHT);
 		int length = 0;
 		for (int i = 1; i <= 16; i++) length += bits[i];
@@ -3927,7 +3760,7 @@ private:
 	}
 
 	// Emit all Huffman tables.
-	void emit_dhts () {
+	void emit_dhts () @system {
 		emit_dht(m_huff_bits[0+0].ptr, m_huff_val[0+0].ptr, 0, false);
 		emit_dht(m_huff_bits[2+0].ptr, m_huff_val[2+0].ptr, 0, true);
 		if (m_num_components == 3) {
@@ -3937,7 +3770,7 @@ private:
 	}
 
 	// emit start of scan
-	void emit_sos () {
+	void emit_sos () @system {
 		emit_marker(M_SOS);
 		emit_word(2*m_num_components+2+1+3);
 		emit_byte(m_num_components);
@@ -3954,7 +3787,7 @@ private:
 	}
 
 	// Emit all markers at beginning of image file.
-	void emit_markers () {
+	void emit_markers () @system {
 		emit_marker(M_SOI);
 		emit_jfif_app0();
 		emit_dqt();
@@ -3964,7 +3797,7 @@ private:
 	}
 
 	// Compute the actual canonical Huffman codes/code sizes given the JPEG huff bits and val arrays.
-	void compute_huffman_table (uint* codes, ubyte* code_sizes, ubyte* bits, ubyte* val) {
+	void compute_huffman_table (uint* codes, ubyte* code_sizes, ubyte* bits, ubyte* val) @system {
 		import core.stdc.string : memset;
 
 		int i, l, last_p, si;
@@ -3999,7 +3832,7 @@ private:
 	}
 
 	// Quantization table generation.
-	void compute_quant_table (int* pDst, const(short)* pSrc) {
+	void compute_quant_table (int* pDst, const(short)* pSrc) @system {
 		int q;
 		if (m_params.quality < 50)
 			q = 5000/m_params.quality;
@@ -4007,12 +3840,12 @@ private:
 			q = 200-m_params.quality*2;
 		for (int i = 0; i < 64; i++) {
 			int j = *pSrc++; j = (j*q+50L)/100L;
-			*pDst++ = JPGE_MIN(JPGE_MAX(j, 1), 255);
+			*pDst++ = min(max(j, 1), 255);
 		}
 	}
 
 	// Higher-level methods.
-	void first_pass_init () {
+	void first_pass_init () @system {
 		import core.stdc.string : memset;
 		m_bit_buffer = 0; m_bits_in = 0;
 		memset(m_last_dc_val.ptr, 0, 3*m_last_dc_val[0].sizeof);
@@ -4020,7 +3853,7 @@ private:
 		m_pass_num = 1;
 	}
 
-	bool second_pass_init () {
+	void second_pass_init () @system {
 		compute_huffman_table(&m_huff_codes[0+0][0], &m_huff_code_sizes[0+0][0], m_huff_bits[0+0].ptr, m_huff_val[0+0].ptr);
 		compute_huffman_table(&m_huff_codes[2+0][0], &m_huff_code_sizes[2+0][0], m_huff_bits[2+0].ptr, m_huff_val[2+0].ptr);
 		if (m_num_components > 1)
@@ -4031,10 +3864,9 @@ private:
 		first_pass_init();
 		emit_markers();
 		m_pass_num = 2;
-		return true;
 	}
 
-	bool jpg_open (int p_x_res, int p_y_res, int src_channels) {
+	void jpg_open (int p_x_res, int p_y_res, int src_channels) @system {
 		m_num_components = 3;
 		switch (m_params.subsampling) {
 			case JpegSubsampling.Y_ONLY:
@@ -4072,7 +3904,7 @@ private:
 		m_image_bpl_mcu = m_image_x_mcu*m_num_components;
 		m_mcus_per_row = m_image_x_mcu/m_mcu_x;
 
-		if ((m_mcu_lines[0] = cast(ubyte*)(jpge_malloc(m_image_bpl_mcu*m_mcu_y))) is null) return false;
+		m_mcu_lines[0] = &(new ubyte[](m_image_bpl_mcu*m_mcu_y))[0];
 		for (int i = 1; i < m_mcu_y; i++)
 			m_mcu_lines[i] = m_mcu_lines[i-1]+m_image_bpl_mcu;
 
@@ -4084,7 +3916,6 @@ private:
 
 		if (m_params.twoPass)
 		{
-			//clear_obj(m_huff_count);
 			import core.stdc.string : memset;
 			memset(m_huff_count.ptr, 0, m_huff_count.sizeof);
 			first_pass_init();
@@ -4099,12 +3930,11 @@ private:
 			m_huff_val[0+1 .. 0+1 + DC_CHROMA_CODES] = cast(const(ubyte[256][]))s_dc_chroma_val[0 .. DC_CHROMA_CODES];
 			m_huff_bits[2+1 .. 2+1 + 17] = s_ac_chroma_bits[0 .. 17];
 			m_huff_val[2+1 .. 2+1 + AC_CHROMA_CODES] = s_ac_chroma_val[0 .. AC_CHROMA_CODES];
-			if (!second_pass_init()) return false; // in effect, skip over the first pass
+			second_pass_init();
 		}
-		return m_all_stream_writes_succeeded;
 	}
 
-	void load_block_8_8_grey (int x) {
+	void load_block_8_8_grey (int x) @system {
 		ubyte *pSrc;
 		sample_array_t *pDst = m_sample_array.ptr;
 		x <<= 3;
@@ -4116,7 +3946,7 @@ private:
 		}
 	}
 
-	void load_block_8_8 (int x, int y, int c) {
+	void load_block_8_8 (int x, int y, int c) @system {
 		ubyte *pSrc;
 		sample_array_t *pDst = m_sample_array.ptr;
 		x = (x*(8*3))+c;
@@ -4129,7 +3959,7 @@ private:
 		}
 	}
 
-	void load_block_16_8 (int x, int c) {
+	void load_block_16_8 (int x, int c) @system {
 		ubyte* pSrc1;
 		ubyte* pSrc2;
 		sample_array_t *pDst = m_sample_array.ptr;
@@ -4147,7 +3977,7 @@ private:
 		}
 	}
 
-	void load_block_16_8_8 (int x, int c) {
+	void load_block_16_8_8 (int x, int c) @system {
 		ubyte *pSrc1;
 		sample_array_t *pDst = m_sample_array.ptr;
 		x = (x*(16*3))+c;
@@ -4160,7 +3990,7 @@ private:
 		}
 	}
 
-	void load_quantized_coefficients (int component_num) {
+	void load_quantized_coefficients (int component_num) @system {
 		int *q = m_quantization_tables[component_num > 0].ptr;
 		short *pDst = m_coefficient_array.ptr;
 		for (int i = 0; i < 64; i++)
@@ -4184,13 +4014,13 @@ private:
 		}
 	}
 
-	void flush_output_buffer () {
-		if (m_out_buf_left != JPGE_OUT_BUF_SIZE) m_all_stream_writes_succeeded = m_all_stream_writes_succeeded && put_buf(m_out_buf.ptr, JPGE_OUT_BUF_SIZE-m_out_buf_left);
+	void flush_output_buffer () @system {
+		if (m_out_buf_left != JPGE_OUT_BUF_SIZE) put_buf(m_out_buf.ptr, JPGE_OUT_BUF_SIZE-m_out_buf_left);
 		m_pOut_buf = m_out_buf.ptr;
 		m_out_buf_left = JPGE_OUT_BUF_SIZE;
 	}
 
-	void put_bits (uint bits, uint len) {
+	void put_bits (uint bits, uint len) @system {
 		m_bit_buffer |= (cast(uint)bits<<(24-(m_bits_in += len)));
 		while (m_bits_in >= 8) {
 			ubyte c;
@@ -4209,7 +4039,7 @@ private:
 		}
 	}
 
-	void code_coefficients_pass_one (int component_num) {
+	void code_coefficients_pass_one (int component_num) @system {
 		if (component_num >= 3) return; // just to shut up static analysis
 		int i, run_len, nbits, temp1;
 		short *src = m_coefficient_array.ptr;
@@ -4248,7 +4078,7 @@ private:
 		if (run_len) ac_count[0]++;
 	}
 
-	void code_coefficients_pass_two (int component_num) {
+	void code_coefficients_pass_two (int component_num) @system {
 		int i, j, run_len, nbits, temp1, temp2;
 		short *pSrc = m_coefficient_array.ptr;
 		uint*[2] codes;
@@ -4311,7 +4141,7 @@ private:
 			put_bits(codes[1][0], code_sizes[1][0]);
 	}
 
-	void code_block (int component_num) {
+	void code_block (int component_num) @system {
 		DCT2D(m_sample_array.ptr);
 		load_quantized_coefficients(component_num);
 		if (m_pass_num == 1)
@@ -4320,7 +4150,7 @@ private:
 			code_coefficients_pass_two(component_num);
 	}
 
-	void process_mcu_row () {
+	void process_mcu_row () @system {
 		if (m_num_components == 1)
 		{
 			for (int i = 0; i < m_mcus_per_row; i++)
@@ -4354,24 +4184,23 @@ private:
 		}
 	}
 
-	bool terminate_pass_one () {
+	void terminate_pass_one () @system {
 		optimize_huffman_table(0+0, DC_LUM_CODES); optimize_huffman_table(2+0, AC_LUM_CODES);
 		if (m_num_components > 1)
 		{
 			optimize_huffman_table(0+1, DC_CHROMA_CODES); optimize_huffman_table(2+1, AC_CHROMA_CODES);
 		}
-		return second_pass_init();
+		second_pass_init();
 	}
 
-	bool terminate_pass_two () {
+	void terminate_pass_two () @system {
 		put_bits(0x7F, 7);
 		flush_output_buffer();
 		emit_marker(M_EOI);
 		m_pass_num++; // purposely bump up m_pass_num, for debugging
-		return true;
 	}
 
-	bool process_end_of_image () {
+	void process_end_of_image () @system {
 		if (m_mcu_y_ofs)
 		{
 			if (m_mcu_y_ofs < 16) // check here just to shut up static analysis
@@ -4389,7 +4218,7 @@ private:
 			return terminate_pass_two();
 	}
 
-	void load_mcu (const(void)* pSrc) {
+	void load_mcu (const(void)* pSrc) @system {
 		const(ubyte)* Psrc = cast(const(ubyte)*)(pSrc);
 
 		ubyte* pDst = m_mcu_lines[m_mcu_y_ofs]; // OK to write up to m_image_bpl_xlt bytes to pDst
@@ -4434,16 +4263,15 @@ private:
 		}
 	}
 
-	void clear() {
+	void clear() @safe pure {
 		m_mcu_lines[0] = null;
 		m_pass_num = 0;
-		m_all_stream_writes_succeeded = true;
 	}
 
 
 public:
 	//this () { clear(); }
-	~this () { deinit(); }
+	~this () { clear(); }
 
 	@disable this (this); // no copies
 
@@ -4453,40 +4281,35 @@ public:
 	// width, height - Image dimensions.
 	// channels - May be 1, or 3. 1 indicates grayscale, 3 indicates RGB source data.
 	// Returns false on out of memory or if a stream write fails.
-	bool setup() (WriteFunc pStream, int width, int height, int src_channels, const scope auto ref JpegParams comp_params) {
-		deinit();
-		if ((pStream is null || width < 1 || height < 1) || (src_channels != 1 && src_channels != 3 && src_channels != 4) || !comp_params.check()) return false;
+	void setup() (WriteFunc pStream, int width, int height, int src_channels, const scope auto ref JpegParams comp_params) @system {
+		clear();
+		enforce!JPEGSaveException(pStream !is null);
+		enforce!JPEGSaveException((width >= 1) && (height >= 1));
+		enforce!JPEGSaveException((src_channels == 1) || (src_channels == 3) || (src_channels == 4));
+		enforce!JPEGSaveException((comp_params.quality >= 1) || (comp_params.quality <= 100), "Quality out of range [1 .. 100]");
+		enforce!JPEGSaveException(cast(uint)comp_params.subsampling <= cast(uint)JpegSubsampling.H2V2, "Invalid subsampling factor");
 		m_pStream = pStream;
 		m_params = comp_params;
-		return jpg_open(width, height, src_channels);
+		jpg_open(width, height, src_channels);
 	}
 
 	bool setup() (WriteFunc pStream, int width, int height, int src_channels) { return setup(pStream, width, height, src_channels, JpegParams()); }
 
-	ref inout(JpegParams) params () return inout pure nothrow @trusted @nogc { pragma(inline, true); return m_params; }
+	ref inout(JpegParams) params () return inout pure nothrow @nogc { pragma(inline, true); return m_params; }
 
-	// Deinitializes the compressor, freeing any allocated memory. May be called at any time.
-	void deinit () {
-		jpge_free(m_mcu_lines[0]);
-		clear();
-	}
-
-	uint total_passes () const pure nothrow @trusted @nogc { pragma(inline, true); return (m_params.twoPass ? 2 : 1); }
-	uint cur_pass () const pure nothrow @trusted @nogc { pragma(inline, true); return m_pass_num; }
+	uint total_passes () const pure @safe { pragma(inline, true); return (m_params.twoPass ? 2 : 1); }
+	uint cur_pass () const pure @safe { pragma(inline, true); return m_pass_num; }
 
 	// Call this method with each source scanline.
 	// width*src_channels bytes per scanline is expected (RGB or Y format).
 	// You must call with null after all scanlines are processed to finish compression.
 	// Returns false on out of memory or if a stream write fails.
-	bool process_scanline (const(void)* pScanline) {
-		if (m_pass_num < 1 || m_pass_num > 2) return false;
-		if (m_all_stream_writes_succeeded) {
-			if (pScanline is null) {
-				if (!process_end_of_image()) return false;
-			} else {
-				load_mcu(pScanline);
-			}
+	void process_scanline (const(void)* pScanline) @system {
+		enforce!JPEGSaveException((m_pass_num >= 1) && (m_pass_num <= 2));
+		if (pScanline is null) {
+			process_end_of_image();
+		} else {
+			load_mcu(pScanline);
 		}
-		return m_all_stream_writes_succeeded;
 	}
 }

@@ -1,6 +1,7 @@
 module pixelmancy.util;
 
 import std.exception;
+import std.stdio;
 
 class PixelmancyException : Exception { mixin basicExceptionCtors; }
 class ImageLoadException : PixelmancyException { mixin basicExceptionCtors; }
@@ -534,4 +535,16 @@ T peek(T)(const(ubyte)[] range) if (is(T == struct)) {
 T read(T)(ref const(ubyte)[] range) if (is(T == struct)) {
 	scope(exit) range = range[T.sizeof .. $];
 	return range.peek!T();
+}
+
+package void trustedWrite(string filename, const(ubyte)[] data) @trusted {
+	import std.file : write;
+	write(filename, data);
+}
+package const(ubyte)[] trustedRead(scope const(char)[] fname) @trusted {
+	import std.file : read;
+	return cast(const(ubyte)[])read(fname);
+}
+package ubyte[] trustedRead(scope ref File file, scope ubyte[] buffer) @trusted {
+	return file.rawRead(buffer);
 }

@@ -289,7 +289,7 @@ public void imageResize(int Components=4) (
 
 // ////////////////////////////////////////////////////////////////////////// //
 public final class ImageResampleWorker {
-nothrow @trusted @nogc:
+nothrow @nogc:
 public:
 	alias ResampleReal = float;
 	alias Sample = ResampleReal;
@@ -320,7 +320,7 @@ public:
 	}
 
 private:
-	alias FilterFunc = ResampleReal function (ResampleReal) nothrow @trusted @nogc;
+	alias FilterFunc = ResampleReal function (ResampleReal) nothrow @safe @nogc;
 
 	int mIntermediateX;
 
@@ -832,7 +832,7 @@ public:
 	// filter accessors
 	static auto filters () {
 		static struct FilterRange {
-		pure nothrow @trusted @nogc:
+		pure nothrow @nogc:
 			int idx;
 			bool empty () const { pragma(inline, true); return (idx >= NumFilters); }
 			string front () const { pragma(inline, true); return (idx < NumFilters ? gFilters[idx].name : null); }
@@ -953,7 +953,7 @@ private:
 
 
 // ////////////////////////////////////////////////////////////////////////// //
-private nothrow @trusted @nogc:
+private nothrow @safe @nogc:
 int resamplerRangeCheck (int v, int h) {
 	//import std.conv : to;
 	//assert(v >= 0 && v < h, "invalid v ("~to!string(v)~"), should be in [0.."~to!string(h)~")");
@@ -1221,19 +1221,19 @@ enum NumFilters = cast(int)gFilters.length;
 
 bool rsmStringEqu (const(char)[] s0, const(char)[] s1) {
 	for (;;) {
-		if (s0.length && (s0.ptr[0] <= ' ' || s0.ptr[0] == '_')) { s0 = s0[1..$]; continue; }
-		if (s1.length && (s1.ptr[0] <= ' ' || s1.ptr[0] == '_')) { s1 = s1[1..$]; continue; }
+		if (s0.length && (s0[0] <= ' ' || s0[0] == '_')) { s0 = s0[1..$]; continue; }
+		if (s1.length && (s1[0] <= ' ' || s1[0] == '_')) { s1 = s1[1..$]; continue; }
 		if (s0.length == 0) {
-			while (s1.length && (s1.ptr[0] <= ' ' || s1.ptr[0] == '_')) s1 = s1[1..$];
+			while (s1.length && (s1[0] <= ' ' || s1[0] == '_')) s1 = s1[1..$];
 			return (s1.length == 0);
 		}
 		if (s1.length == 0) {
-			while (s0.length && (s0.ptr[0] <= ' ' || s0.ptr[0] == '_')) s0 = s0[1..$];
+			while (s0.length && (s0[0] <= ' ' || s0[0] == '_')) s0 = s0[1..$];
 			return (s0.length == 0);
 		}
 		assert(s0.length && s1.length);
-		char c0 = s0.ptr[0];
-		char c1 = s1.ptr[0];
+		char c0 = s0[0];
+		char c1 = s1[0];
 		if (c0 >= 'A' && c0 <= 'Z') c0 += 32; // poor man's tolower
 		if (c1 >= 'A' && c1 <= 'Z') c1 += 32; // poor man's tolower
 		if (c0 != c1) return false;

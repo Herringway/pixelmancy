@@ -10,6 +10,7 @@ import pixelmancy.util;
 
 import std.conv;
 import std.exception;
+import std.stdio;
 
 class BMPLoadException : ImageLoadException {
 	mixin basicExceptionCtors;
@@ -19,16 +20,11 @@ class BMPSaveException : ImageSaveException {
 }
 
 /// Reads a .bmp file from the given `filename`
-MemoryImage readBmp(string filename) @system {
-	import core.stdc.stdio;
+MemoryImage readBmp(string filename) @safe {
+	auto fp = File(filename, "rb");
 
-	FILE* fp = fopen((filename ~ "\0").ptr, "rb".ptr);
-	enforce!BMPLoadException(fp !is null, "Can't open save file");
-	scope(exit) fclose(fp);
-
-	void specialFread(void* tgt, size_t size) {
-		debug(pixelmancy) { import core.stdc.stdio; printf("ofs: 0x%08x\n", cast(uint)ftell(fp)); }
-		fread(tgt, size, 1, fp);
+	void specialFread(scope ubyte[] data) @safe {
+		trustedRead(fp, data);
 	}
 
 	return readBmpIndirect(&specialFread);
@@ -43,25 +39,19 @@ MemoryImage readBmp(string filename) @system {
 	are a little-endian uint giving the file size. You might slice only to that, or you could slice right to `int.max`
 	and trust the library to bounds check for you based on data integrity checks.
 +/
-MemoryImage readBmp(in ubyte[] data, bool lookForFileHeader = true, bool hackAround64BitLongs = false, bool hasAndMask = false) @system {
+MemoryImage readBmp(in ubyte[] data, bool lookForFileHeader = true, bool hackAround64BitLongs = false, bool hasAndMask = false) @safe {
 	int position;
 	const(ubyte)[] current = data;
-	void specialFread(void* tgt, size_t size) {
-		while(size) {
-			enforce!BMPLoadException(current.length != 0, "Unexpected end of file"); // it's not *that* fatal, so don't throw RangeError
-			//import std.stdio; writefln("%04x", position);
-			*cast(ubyte*)(tgt) = current[0];
-			current = current[1 .. $];
-			position++;
-			tgt++;
-			size--;
-		}
+	void specialFread(scope ubyte[] data) @safe {
+		enforce!BMPLoadException(current.length >= data.length, "Unexpected end of file"); // it's not *that* fatal, so don't throw RangeError
+		data[] = current[0 .. data.length];
+		current = current[data.length .. $];
 	}
 
 	return readBmpIndirect(&specialFread, lookForFileHeader, hackAround64BitLongs, hasAndMask);
 }
 
-@system unittest {
+@safe unittest {
 	{
 		const bmp = readBmp("testdata/test24.bmp");
 		assert(bmp[0, 0] == RGBA32(0, 0, 255, 255));
@@ -80,8 +70,12 @@ MemoryImage readBmp(in ubyte[] data, bool lookForFileHeader = true, bool hackAro
 
 		The `hasAndMask` param was added July 21, 2022. This is set to true if it is a bitmap from a .ico file or similar, where the top half of the file (by height) is the xor mask, then the bottom half is the and mask.
 +/
-MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookForFileHeader = true, bool hackAround64BitLongs = false, bool hasAndMask = false) @system {
-	uint read4() { uint what; fread(&what, 4); return what; }
+MemoryImage readBmpIndirect(scope void delegate(scope ubyte[]) @safe fread, bool lookForFileHeader = true, bool hackAround64BitLongs = false, bool hasAndMask = false) @safe {
+	uint read4() {
+		uint[1] what;
+		fread(cast(ubyte[])what);
+		return what[0];
+	}
 	uint readLONG() {
 		auto le = read4();
 		/++
@@ -95,7 +89,11 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 			enforce!BMPLoadException(read4() == 0, "hackAround64BitLongs is true, but the file doesn't appear to use 64 bit longs");
 		return le;
 	}
-	ushort read2(){ ushort what; fread(&what, 2); return what; }
+	ushort read2(){
+		ushort[1] what;
+		fread(cast(ubyte[])what);
+		return what[0];
+	}
 
 	bool headerRead = false;
 	int hackCounter;
@@ -105,9 +103,9 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 			hackCounter++;
 			return 0;
 		}
-		ubyte what;
-		fread(&what, 1);
-		return what;
+		ubyte[1] what;
+		fread(what[]);
+		return what[0];
 	}
 
 	void require1(ubyte t, size_t line = __LINE__) {
@@ -129,13 +127,13 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 		require2(0); 	// reserved
 
 		auto offsetToBits = read4();
-		debug(pixelmancy) { import core.stdc.stdio; printf("pixel data offset: 0x%08x\n", cast(uint)offsetToBits); }
+		debug(pixelmancy) { writefln!"pixel data offset: 0x%08x"(offsetToBits); }
 	}
 
 	auto sizeOfBitmapInfoHeader = read4();
 	enforce!BMPLoadException(sizeOfBitmapInfoHeader >= 12, "Invalid header size");
 
-	debug(pixelmancy) { import core.stdc.stdio; printf("size of bitmap info header: %d\n", cast(uint)sizeOfBitmapInfoHeader); }
+	debug(pixelmancy) { writefln!"size of bitmap info header: %d"(sizeOfBitmapInfoHeader); }
 
 	int width, height, rdheight;
 
@@ -152,13 +150,13 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 	height = (rdheight < 0 ? -rdheight : rdheight);
 
 	if(hasAndMask) {
-		debug(pixelmancy) { import core.stdc.stdio; printf("has and mask so height slashed %d\n", height / 2); }
+		debug(pixelmancy) { writefln!"has and mask so height slashed %d"(height / 2); }
 		height = height / 2;
 	}
 
 	rdheight = (rdheight < 0 ? 1 : -1); // so we can use it as delta (note the inverted sign)
 
-	debug(pixelmancy) { import core.stdc.stdio; printf("size: %dx%d\n", cast(int)width, cast(int) height); }
+	debug(pixelmancy) { writefln!"size: %dx%d"(width, height); }
 	enforce!BMPLoadException((width >= 1) && (height >= 1), "Invalid dimensions");
 
 	require2(1); // planes
@@ -198,7 +196,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 	enforce!BMPLoadException((compression != 1) || (bitsPerPixel == 8), "Invalid compression");
 	enforce!BMPLoadException((compression != 2) || (bitsPerPixel == 4), "Invalid compression");
 
-	debug(pixelmancy) { import core.stdc.stdio; printf("compression: %u; bpp: %u\n", compression, cast(uint)bitsPerPixel); }
+	debug(pixelmancy) { writefln!"compression: %s; bpp: %s"(compression, bitsPerPixel); }
 
 	uint redMask;
 	uint greenMask;
@@ -215,7 +213,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 	// FIXME: we could probably handle RLE4 as well
 
 	// I don't know about the rest of the header, so I'm just skipping it.
-	debug(pixelmancy) { import core.stdc.stdio; printf("header bytes left: %u\n", cast(uint)sizeOfBitmapInfoHeader); }
+	debug(pixelmancy) { writefln!"header bytes left: %s"(sizeOfBitmapInfoHeader); }
 	foreach (skip; 0..sizeOfBitmapInfoHeader) read1();
 
 	headerRead = true;
@@ -223,20 +221,20 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 
 
 	// the dg returns the change in offset
-	void processAndMask(scope int delegate(int x, int y, bool transparent) apply) {
+	void processAndMask(scope int delegate(int x, int y, bool transparent) @safe apply) {
 		try {
 			// the and mask is always 1bpp and i want to translate it into transparent pixels
 
 			for(int y = (height - 1); y >= 0; y--) {
-				//debug(pixelmancy) { import core.stdc.stdio; printf(" reading and mask %d\n", y); }
+				//debug(pixelmancy) { writefln!" reading and mask %d"(y); }
 				int read;
 				for(int x = 0; x < width; x++) {
 					const b = read1();
-					//import std.stdio; writefln("%02x", b);
+					//writefln!"%02x"(b);
 					read++;
 					foreach_reverse(lol; 0 .. 8) {
 						bool transparent = !!((b & (1 << lol)));
-						debug(pixelmancy) { import std.stdio; write(transparent ? "o":"x"); }
+						debug(pixelmancy) { write(transparent ? "o":"x"); }
 						apply(x, y, transparent);
 
 						x++;
@@ -249,7 +247,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 					read1();
 					read++;
 				}
-				debug(pixelmancy) {import std.stdio; writeln(""); }
+				debug(pixelmancy) { writeln(""); }
 			}
 
 			/+
@@ -261,7 +259,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 			// discard; the and mask is optional in practice since using all 0's
 			// gives a result and some files in the wild deliberately truncate the
 			// file (though they aren't supposed to....) expecting readers to do this.
-			debug(pixelmancy) { import std.stdio; writeln(e); }
+			debug(pixelmancy) { writeln(e); }
 		}
 	}
 
@@ -269,7 +267,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 
 	if(bitsPerPixel <= 8) {
 		// indexed image
-		debug(pixelmancy) { import core.stdc.stdio; printf("colorsUsed=%u; colorsImportant=%u\n", colorsUsed, colorsImportant); }
+		debug(pixelmancy) { writefln!"colorsUsed=%s; colorsImportant=%s"(colorsUsed, colorsImportant); }
 		if (colorsUsed == 0 || colorsUsed > (1 << bitsPerPixel)) colorsUsed = (1 << bitsPerPixel);
 		auto img = new IndexedImage(width, height);
 		img.palette.reserve(1 << bitsPerPixel);
@@ -297,42 +295,42 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 				if (x >= 0 && y >= 0 && x < width && y < height) img.data[x, y] = v&0xff;
 				++x;
 			}
-			debug(pixelmancy) { import core.stdc.stdio; printf("width=%d; height=%d; rdheight=%d\n", width, height, rdheight); }
+			debug(pixelmancy) { writefln!"width=%d; height=%d; rdheight=%d"(width, height, rdheight); }
 			for (;;) {
 				ubyte codelen = read1();
 				ubyte codecode = read1();
-				debug(pixelmancy) { import core.stdc.stdio; printf("x=%d; y=%d; len=%u; code=%u\n", x, y, cast(uint)codelen, cast(uint)codecode); }
+				debug(pixelmancy) { writefln!"x=%d; y=%d; len=%u; code=%u"(x, y, codelen, codecode); }
 				bytesRead += 2;
 				if (codelen == 0) {
 					// special code
 					if (codecode == 0) {
 						// end of line
-						debug(pixelmancy) { import core.stdc.stdio; printf("  EOL\n"); }
+						debug(pixelmancy) { writeln("  EOL"); }
 						while (x < width) setpix(1);
 						x = 0;
 						y += rdheight;
 						if (y < 0 || y >= height) break; // ooops
 					} else if (codecode == 1) {
-						debug(pixelmancy) { import core.stdc.stdio; printf("  EOB\n"); }
+						debug(pixelmancy) { writeln("  EOB"); }
 						// end of bitmap
 						break;
 					} else if (codecode == 2) {
 						// delta
 						int xofs = read1();
 						int yofs = read1();
-						debug(pixelmancy) { import core.stdc.stdio; printf("  deltax=%d; deltay=%d\n", xofs, yofs); }
+						debug(pixelmancy) { writefln!"  deltax=%d; deltay=%d"(xofs, yofs); }
 						bytesRead += 2;
 						x += xofs;
 						y += yofs*rdheight;
 						if (y < 0 || y >= height) break; // ooops
 					} else {
-						debug(pixelmancy) { import core.stdc.stdio; printf("  LITERAL: %u\n", cast(uint)codecode); }
+						debug(pixelmancy) { writefln!"  LITERAL: %u"(codecode); }
 						// literal copy
 						while (codecode-- > 0) {
 							setpix(read1());
 							++bytesRead;
 						}
-						debug(pixelmancy) if (bytesRead%2) { import core.stdc.stdio; printf("  LITERAL SKIP\n"); }
+						debug(pixelmancy) if (bytesRead%2) { writeln("  LITERAL SKIP"); }
 						if (bytesRead%2) { read1(); ++bytesRead; }
 						assert(bytesRead%2 == 0);
 					}
@@ -414,16 +412,16 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 					auto existing = img.data[][y * img.width + x];
 
 					if(img.palette[existing] == RGBA32(0, 0, 0, 255) && transparent) {
-						// import std.stdio; write("O");
+						// write("O");
 						img.data[][y * img.width + x] = cast(ubyte) tp;
 					} else {
-						// import std.stdio; write("X");
+						// write("X");
 					}
 
 					return 1;
 				});
 			} else {
-				//import std.stdio; writeln("no room in palette for transparency alas");
+				//writeln("no room in palette for transparency alas");
 			}
 		}
 
@@ -437,7 +435,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 		int offsetStart = width * height * 4;
 		int bytesPerPixel = 4;
 		for(int y = height; y > 0; y--) {
-			debug(pixelmancy) { import core.stdc.stdio; printf("  true color image: %d\n", y); }
+			debug(pixelmancy) { writefln!"  true color image: %d"(y); }
 			offsetStart -= width * bytesPerPixel;
 			int offset = offsetStart;
 			int b = 0;
@@ -451,7 +449,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 						b++;
 					}
 
-					ulong data = *(cast(ulong*) buffer.ptr);
+					ulong data = (cast(ulong[])buffer[])[0];
 
 					auto blue = data & blueMask;
 					auto green = data & greenMask;
@@ -513,7 +511,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 				// only use the and mask if the alpha channel appears unused
 				if(transparent && (existing == 255))
 					img.colours[][offset].alpha = 0;
-				//import std.stdio; write(transparent ? "o":"x");
+				//write(transparent ? "o":"x");
 
 				return 4;
 			});
@@ -528,26 +526,19 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 
 /// Writes the `img` out to `filename`, in .bmp format. Writes [TrueColorImage] out
 /// as a 24 bmp and [IndexedImage] out as an 8 bit bmp. Drops transparency information.
-void writeBmp(MemoryImage img, string filename) @system {
-	import core.stdc.stdio;
-	FILE* fp = fopen((filename ~ "\0").ptr, "wb".ptr);
-	enforce!BMPLoadException(fp !is null, "can't open save file");
-	scope(exit) fclose(fp);
+void writeBmp(MemoryImage img, string filename) @safe {
+	auto fp = File(filename, "wb");
 
-	int written;
-	void my_fwrite(ubyte b) {
-		written++;
-		fputc(b, fp);
-	}
+	void my_fwrite(scope const(ubyte)[] b) @safe  => trustedWrite(fp, b);
 
 	writeBmpIndirect(img, &my_fwrite, true);
 }
-ubyte[] encodeBmp(MemoryImage img) @system {
+ubyte[] encodeBmp(MemoryImage img) @safe {
 	ubyte[] buffer;
-	writeBmpIndirect(img, (ubyte output) { buffer ~= output; }, true);
+	writeBmpIndirect(img, (scope const(ubyte)[] output) { buffer ~= output; }, true);
 	return buffer;
 }
-@system unittest {
+@safe unittest {
 	// round tripping...
 	{
 		const bmp = readBmp(encodeBmp(readBmp("testdata/test24.bmp")));
@@ -563,19 +554,20 @@ ubyte[] encodeBmp(MemoryImage img) @system {
 
 	If `prependFileHeader` is `true`, it will add the bitmap file header too.
 +/
-void writeBmpIndirect(MemoryImage img, scope void delegate(ubyte) @safe fwrite, bool prependFileHeader) @safe {
+void writeBmpIndirect(MemoryImage img, scope void delegate(scope const(ubyte)[]) @safe fwrite, bool prependFileHeader) @safe {
 
 	void write4(uint what){
-		fwrite(what & 0xff);
-		fwrite((what >> 8) & 0xff);
-		fwrite((what >> 16) & 0xff);
-		fwrite((what >> 24) & 0xff);
+		LittleEndian!uint data = what;
+		fwrite(data.raw[]);
 	}
 	void write2(ushort what){
-		fwrite(what & 0xff);
-		fwrite(what >> 8);
+		LittleEndian!ushort data = what;
+		fwrite(data.raw);
 	}
-	void write1(ubyte what) { fwrite(what); }
+	void write1(ubyte what) {
+		ubyte[1] data = what;
+		fwrite(data[]);
+	}
 
 	int width = img.width;
 	int height = img.height;

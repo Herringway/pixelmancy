@@ -362,6 +362,12 @@ private struct EndianType(T, bool littleEndian) {
 	} else {
 		enum needSwap = !littleEndian;
 	}
+	this(T initial) @safe pure {
+		if (needSwap) {
+			swapEndianness(initial);
+		}
+		(cast(T[])this.raw)[0] = initial;
+	}
 	T native() const @safe {
 		T result = (cast(T[])(raw[].dup))[0];
 		static if (needSwap) {
@@ -540,6 +546,9 @@ T read(T)(ref const(ubyte)[] range) if (is(T == struct)) {
 package void trustedWrite(string filename, const(ubyte)[] data) @trusted {
 	import std.file : write;
 	write(filename, data);
+}
+package void trustedWrite(scope ref File file, const(ubyte)[] data) @trusted {
+	file.rawWrite(data);
 }
 package const(ubyte)[] trustedRead(scope const(char)[] fname) @trusted {
 	import std.file : read;

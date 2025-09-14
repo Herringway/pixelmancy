@@ -518,20 +518,20 @@ int xsscanf(A...) (const(char)[] str, const(char)[] fmt, ref A args) @system {
 
 	bool parseInt(T : ulong) (ref T res) {
 		res = 0;
-		debug(xsscanf_int) { import std.stdio; writeln("parseInt00: str=", str[spos..$].quote); }
+		debug(xsscanf_int) { import std.stdio; writeln("parseInt00: str=\"", str[spos..$], "\""); }
 		bool neg = false;
 				 if (spos < str.length && str.ptr[spos] == '+') ++spos;
 		else if (spos < str.length && str.ptr[spos] == '-') { neg = true; ++spos; }
 		if (spos >= str.length || str.ptr[spos] < '0' || str.ptr[spos] > '9') return false;
 		while (spos < str.length && str.ptr[spos] >= '0' && str.ptr[spos] <= '9') res = res*10+str.ptr[spos++]-'0';
-		debug(xsscanf_int) { import std.stdio; writeln("parseInt10: str=", str[spos..$].quote); }
+		debug(xsscanf_int) { import std.stdio; writefln!"parseInt10: str=\"%s\""(str[spos..$]); }
 		if (neg) res = -res;
 		return true;
 	}
 
 	bool parseHex(T : ulong) (ref T res) {
 		res = 0;
-		debug(xsscanf_int) { import std.stdio; writeln("parseHex00: str=", str[spos..$].quote); }
+		debug(xsscanf_int) { import std.stdio; writefln!"parseHex00: str=\"%s\""(str[spos..$]); }
 		if (spos >= str.length || hexdigit(str.ptr[spos]) < 0) return false;
 		while (spos < str.length) {
 			auto d = hexdigit(str.ptr[spos]);
@@ -539,55 +539,55 @@ int xsscanf(A...) (const(char)[] str, const(char)[] fmt, ref A args) @system {
 			res = res*16+d;
 			++spos;
 		}
-		debug(xsscanf_int) { import std.stdio; writeln("parseHex10: str=", str[spos..$].quote); }
+		debug(xsscanf_int) { import std.stdio; writefln!"parseHex10: str=\"%s\""(str[spos..$]); }
 		return true;
 	}
 
 	bool parseFloat(T : real) (ref T res) {
 		res = 0.0;
-		debug(xsscanf_float) { import std.stdio; writeln("parseFloat00: str=", str[spos..$].quote); }
+		debug(xsscanf_float) { import std.stdio; writefln!"parseFloat00: str=\"%s\""(str[spos..$]); }
 		bool neg = false;
 				 if (spos < str.length && str.ptr[spos] == '+') ++spos;
 		else if (spos < str.length && str.ptr[spos] == '-') { neg = true; ++spos; }
 		bool wasChar = false;
 		// integer part
-		debug(xsscanf_float) { import std.stdio; writeln("parseFloat01: str=", str[spos..$].quote); }
+		debug(xsscanf_float) { import std.stdio; writefln!"parseFloat01: str=\"%s\""(str[spos..$]); }
 		if (spos < str.length && str.ptr[spos] >= '0' && str.ptr[spos] <= '9') wasChar = true;
 		while (spos < str.length && str.ptr[spos] >= '0' && str.ptr[spos] <= '9') res = res*10+str.ptr[spos++]-'0';
 		// fractional part
 		if (spos < str.length && str.ptr[spos] == '.') {
-			debug(xsscanf_float) { import std.stdio; writeln("parseFloat02: str=", str[spos..$].quote); }
+			debug(xsscanf_float) { import std.stdio; writefln!"parseFloat02: str=\"%s\""(str[spos..$]); }
 			T div = 1.0/10;
 			++spos;
 			if (spos < str.length && str.ptr[spos] >= '0' && str.ptr[spos] <= '9') wasChar = true;
-			debug(xsscanf_float) { import std.stdio; writeln("parseFloat03: str=", str[spos..$].quote); }
+			debug(xsscanf_float) { import std.stdio; writefln!"parseFloat03: str=\"%s\""(str[spos..$]); }
 			while (spos < str.length && str.ptr[spos] >= '0' && str.ptr[spos] <= '9') {
 				res += div*(str.ptr[spos++]-'0');
 				div /= 10.0;
 			}
-			debug(xsscanf_float) { import std.stdio; writeln("parseFloat04: str=", str[spos..$].quote); }
-			debug(xsscanf_float) { import std.stdio; writeln("div=", div, "; res=", res, "; str=", str[spos..$].quote); }
+			debug(xsscanf_float) { import std.stdio; writefln!"parseFloat04: str=\"%s\""(str[spos..$]); }
+			debug(xsscanf_float) { import std.stdio; writefln!"div=\"%s\"; res=\"%s\"; str=\"%s\""(div, res, str[spos..$]); }
 		}
 		// '[Ee][+-]num' part
 		if (wasChar && spos < str.length && (str.ptr[spos] == 'E' || str.ptr[spos] == 'e')) {
-			debug(xsscanf_float) { import std.stdio; writeln("parseFloat05: str=", str[spos..$].quote); }
+			debug(xsscanf_float) { import std.stdio; writefln!"parseFloat05: str=\"%s\""(str[spos..$]); }
 			++spos;
 			bool xneg = false;
 					 if (spos < str.length && str.ptr[spos] == '+') ++spos;
 			else if (spos < str.length && str.ptr[spos] == '-') { xneg = true; ++spos; }
 			int n = 0;
 			if (spos >= str.length || str.ptr[spos] < '0' || str.ptr[spos] > '9') return false; // number expected
-			debug(xsscanf_float) { import std.stdio; writeln("parseFloat06: str=", str[spos..$].quote); }
+			debug(xsscanf_float) { import std.stdio; writefln!"parseFloat06: str=\"%s\""(str[spos..$]); }
 			while (spos < str.length && str.ptr[spos] >= '0' && str.ptr[spos] <= '9') n = n*10+str.ptr[spos++]-'0';
 			if (xneg) {
 				while (n-- > 0) res /= 10;
 			} else {
 				while (n-- > 0) res *= 10;
 			}
-			debug(xsscanf_float) { import std.stdio; writeln("parseFloat07: str=", str[spos..$].quote); }
+			debug(xsscanf_float) { import std.stdio; writefln!"parseFloat07: str=\"%s\""(str[spos..$]); }
 		}
 		if (!wasChar) return false;
-		debug(xsscanf_float) { import std.stdio; writeln("parseFloat10: str=", str[spos..$].quote); }
+		debug(xsscanf_float) { import std.stdio; writefln!"parseFloat10: str=\"%s\""(str[spos..$]); }
 		if (neg) res = -res;
 		return true;
 	}
@@ -603,7 +603,7 @@ int xsscanf(A...) (const(char)[] str, const(char)[] fmt, ref A args) @system {
 
 	bool parseImpl(T/*, usize dummy*/) (ref T res) {
 		while (fpos < fmt.length) {
-			//{ import std.stdio; writeln("spos=", spos, "; fpos=", fpos, "\nfmt=", fmt[fpos..$].quote, "\nstr=", str[spos..$].quote); }
+			//{ import std.stdio; writefln!"spos=\"%s\"; fpos=\"%s\"\nfmt=\"%s\"\nstr=\"%s\""(spos, fpos, fmt[fpos..$], str[spos..$]); }
 			if (fmt.ptr[fpos] <= ' ') {
 				skipXSpaces();
 				continue;
@@ -685,7 +685,7 @@ int xsscanf(A...) (const(char)[] str, const(char)[] fmt, ref A args) @system {
 								if (str.ptr[spos] == c) { ok = true; break; }
 							}
 						}
-						//{ import std.stdio; writeln("** spos=", spos, "; fpos=", fpos, "\nfmt=", fmt[fpos..$].quote, "\nstr=", str[spos..$].quote, "\nok: ", ok); }
+						//{ import std.stdio; writefln!"** spos=\"%s\"; fpos=\"%s\"\nfmt=\"%s\"\nstr=\"%s\"\nok: %s"(spos, fpos, fmt[fpos..$], str[spos..$], ok); }
 						if (!ok) break; // not a match
 						++spos; // skip match
 					}
@@ -723,7 +723,7 @@ int xsscanf(A...) (const(char)[] str, const(char)[] fmt, ref A args) @system {
 	foreach (usize aidx, immutable T; A) {
 		//pragma(msg, "aidx=", aidx, "; T=", T);
 		if (!parseImpl!(T)(args[aidx])) return -(spos+1);
-		//{ import std.stdio; writeln("@@@ aidx=", aidx+3, "; spos=", spos, "; fpos=", fpos, "\nfmt=", fmt[fpos..$].quote, "\nstr=", str[spos..$].quote); }
+		//{ import std.stdio; writeln("@@@ aidx=\"%s\"; spos=\"%s\"; fpos=\"%s\"\nfmt=\"%s\"\nstr=\"%s\""(aidx+3, spos, fpos, fmt[fpos..$], str[spos..$]); }
 	}
 	skipXSpaces();
 	return (fpos < fmt.length ? -(spos+1) : spos);
@@ -798,7 +798,7 @@ void nsvg__parseContent (const(char)[] s, scope void function (void* ud, const(c
 	// Trim start white spaces
 	while (s.length && nsvg__isspace(s[0])) s = s[1..$];
 	if (s.length == 0) return;
-	//{ import std.stdio; writeln("s=", s.quote); }
+	//{ import std.stdio; writefln!"s=\"%s\""(s); }
 	if (contentCb !is null) contentCb(ud, s);
 }
 
@@ -829,15 +829,15 @@ static void nsvg__parseElement (const(char)[] s,
 	if (s.length == 0 || s[0] == '?' || s[0] == '!') return;
 
 	// Get tag name
-	//{ import std.stdio; writeln("bs=", s.quote); }
+	//{ import std.stdio; writefln!"bs=\"%s\""(s); }
 	{
 		usize pos = 0;
 		while (pos < s.length && !nsvg__isspace(s[pos])) ++pos;
 		name = s[0..pos];
 		s = s[pos..$];
 	}
-	//{ import std.stdio; writeln("name=", name.quote); }
-	//{ import std.stdio; writeln("as=", s.quote); }
+	//{ import std.stdio; writefln!"name=\"%s\""(name); }
+	//{ import std.stdio; writefln!"as=\"%s\""(s); }
 
 	// Get attribs
 	while (!end && s.length && attr.length-nattr >= 2) {
@@ -864,13 +864,13 @@ static void nsvg__parseElement (const(char)[] s,
 			attr[nattr++] = s[0..pos];
 			s = s[pos+(pos < s.length ? 1 : 0)..$];
 		}
-		//{ import std.stdio; writeln("n=", attr[nattr-2].quote, "\nv=", attr[nattr-1].quote, "\n"); }
+		//{ import std.stdio; writefln!"n=\"%s\"\nv=\"%s\"\n"(attr[nattr-2], attr[nattr-1]); }
 	}
 
 	debug(nanosvg) {
 		import std.stdio;
 		writeln("===========================");
-		foreach (immutable idx, const(char)[] v; attr[0..nattr]) writeln("	#", idx, ": ", v.quote);
+		foreach (immutable idx, const(char)[] v; attr[0..nattr]) writefln!"\t#%s: \"%s\""(idx, v);
 	}
 
 	// Call callbacks.
@@ -902,12 +902,12 @@ void nsvg__parseXML (const(char)[] input,
 				continue;
 			}
 			// start of a tag
-			//{ import std.stdio; writeln("ctx: ", input[0..cpos].quote); }
-			////debug(pixelmancy) { import std.stdio; writeln("ctx: ", input[0..cpos].quote); }
+			//{ import std.stdio; writefln!"ctx: \"%s\""(input[0..cpos]); }
+			//debug(pixelmancy) { import std.stdio; writefln!"ctx: \"%s\""(input[0..cpos]); }
 			nsvg__parseContent(input[0..cpos], contentCb, ud);
 			input = input[cpos+1..$];
 			if (input.length > 2 && input.ptr[0] == '!' && input.ptr[1] == '-' && input.ptr[2] == '-') {
-				//{ import std.stdio; writeln("ctx0: ", input.quote); }
+				//{ import std.stdio; writefln!"ctx0: \"%s\""(input); }
 				// skip comments
 				cpos = 3;
 				while (cpos < input.length) {
@@ -918,14 +918,14 @@ void nsvg__parseXML (const(char)[] input,
 					++cpos;
 				}
 				input = input[cpos..$];
-				//{ import std.stdio; writeln("ctx1: ", input.quote); }
+				//{ import std.stdio; writefln!"ctx1: \"%s\""(input); }
 			} else {
 				state = NSVG_XML_TAG;
 			}
 			cpos = 0;
 		} else if (state == NSVG_XML_TAG && input[cpos] == '>') {
 			// start of a content or new tag
-			//{ import std.stdio; writeln("tag: ", input[0..cpos].quote); }
+			//{ import std.stdio; writefln!"tag: \"%s\""(input[0..cpos]); }
 			nsvg__parseElement(input[0..cpos], startelCb, endelCb, ud);
 			input = input[cpos+1..$];
 			cpos = 0;
@@ -2489,9 +2489,9 @@ void nsvg__parseClassOrId (Parser* p, char lch, const(char)[] str) @system {
 		if (str.length == 0) break;
 		usize pos = 1;
 		while (pos < str.length && str.ptr[pos] > ' ') ++pos;
-		debug(pixelmancy) { import std.stdio; writeln("class to find: ", lch, str[0..pos].quote); }
+		debug(pixelmancy) { import std.stdio; writefln!"class to find: %s \"%s\""(lch, str[0..pos]); }
 		if (auto st = p.findStyle(lch, str[0..pos])) {
-			debug(pixelmancy) { import std.stdio; writeln("class: [", str[0..pos], "]; value: ", st.value.quote); }
+			debug(pixelmancy) { import std.stdio; writefln!"class: [%s]; value: \"%s\""(str[0..pos], st.value); }
 			nsvg__parseStyle(p, st.value);
 		}
 		str = str[pos..$];
@@ -2594,7 +2594,7 @@ bool nsvg__parseNameValue (Parser* p, const(char)[] str) @system {
 
 	str = str[pos+(pos < str.length ? 1 : 0)..$].trimLeft.trimRight(';');
 
-	debug(pixelmancy) { import std.stdio; writeln("** name=", name.quote, "; value=", str.quote); }
+	debug(pixelmancy) { import std.stdio; writefln!"** name=\"%s\"; value=\"%s\""(name, str); }
 
 	return nsvg__parseAttr(p, name, str);
 }
@@ -2613,7 +2613,7 @@ void nsvg__parseStyle (Parser* p, const(char)[] str) @system {
 			}
 		}
 		const(char)[] val = trimRight(str[0..pos]);
-		debug(pixelmancy) { import std.stdio; writeln("style: ", val.quote); }
+		debug(pixelmancy) { import std.stdio; writefln!"style: \"%s\""(val); }
 		str = str[pos+(pos < str.length ? 1 : 0)..$];
 		if (val.length > 0) nsvg__parseNameValue(p, val);
 	}
@@ -2940,7 +2940,7 @@ void nsvg__parsePath (Parser* p, AttrList attr) @system {
 		while (s.length) {
 			auto skl = nsvg__getNextPathItem(s, item[]);
 			if (skl < s.length) s = s[skl..$]; else s = s[$..$];
-			debug(nanosvg) { import std.stdio; writeln(":: ", item.fromAsciiz.quote, " : ", s.quote); }
+			debug(nanosvg) { import std.stdio; writefln!":: \"%s\": \"%s\""(item.fromAsciiz, s); }
 			if (!item[0]) break;
 			if (nsvg__isnum(item[0])) {
 				if (nargs < 10) {
@@ -3329,7 +3329,7 @@ void nsvg__parseGradientStop (Parser* p, AttrList attr) @system {
 void nsvg__startElement (void* ud, const(char)[] el, AttrList attr) @system {
 	Parser* p = cast(Parser*)ud;
 
-	debug(pixelmancy) { import std.stdio; writeln("tagB: ", el.quote); }
+	debug(pixelmancy) { import std.stdio; writefln!"tagB: \"%s\""(el); }
 	version(nanosvg_crappy_stylesheet_parser) { p.inStyle = (el == "style"); }
 
 	if (p.defsFlag) {
@@ -3391,7 +3391,7 @@ void nsvg__startElement (void* ud, const(char)[] el, AttrList attr) @system {
 }
 
 void nsvg__endElement (void* ud, const(char)[] el) @system {
-	debug(pixelmancy) { import std.stdio; writeln("tagE: ", el.quote); }
+	debug(pixelmancy) { import std.stdio; writefln!"tagE: \"%s\""(el); }
 	Parser* p = cast(Parser*)ud;
 			 if (el == "g") nsvg__popAttr(p);
 	else if (el == "path") p.pathFlag = false;
@@ -3415,7 +3415,7 @@ void nsvg__content (void* ud, const(char)[] s) @system {
 			while (s.length && (s[$-1] <= ' ' || s[$-1] == '>')) s = s[0..$-1];
 			if (s.length > 1 && s[$-2..$] == "]]") s = s[0..$-2]; else break;
 		}
-		debug(pixelmancy) { import std.stdio; writeln("ctx: ", s.quote); }
+		debug(pixelmancy) { import std.stdio; writefln!"ctx: \"%s\""(s); }
 		uint tokensAdded = 0;
 		while (s.length) {
 			if (s.length > 1 && s.ptr[0] == '/' && s.ptr[1] == '*') {
@@ -3429,7 +3429,7 @@ void nsvg__content (void* ud, const(char)[] s) @system {
 				while (s.length && s.ptr[0] <= ' ') s = s[1..$];
 				continue;
 			}
-			//debug(pixelmancy) { import std.stdio; writeln("::: ", s.quote); }
+			//debug(pixelmancy) { import std.stdio; writefln!"::: \"%s\""(s); }
 			if (s.ptr[0] == '{') {
 				usize pos = 1;
 				while (pos < s.length && s.ptr[pos] != '}') {
@@ -3443,7 +3443,7 @@ void nsvg__content (void* ud, const(char)[] s) @system {
 						++pos;
 					}
 				}
-				debug(pixelmancy) { import std.stdio; writeln("*** style: ", s[1..pos].quote); }
+				debug(pixelmancy) { import std.stdio; writefln!"*** style: \"%s\""(s[1..pos]); }
 				if (tokensAdded > 0) {
 					foreach (immutable idx; p.styleCount-tokensAdded..p.styleCount) p.styles[idx].value = s[1..pos];
 				}
@@ -3454,7 +3454,7 @@ void nsvg__content (void* ud, const(char)[] s) @system {
 				usize pos = 0;
 				while (pos < s.length && s.ptr[pos] > ' ' && s.ptr[pos] != '{' && s.ptr[pos] != '/') ++pos;
 				const(char)[] tk = s[0..pos];
-				debug(pixelmancy) { import std.stdio; writeln("token: ", tk.quote); }
+				debug(pixelmancy) { import std.stdio; writefln!"token: \"%s\""(tk); }
 				s = s[pos..$];
 				{
 					import core.stdc.stdlib : realloc;
@@ -3467,7 +3467,7 @@ void nsvg__content (void* ud, const(char)[] s) @system {
 				++tokensAdded;
 			}
 		}
-		debug(pixelmancy) foreach (const ref st; p.styles[0..p.styleCount]) { import std.stdio; writeln("name: ", st.name.quote, "; value: ", st.value.quote); }
+		debug(pixelmancy) foreach (const ref st; p.styles[0..p.styleCount]) { import std.stdio; writefln!"name: \"%s\"; value: \"%s\""(st.name, st.value); }
 	}
 }
 

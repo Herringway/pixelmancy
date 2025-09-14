@@ -19,7 +19,7 @@ class BMPSaveException : ImageSaveException {
 }
 
 /// Reads a .bmp file from the given `filename`
-MemoryImage readBmp(string filename) {
+MemoryImage readBmp(string filename) @system {
 	import core.stdc.stdio;
 
 	FILE* fp = fopen((filename ~ "\0").ptr, "rb".ptr);
@@ -43,7 +43,7 @@ MemoryImage readBmp(string filename) {
 	are a little-endian uint giving the file size. You might slice only to that, or you could slice right to `int.max`
 	and trust the library to bounds check for you based on data integrity checks.
 +/
-MemoryImage readBmp(in ubyte[] data, bool lookForFileHeader = true, bool hackAround64BitLongs = false, bool hasAndMask = false) {
+MemoryImage readBmp(in ubyte[] data, bool lookForFileHeader = true, bool hackAround64BitLongs = false, bool hasAndMask = false) @system {
 	int position;
 	const(ubyte)[] current = data;
 	void specialFread(void* tgt, size_t size) {
@@ -61,7 +61,7 @@ MemoryImage readBmp(in ubyte[] data, bool lookForFileHeader = true, bool hackAro
 	return readBmpIndirect(&specialFread, lookForFileHeader, hackAround64BitLongs, hasAndMask);
 }
 
-/*@safe*/ unittest {
+@system unittest {
 	{
 		const bmp = readBmp("testdata/test24.bmp");
 		assert(bmp[0, 0] == RGBA32(0, 0, 255, 255));
@@ -80,7 +80,7 @@ MemoryImage readBmp(in ubyte[] data, bool lookForFileHeader = true, bool hackAro
 
 		The `hasAndMask` param was added July 21, 2022. This is set to true if it is a bitmap from a .ico file or similar, where the top half of the file (by height) is the xor mask, then the bottom half is the and mask.
 +/
-MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookForFileHeader = true, bool hackAround64BitLongs = false, bool hasAndMask = false) {
+MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookForFileHeader = true, bool hackAround64BitLongs = false, bool hasAndMask = false) @system {
 	uint read4() { uint what; fread(&what, 4); return what; }
 	uint readLONG() {
 		auto le = read4();
@@ -528,7 +528,7 @@ MemoryImage readBmpIndirect(scope void delegate(void*, size_t) fread, bool lookF
 
 /// Writes the `img` out to `filename`, in .bmp format. Writes [TrueColorImage] out
 /// as a 24 bmp and [IndexedImage] out as an 8 bit bmp. Drops transparency information.
-void writeBmp(MemoryImage img, string filename) {
+void writeBmp(MemoryImage img, string filename) @system {
 	import core.stdc.stdio;
 	FILE* fp = fopen((filename ~ "\0").ptr, "wb".ptr);
 	enforce!BMPLoadException(fp !is null, "can't open save file");
@@ -542,12 +542,12 @@ void writeBmp(MemoryImage img, string filename) {
 
 	writeBmpIndirect(img, &my_fwrite, true);
 }
-ubyte[] encodeBmp(MemoryImage img) {
+ubyte[] encodeBmp(MemoryImage img) @system {
 	ubyte[] buffer;
 	writeBmpIndirect(img, (ubyte output) { buffer ~= output; }, true);
 	return buffer;
 }
-/*@safe*/ unittest {
+@system unittest {
 	// round tripping...
 	{
 		const bmp = readBmp(encodeBmp(readBmp("testdata/test24.bmp")));
@@ -563,7 +563,7 @@ ubyte[] encodeBmp(MemoryImage img) {
 
 	If `prependFileHeader` is `true`, it will add the bitmap file header too.
 +/
-void writeBmpIndirect(MemoryImage img, scope void delegate(ubyte) fwrite, bool prependFileHeader) {
+void writeBmpIndirect(MemoryImage img, scope void delegate(ubyte) @safe fwrite, bool prependFileHeader) @safe {
 
 	void write4(uint what){
 		fwrite(what & 0xff);

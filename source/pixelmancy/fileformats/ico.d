@@ -98,11 +98,11 @@ from wikipedia
 	Returns:
 		Array of individual images found in the icon file. These are typically different size representations of the same icon.
 +/
-MemoryImage[] loadIco(string filename) {
+MemoryImage[] loadIco(string filename) @system {
 	import std.file;
-	return loadIcoFromMemory(cast(const(ubyte)[]) std.file.read(filename));
+	return loadIcoFromMemory(trustedRead(filename));
 }
-/*@safe*/ unittest {
+@system unittest {
 	import pixelmancy.colours.formats : RGBA32;
 	{
 		const ico = loadIco("testdata/test.ico")[0];
@@ -114,7 +114,7 @@ MemoryImage[] loadIco(string filename) {
 }
 
 /// ditto
-MemoryImage[] loadIcoFromMemory(const(ubyte)[] data) {
+MemoryImage[] loadIcoFromMemory(const(ubyte)[] data) @system {
 	MemoryImage[] images;
 	int spot;
 	loadIcoOrCurFromMemoryCallback(
@@ -140,7 +140,7 @@ MemoryImage[] loadIcoFromMemory(const(ubyte)[] data) {
 	History:
 		Added April 21, 2023 (dub v11.0)
 +/
-IcoCursor[] loadCurFromMemory(const(ubyte)[] data) {
+IcoCursor[] loadCurFromMemory(const(ubyte)[] data) @system {
 	IcoCursor[] images;
 	int spot;
 	loadIcoOrCurFromMemoryCallback(
@@ -168,7 +168,7 @@ void loadIcoOrCurFromMemoryCallback(
 	const(ubyte)[] data,
 	scope void delegate(int imageType, int numberOfImages) imageTypeChecker,
 	scope void delegate(MemoryImage mi, int hotspotX, int hotspotY) encounteredImage,
-) {
+) @system {
 	IcoHeader header;
 	enforce!ICOLoadException(data.length >= 6, "Header is missing");
 	header.reserved |= data[0];
@@ -244,14 +244,14 @@ void loadIcoOrCurFromMemoryCallback(
 	History:
 		Added April 21, 2023 (dub v11.0)
 +/
-void writeIco(string filename, MemoryImage[] images) {
+void writeIco(string filename, MemoryImage[] images) @system {
 	writeIcoOrCur(filename, false, cast(int) images.length, (int idx) { return IcoCursor(images[idx]); });
 }
 /// ditto
-ubyte[] writeIco(MemoryImage[] images) {
+ubyte[] writeIco(MemoryImage[] images) @system {
 	return encodeIcoOrCur(false, cast(int) images.length, (int idx) { return IcoCursor(images[idx]); });
 }
-/*@safe*/ unittest {
+@system unittest {
 	import pixelmancy.colours.formats : RGBA32;
 	// round-tripping...
 	{
@@ -265,19 +265,19 @@ ubyte[] writeIco(MemoryImage[] images) {
 
 
 /// ditto
-void writeCur(string filename, IcoCursor[] images) {
+void writeCur(string filename, IcoCursor[] images) @system {
 	writeIcoOrCur(filename, true, cast(int) images.length, (int idx) { return images[idx]; });
 }
 
 /// ditto
-ubyte[] encodeCur(IcoCursor[] images) {
+ubyte[] encodeCur(IcoCursor[] images) @system {
 	return encodeIcoOrCur(true, cast(int) images.length, (int idx) { return images[idx]; });
 }
 
 /++
 	Save implementation. Api subject to change.
 +/
-ubyte[] encodeIcoOrCur(bool isCursor, int count, scope IcoCursor delegate(int) getImageAndHotspots) {
+ubyte[] encodeIcoOrCur(bool isCursor, int count, scope IcoCursor delegate(int) getImageAndHotspots) @system {
 	IcoHeader header;
 	header.reserved = 0;
 	header.imageType = isCursor ? 2 : 1;
@@ -351,7 +351,7 @@ ubyte[] encodeIcoOrCur(bool isCursor, int count, scope IcoCursor delegate(int) g
 	assert(pos == dataFilePos);
 	return data;
 }
-void writeIcoOrCur(string filename, bool isCursor, int count, scope IcoCursor delegate(int) getImageAndHotspots) {
+void writeIcoOrCur(string filename, bool isCursor, int count, scope IcoCursor delegate(int) getImageAndHotspots) @system {
 	import std.file;
 	std.file.write(filename, encodeIcoOrCur(isCursor, count, getImageAndHotspots));
 }

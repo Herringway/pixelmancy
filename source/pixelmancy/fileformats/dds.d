@@ -38,6 +38,7 @@ import pixelmancy.fileformats.color : TrueColorImage;
 import pixelmancy.util;
 import std.algorithm.comparison : min;
 import std.exception;
+import std.format;
 
 class DDSLoadException : ImageLoadException {
 	mixin basicExceptionCtors;
@@ -47,18 +48,22 @@ class DDSSaveException : ImageSaveException {
 }
 
 // ////////////////////////////////////////////////////////////////////////// //
-public bool ddsDetect (const(void)[] buf, int* width=null, int* height=null) @trusted {
+public bool ddsDetect (const(ubyte)[] buf) @safe {
+	int _;
+	return ddsDetect(buf, _, _);
+}
+public bool ddsDetect (const(ubyte)[] buf, out int width, out int height) @safe {
 	if (buf.length < 128) return false;
 	auto data = cast(const(ubyte)[])buf;
 
-	uint getUInt (uint ofs) @system {
+	uint getUInt (uint ofs) {
 		if (ofs >= data.length) return uint.max;
 		if (data.length-ofs < 4) return uint.max;
-		return data.ptr[ofs]|(data.ptr[ofs+1]<<8)|(data.ptr[ofs+2]<<16)|(data.ptr[ofs+3]<<24);
+		return data[ofs]|(data[ofs+1]<<8)|(data[ofs+2]<<16)|(data[ofs+3]<<24);
 	}
 
 	// signature
-	if (data.ptr[0] != 'D' || data.ptr[1] != 'D' || data.ptr[2] != 'S' || data.ptr[3] != ' ') return false;
+	if (data[0] != 'D' || data[1] != 'D' || data[2] != 'S' || data[3] != ' ') return false;
 	// header size check
 	if (getUInt(4) != 124) return false;
 
@@ -66,63 +71,101 @@ public bool ddsDetect (const(void)[] buf, int* width=null, int* height=null) @tr
 	int h = getUInt(3*4);
 	// arbitrary limits
 	if (w < 1 || h < 1 || w > 65500 || h > 65500) return false;
-	if (width !is null) *width = w;
-	if (height !is null) *height = h;
+	width = w;
+	height = h;
 
 	// check pixel format
 	if (getUInt(76) < 8) return false; // size
 	immutable flags = getUInt(80);
 	if (flags&DDS_FOURCC) {
 		// DXTn
-		if (data.ptr[84+0] != 'D' || data.ptr[84+1] != 'X' || data.ptr[84+2] != 'T') return false;
-		if (data.ptr[84+3] < '1' || data.ptr[84+3] > '5') return false;
+		if (data[84+0] != 'D' || data[84+1] != 'X' || data[84+2] != 'T') return false;
+		if (data[84+3] < '1' || data[84+3] > '5') return false;
 	} else if (flags == DDS_RGB || flags == DDS_RGBA) {
 		immutable bitcount = getUInt(88);
 		if (bitcount != 24 && bitcount != 32) return false;
 		// ARGB8888
-		//if (data.ptr[84+0] == 0 || data.ptr[84+1] == 0 || data.ptr[84+2] == 0 || data.ptr[84+3] == 0) return true;
+		//if (data[84+0] == 0 || data[84+1] == 0 || data[84+2] == 0 || data[84+3] == 0) return true;
 	}
 	return true;
 }
 
 
 // ////////////////////////////////////////////////////////////////////////// //
-public TrueColorImage ddsLoadFromMemory (const(void)[] buf) @system {
+public TrueColorImage ddsLoadFromMemory (const(ubyte)[] buf) @safe {
 	int w, h;
-	enforce!DDSLoadException(ddsDetect(buf, &w, &h), "Invalid header");
+	enforce!DDSLoadException(ddsDetect(buf, w, h), "Invalid header");
 
-	//FIXME: check for OOB access in decoders
-	const(ddsBuffer_t)* dds = cast(const(ddsBuffer_t)*)buf.ptr;
+	const(ddsBuffer_t)[] dds = cast(const(ddsBuffer_t)[])buf[0 .. ddsBuffer_t.sizeof];
 
 	auto tc = new TrueColorImage(w, h);
-	scope(failure) .destroy(tc);
 
-	enforce!DDSLoadException(DDSDecompress(dds, tc.colours[]), "Invalid image");
+	DDSDecompress(dds[0], tc.colours[], buf[ddsBuffer_t.data.offsetof .. $]);
 
 	return tc;
 }
 
-static import std.stdio;
-public TrueColorImage ddsLoadFromFile() (std.stdio.File fl) {
-	import core.stdc.stdlib : malloc, free;
-	auto fsize = fl.size-fl.tell;
-	enforce!DDSLoadException((fsize >= 128) && (fsize <= int.max / 8), "Invalid size");
-	ddsBuffer_t* dds = cast(ddsBuffer_t*)malloc(cast(uint)fsize);
-	enforce!DDSLoadException(dds !is null, "out of memory");
-	scope(exit) free(dds);
-	ubyte[] lb = (cast(ubyte*)dds)[0..cast(uint)fsize];
-	while (lb.length > 0) {
-		auto rd = fl.rawRead(lb[]);
-		enforce!DDSLoadException(rd.length >= 1, "Unexpected end of file");
-		lb = lb[rd.length..$];
+public TrueColorImage ddsLoadFromFile(const(char)[] filename) @safe {
+	return ddsLoadFromMemory(trustedRead(filename));
+}
+
+@safe unittest {
+	{ // DXT1
+		const dds = ddsLoadFromFile("testdata/test-dxt1.dds");
+		assert(dds[0, 0] == RGBA32(0, 0, 255, 255));
+		assert(dds[128, 0] == RGBA32(0, 255, 0, 255));
+		assert(dds[0, 128] == RGBA32(255, 0, 0, 255));
+		assert(dds[128, 128] == RGBA32(0, 0, 0, 255)); // no transparency
 	}
-	return ddsLoadFromMemory((cast(ubyte*)dds)[0..cast(uint)fsize]);
+	{ // DXT2
+		const dds = ddsLoadFromFile("testdata/test-dxt2.dds");
+		assert(dds[0, 0] == RGBA32(0, 0, 255, 255));
+		assert(dds[128, 0] == RGBA32(0, 255, 0, 255));
+		assert(dds[0, 128] == RGBA32(255, 0, 0, 255));
+		assert(dds[128, 128] == RGBA32(0, 0, 0, 0));
+	}
+	{ // DXT3
+		const dds = ddsLoadFromFile("testdata/test-dxt3.dds");
+		assert(dds[0, 0] == RGBA32(0, 0, 255, 255));
+		assert(dds[128, 0] == RGBA32(0, 255, 0, 255));
+		assert(dds[0, 128] == RGBA32(255, 0, 0, 255));
+		assert(dds[128, 128] == RGBA32(0, 0, 0, 0));
+	}
+	{ // DXT4
+		const dds = ddsLoadFromFile("testdata/test-dxt4.dds");
+		assert(dds[0, 0] == RGBA32(0, 0, 255, 255));
+		assert(dds[128, 0] == RGBA32(0, 255, 0, 255));
+		assert(dds[0, 128] == RGBA32(255, 0, 0, 255));
+		assert(dds[128, 128] == RGBA32(0, 0, 0, 0));
+	}
+	{ // DXT5
+		const dds = ddsLoadFromFile("testdata/test-dxt5.dds");
+		assert(dds[0, 0] == RGBA32(0, 0, 255, 255));
+		assert(dds[128, 0] == RGBA32(0, 255, 0, 255));
+		assert(dds[0, 128] == RGBA32(255, 0, 0, 255));
+		assert(dds[0, 255] == RGBA32(255, 0, 0, 255));
+		assert(dds[128, 128] == RGBA32(0, 0, 0, 0));
+		assert(dds[255, 255] == RGBA32(0, 0, 0, 0));
+	}
+	{ // ARGB8888
+		const dds = ddsLoadFromFile("testdata/test-argb8888.dds");
+		assert(dds[0, 0] == RGBA32(0, 0, 255, 255));
+		assert(dds[128, 0] == RGBA32(0, 255, 0, 255));
+		assert(dds[0, 128] == RGBA32(255, 0, 0, 255));
+		assert(dds[128, 128] == RGBA32(0, 0, 0, 0));
+	}
+	{ // RGB888
+		const dds = ddsLoadFromFile("testdata/test-rgb888.dds");
+		assert(dds[0, 0] == RGBA32(0, 0, 255, 255));
+		assert(dds[128, 0] == RGBA32(0, 255, 0, 255));
+		assert(dds[0, 128] == RGBA32(255, 0, 0, 255));
+		assert(dds[128, 128] == RGBA32(0, 0, 0, 255)); // no transparency
+	}
 }
 
 
-
 // ////////////////////////////////////////////////////////////////////////// //
-private nothrow @nogc:
+private:
 
 // dds definition
 enum DDSPixelFormat {
@@ -157,68 +200,68 @@ enum DDS_VOLUME = 0x00200000U;
 // structures
 align(1) struct ddsColorKey_t {
 align(1):
-	uint colorSpaceLowValue;
-	uint colorSpaceHighValue;
+	LittleEndian!uint colorSpaceLowValue;
+	LittleEndian!uint colorSpaceHighValue;
 }
 
 
 align(1) struct ddsCaps_t {
 align(1):
-	uint caps1;
-	uint caps2;
-	uint caps3;
-	uint caps4;
+	LittleEndian!uint caps1;
+	LittleEndian!uint caps2;
+	LittleEndian!uint caps3;
+	LittleEndian!uint caps4;
 }
 
 
 align(1) struct ddsMultiSampleCaps_t {
 align(1):
-	ushort flipMSTypes;
-	ushort bltMSTypes;
+	LittleEndian!ushort flipMSTypes;
+	LittleEndian!ushort bltMSTypes;
 }
 
 
 align(1) struct ddsPixelFormat_t {
 align(1):
-	uint size;
-	uint flags;
+	LittleEndian!uint size;
+	LittleEndian!uint flags;
 	char[4] fourCC;
 	union {
-		uint rgbBitCount;
-		uint yuvBitCount;
-		uint zBufferBitDepth;
-		uint alphaBitDepth;
-		uint luminanceBitCount;
-		uint bumpBitCount;
-		uint privateFormatBitCount;
+		LittleEndian!uint rgbBitCount;
+		LittleEndian!uint yuvBitCount;
+		LittleEndian!uint zBufferBitDepth;
+		LittleEndian!uint alphaBitDepth;
+		LittleEndian!uint luminanceBitCount;
+		LittleEndian!uint bumpBitCount;
+		LittleEndian!uint privateFormatBitCount;
 	}
 	union {
-		uint rBitMask;
-		uint yBitMask;
-		uint stencilBitDepth;
-		uint luminanceBitMask;
-		uint bumpDuBitMask;
-		uint operations;
+		LittleEndian!uint rBitMask;
+		LittleEndian!uint yBitMask;
+		LittleEndian!uint stencilBitDepth;
+		LittleEndian!uint luminanceBitMask;
+		LittleEndian!uint bumpDuBitMask;
+		LittleEndian!uint operations;
 	}
 	union {
-		uint gBitMask;
-		uint uBitMask;
-		uint zBitMask;
-		uint bumpDvBitMask;
+		LittleEndian!uint gBitMask;
+		LittleEndian!uint uBitMask;
+		LittleEndian!uint zBitMask;
+		LittleEndian!uint bumpDvBitMask;
 		ddsMultiSampleCaps_t multiSampleCaps;
 	}
 	union {
-		uint bBitMask;
-		uint vBitMask;
-		uint stencilBitMask;
-		uint bumpLuminanceBitMask;
+		LittleEndian!uint bBitMask;
+		LittleEndian!uint vBitMask;
+		LittleEndian!uint stencilBitMask;
+		LittleEndian!uint bumpLuminanceBitMask;
 	}
 	union {
-		uint rgbAlphaBitMask;
-		uint yuvAlphaBitMask;
-		uint luminanceAlphaBitMask;
-		uint rgbZBitMask;
-		uint yuvZBitMask;
+		LittleEndian!uint rgbAlphaBitMask;
+		LittleEndian!uint yuvAlphaBitMask;
+		LittleEndian!uint luminanceAlphaBitMask;
+		LittleEndian!uint rgbZBitMask;
+		LittleEndian!uint yuvZBitMask;
 	}
 }
 //pragma(msg, ddsPixelFormat_t.sizeof);
@@ -230,36 +273,23 @@ align(1):
 	char[4] magic;
 
 	// directdraw surface
-	uint size;
-	uint flags;
-	uint height;
-	uint width;
+	LittleEndian!uint size;
+	LittleEndian!uint flags;
+	LittleEndian!uint height;
+	LittleEndian!uint width;
 	union {
-		int pitch;
-		uint linearSize;
+		LittleEndian!int pitch;
+		LittleEndian!uint linearSize;
 	}
-	uint backBufferCount;
-	union {
-		uint mipMapCount;
-		uint refreshRate;
-		uint srcVBHandle;
-	}
-	uint alphaBitDepth;
-	uint reserved;
-	void* surface;
-	union {
-		ddsColorKey_t ckDestOverlay;
-		uint emptyFaceColor;
-	}
-	ddsColorKey_t ckDestBlt;
-	ddsColorKey_t ckSrcOverlay;
-	ddsColorKey_t ckSrcBlt;
+	LittleEndian!uint backBufferCount;
+	LittleEndian!uint mipMapCount;
+	LittleEndian!uint[11] reserved;
 	union {
 		ddsPixelFormat_t pixelFormat;
-		uint fvf;
+		LittleEndian!uint fvf;
 	}
 	ddsCaps_t ddsCaps;
-	uint textureStage;
+	LittleEndian!uint textureStage;
 
 	// data (Varying size)
 	ubyte[0] data;
@@ -268,9 +298,14 @@ align(1):
 //pragma(msg, ddsBuffer_t.pixelFormat.offsetof+4*2);
 
 
+align(1) union DDSBlock {
+	ddsColorBlock_t colorBlock;
+	ddsAlphaBlockExplicit_t alphaBlockExplicit;
+	ddsAlphaBlock3BitLinear_t alphaBlock3BitLinear;
+}
 align(1) struct ddsColorBlock_t {
 align(1):
-	ushort[2] colors;
+	LittleEndian!ushort[2] colors;
 	ubyte[4] row;
 }
 static assert(ddsColorBlock_t.sizeof == 8);
@@ -278,7 +313,7 @@ static assert(ddsColorBlock_t.sizeof == 8);
 
 align(1) struct ddsAlphaBlockExplicit_t {
 align(1):
-	ushort[4] row;
+	LittleEndian!ushort[4] row;
 }
 static assert(ddsAlphaBlockExplicit_t.sizeof == 8);
 
@@ -297,112 +332,92 @@ static assert(ddsAlphaBlock3BitLinear_t.sizeof == 8);
 //public int DDSDecompress( ddsBuffer_t *dds, ubyte *pixels );
 
 // extracts relevant info from a dds texture, returns `true` on success
-/*public*/ bool DDSGetInfo (const(ddsBuffer_t)* dds, int* width, int* height, DDSPixelFormat* pf) @safe {
-	// dummy test
-	if (dds is null) return false;
-
+/*public*/ void DDSGetInfo (ref const(ddsBuffer_t) dds, out int width, out int height, out DDSPixelFormat pf) @safe {
 	// test dds header
-	if (dds.magic != "DDS ") return false;
-	if (DDSLittleLong(dds.size) != 124) return false;
+	if (dds.magic != "DDS ") throw new DDSLoadException("Missing magic");
+	if (dds.size != 124) throw new DDSLoadException("Invalid size");
 	// arbitrary limits
-	if (DDSLittleLong(dds.width) < 1 || DDSLittleLong(dds.width) > 65535) return false;
-	if (DDSLittleLong(dds.height) < 1 || DDSLittleLong(dds.height) > 65535) return false;
+	if (dds.width < 1 || dds.width > 65535) throw new DDSLoadException("Invalid width");
+	if (dds.height < 1 || dds.height > 65535) throw new DDSLoadException("Invalid height");
 
 	// extract width and height
-	if (width !is null) *width = DDSLittleLong(dds.width);
-	if (height !is null) *height = DDSLittleLong(dds.height);
+	width = dds.width;
+	height = dds.height;
 
 	// get pixel format
 	DDSDecodePixelFormat(dds, pf);
-
-	// return ok
-	return true;
 }
 
 
 // decompresses a dds texture into an rgba image buffer, returns 0 on success
-/*public*/ bool DDSDecompress (const(ddsBuffer_t)* dds, RGBA32[] pixels) @system {
+/*public*/ void DDSDecompress (ref const(ddsBuffer_t) dds, RGBA32[] pixels, const(ubyte)[] fileData) @safe {
 	int width, height;
 	DDSPixelFormat pf;
 
 	// get dds info
-	if (!DDSGetInfo(dds, &width, &height, &pf)) return false;
-	// arbitrary limits
-	if (DDSLittleLong(dds.width) < 1 || DDSLittleLong(dds.width) > 65535) return false;
-	if (DDSLittleLong(dds.height) < 1 || DDSLittleLong(dds.height) > 65535) return false;
-	if (pixels.length < width*height) return false;
+	DDSGetInfo(dds, width, height, pf);
+	if (pixels.length < width*height) throw new DDSLoadException("Buffer too small");
 
 	// decompress
 	final switch (pf) {
 		// FIXME: support other [a]rgb formats
-		case DDSPixelFormat.RGB888: return DDSDecompressRGB888(dds, width, height, pixels.ptr);
-		case DDSPixelFormat.ARGB8888: return DDSDecompressARGB8888(dds, width, height, pixels.ptr);
-		case DDSPixelFormat.DXT1: return DDSDecompressDXT1(dds, width, height, pixels.ptr);
-		case DDSPixelFormat.DXT2: return DDSDecompressDXT2(dds, width, height, pixels.ptr);
-		case DDSPixelFormat.DXT3: return DDSDecompressDXT3(dds, width, height, pixels.ptr);
-		case DDSPixelFormat.DXT4: return DDSDecompressDXT4(dds, width, height, pixels.ptr);
-		case DDSPixelFormat.DXT5: return DDSDecompressDXT5(dds, width, height, pixels.ptr);
-		case DDSPixelFormat.Unknown: break;
+		case DDSPixelFormat.RGB888:
+			DDSDecompressRGB888(dds, fileData, width, height, pixels);
+			break;
+		case DDSPixelFormat.ARGB8888:
+			DDSDecompressARGB8888(dds, fileData, width, height, pixels);
+			break;
+		case DDSPixelFormat.DXT1:
+			DDSDecompressDXT1(dds, fileData, width, height, pixels);
+			break;
+		case DDSPixelFormat.DXT2:
+			DDSDecompressDXT2(dds, fileData, width, height, pixels);
+			break;
+		case DDSPixelFormat.DXT3:
+			DDSDecompressDXT3(dds, fileData, width, height, pixels);
+			break;
+		case DDSPixelFormat.DXT4:
+			DDSDecompressDXT4(dds, fileData, width, height, pixels);
+			break;
+		case DDSPixelFormat.DXT5:
+			DDSDecompressDXT5(dds, fileData, width, height, pixels);
+			break;
+		case DDSPixelFormat.Unknown:
+			throw new DDSLoadException(format!"Unknown format %s"(cast(uint)pf));
 	}
-
-	return false;
 }
 
 
 // ////////////////////////////////////////////////////////////////////////// //
 private:
 
-version(BigEndian) {
-	int DDSLittleLong (int src) pure nothrow @safe @nogc {
-		pragma(inline, true);
-		return
-			((src&0xFF000000)>>24)|
-			((src&0x00FF0000)>>8)|
-			((src&0x0000FF00)<<8)|
-			((src&0x000000FF)<<24);
-	}
-	short DDSLittleShort (short src) pure nothrow @safe @nogc {
-		pragma(inline, true);
-		return cast(short)(((src&0xFF00)>>8)|((src&0x00FF)<<8));
-	}
-} else {
-	// little endian
-	int DDSLittleLong (int src) pure nothrow @safe @nogc { pragma(inline, true); return src; }
-	short DDSLittleShort (short src) pure nothrow @safe @nogc { pragma(inline, true); return src; }
-}
-
-
 // determines which pixel format the dds texture is in
-private void DDSDecodePixelFormat (const(ddsBuffer_t)* dds, DDSPixelFormat* pf) @safe {
-	// dummy check
-	if (dds is null || pf is null) return;
-	*pf = DDSPixelFormat.Unknown;
-
-	if (dds.pixelFormat.size < 8) return;
+private void DDSDecodePixelFormat (ref const(ddsBuffer_t) dds, out DDSPixelFormat pf) @safe {
+	enforce!DDSLoadException(dds.pixelFormat.size >= 8, "Invalid pixel format size");
 
 	if (dds.pixelFormat.flags&DDS_FOURCC) {
 		// DXTn
-		if (dds.pixelFormat.fourCC == "DXT1") *pf = DDSPixelFormat.DXT1;
-		else if (dds.pixelFormat.fourCC == "DXT2") *pf = DDSPixelFormat.DXT2;
-		else if (dds.pixelFormat.fourCC == "DXT3") *pf = DDSPixelFormat.DXT3;
-		else if (dds.pixelFormat.fourCC == "DXT4") *pf = DDSPixelFormat.DXT4;
-		else if (dds.pixelFormat.fourCC == "DXT5") *pf = DDSPixelFormat.DXT5;
-		else return;
+		if (dds.pixelFormat.fourCC == "DXT1") pf = DDSPixelFormat.DXT1;
+		else if (dds.pixelFormat.fourCC == "DXT2") pf = DDSPixelFormat.DXT2;
+		else if (dds.pixelFormat.fourCC == "DXT3") pf = DDSPixelFormat.DXT3;
+		else if (dds.pixelFormat.fourCC == "DXT4") pf = DDSPixelFormat.DXT4;
+		else if (dds.pixelFormat.fourCC == "DXT5") pf = DDSPixelFormat.DXT5;
+		else throw new DDSLoadException("Unknown format");
 	} else if (dds.pixelFormat.flags == DDS_RGB || dds.pixelFormat.flags == DDS_RGBA) {
 		//immutable bitcount = getUInt(88);
-		if (dds.pixelFormat.rgbBitCount == 24) *pf = DDSPixelFormat.RGB888;
-		else if (dds.pixelFormat.rgbBitCount == 32) *pf = DDSPixelFormat.ARGB8888;
-		else return;
+		if (dds.pixelFormat.rgbBitCount == 24) pf = DDSPixelFormat.RGB888;
+		else if (dds.pixelFormat.rgbBitCount == 32) pf = DDSPixelFormat.ARGB8888;
+		else throw new DDSLoadException("Unknown format");
 	}
 }
 
 
 // extracts colors from a dds color block
-private void DDSGetColorBlockColors (const(ddsColorBlock_t)* block, RGBA32* colors) @system {
+private void DDSGetColorBlockColors (ref const(ddsColorBlock_t) block, RGBA32[] colors) @safe {
 	ushort word;
 
 	// color 0
-	word = DDSLittleShort(block.colors.ptr[0]);
+	word = block.colors[0];
 	colors[0].alpha = 0xff;
 
 	// extract rgb bits
@@ -419,7 +434,7 @@ private void DDSGetColorBlockColors (const(ddsColorBlock_t)* block, RGBA32* colo
 	colors[0].red |= (colors[0].red>>5);
 
 	// same for color 1
-	word = DDSLittleShort(block.colors.ptr[1]);
+	word = block.colors[1];
 	colors[1].alpha = 0xff;
 
 	// extract rgb bits
@@ -436,7 +451,7 @@ private void DDSGetColorBlockColors (const(ddsColorBlock_t)* block, RGBA32* colo
 	colors[1].red |= (colors[1].red>>5);
 
 	// use this for all but the super-freak math method
-	if (block.colors.ptr[0] > block.colors.ptr[1]) {
+	if (block.colors[0] > block.colors[1]) {
 		/* four-color block: derive the other two colors.
 			 00 = color 0, 01 = color 1, 10 = color 2, 11 = color 3
 			 these two bit codes correspond to the 2-bit fields
@@ -483,26 +498,29 @@ private void DDSGetColorBlockColors (const(ddsColorBlock_t)* block, RGBA32* colo
 
 //decodes a dds color block
 //FIXME: make endian-safe
-private void DDSDecodeColorBlock (uint* pixel, const(ddsColorBlock_t)* block, int width, const(RGBA32)* colors) @system {
-	int r, n;
+private void DDSDecodeColorBlock (RGBA32[] pixel, const(ddsColorBlock_t)* block, int width, const(RGBA32)[] colors) @safe {
 	uint bits;
 	static immutable uint[4] masks = [ 3, 12, 3<<4, 3<<6 ]; // bit masks = 00000011, 00001100, 00110000, 11000000
 	static immutable ubyte[4] shift = [ 0, 2, 4, 6 ];
 	// r steps through lines in y
 	// no width * 4 as unsigned int ptr inc will * 4
-	for (r = 0; r < 4; ++r, pixel += width-4) {
+	for (int r = 0; r < 4; ++r, pixel = pixel[width-4 .. $]) {
 		// width * 4 bytes per pixel per line, each j dxtc row is 4 lines of pixels
 		// n steps through pixels
-		for (n = 0; n < 4; ++n) {
-			bits = block.row.ptr[r]&masks.ptr[n];
-			bits >>= shift.ptr[n];
+		for (int n = 0; n < 4; ++n) {
+			bits = block.row[r] & masks[n];
+			bits >>= shift[n];
 			switch (bits) {
-				case 0: *pixel++ = colors[0].colourToInteger; break;
-				case 1: *pixel++ = colors[1].colourToInteger; break;
-				case 2: *pixel++ = colors[2].colourToInteger; break;
-				case 3: *pixel++ = colors[3].colourToInteger; break;
-				default: ++pixel; break; // invalid
+				case 0: pixel[0] = colors[0]; break;
+				case 1: pixel[0] = colors[1]; break;
+				case 2: pixel[0] = colors[2]; break;
+				case 3: pixel[0] = colors[3]; break;
+				default: break; // invalid
 			}
+			pixel = pixel[1 .. $];
+		}
+		if (pixel.length < width - 4) {
+			break;
 		}
 	}
 }
@@ -510,7 +528,7 @@ private void DDSDecodeColorBlock (uint* pixel, const(ddsColorBlock_t)* block, in
 
 // decodes a dds explicit alpha block
 //FIXME: endianness
-private void DDSDecodeAlphaExplicit (uint* pixel, const(ddsAlphaBlockExplicit_t)* alphaBlock, int width, uint alphaZero) @system {
+private void DDSDecodeAlphaExplicit (RGBA32[] pixel, const(ddsAlphaBlockExplicit_t)* alphaBlock, int width, uint alphaZero) @safe {
 	int row, pix;
 	ushort word;
 	RGBA32 color;
@@ -521,24 +539,26 @@ private void DDSDecodeAlphaExplicit (uint* pixel, const(ddsAlphaBlockExplicit_t)
 	color.blue = 0;
 
 	// walk rows
-	for (row = 0; row < 4; ++row, pixel += width-4) {
-		word = DDSLittleShort(alphaBlock.row.ptr[row]);
+	for (row = 0; row < 4; ++row, pixel = pixel[width-4 .. $]) {
+		word = alphaBlock.row[row];
 		// walk pixels
 		for (pix = 0; pix < 4; ++pix) {
 			// zero the alpha bits of image pixel
-			*pixel &= alphaZero;
 			color.alpha = word&0x000F;
 			color.alpha = cast(ubyte)(color.alpha|(color.alpha<<4));
-			*pixel |= *(cast(const(uint)*)&color);
+			pixel[0].alpha = color.alpha;
 			word >>= 4; // move next bits to lowest 4
-			++pixel; // move to next pixel in the row
+			pixel = pixel[1 .. $]; // move to next pixel in the row
+		}
+		if (pixel.length < width - 4) {
+			break;
 		}
 	}
 }
 
 
 // decodes interpolated alpha block
-private void DDSDecodeAlpha3BitLinear (uint* pixel, const(ddsAlphaBlock3BitLinear_t)* alphaBlock, int width, uint alphaZero) @system {
+private void DDSDecodeAlpha3BitLinear (RGBA32[] pixel, const(ddsAlphaBlock3BitLinear_t)* alphaBlock, int width, uint alphaZero) @safe {
 	int row, pix;
 	uint stuff;
 	ubyte[4][4] bits;
@@ -546,105 +566,107 @@ private void DDSDecodeAlpha3BitLinear (uint* pixel, const(ddsAlphaBlock3BitLinea
 	RGBA32[4][4] aColors;
 
 	// get initial alphas
-	alphas.ptr[0] = alphaBlock.alpha0;
-	alphas.ptr[1] = alphaBlock.alpha1;
+	alphas[0] = alphaBlock.alpha0;
+	alphas[1] = alphaBlock.alpha1;
 
-	if (alphas.ptr[0] > alphas.ptr[1]) {
+	if (alphas[0] > alphas[1]) {
 		// 8-alpha block
 		// 000 = alpha_0, 001 = alpha_1, others are interpolated
-		alphas.ptr[2] = (6*alphas.ptr[0]+alphas.ptr[1])/7; // bit code 010
-		alphas.ptr[3] = (5*alphas.ptr[0]+2*alphas.ptr[1])/7; // bit code 011
-		alphas.ptr[4] = (4*alphas.ptr[0]+3*alphas.ptr[1])/7; // bit code 100
-		alphas.ptr[5] = (3*alphas.ptr[0]+4*alphas.ptr[1])/7; // bit code 101
-		alphas.ptr[6] = (2*alphas.ptr[0]+5*alphas.ptr[1])/7; // bit code 110
-		alphas.ptr[7] = (alphas.ptr[0]+6*alphas.ptr[1])/7; // bit code 111
+		alphas[2] = (6*alphas[0]+alphas[1])/7; // bit code 010
+		alphas[3] = (5*alphas[0]+2*alphas[1])/7; // bit code 011
+		alphas[4] = (4*alphas[0]+3*alphas[1])/7; // bit code 100
+		alphas[5] = (3*alphas[0]+4*alphas[1])/7; // bit code 101
+		alphas[6] = (2*alphas[0]+5*alphas[1])/7; // bit code 110
+		alphas[7] = (alphas[0]+6*alphas[1])/7; // bit code 111
 	} else {
 		// 6-alpha block
 		// 000 = alpha_0, 001 = alpha_1, others are interpolated
-		alphas.ptr[2] = (4*alphas.ptr[0]+alphas.ptr[1])/5; // bit code 010
-		alphas.ptr[3] = (3*alphas.ptr[0]+2*alphas.ptr[1])/5; // bit code 011
-		alphas.ptr[4] = (2*alphas.ptr[0]+3*alphas.ptr[1])/5; // bit code 100
-		alphas.ptr[5] = (alphas.ptr[0]+4*alphas.ptr[1])/5; // bit code 101
-		alphas.ptr[6] = 0; // bit code 110
-		alphas.ptr[7] = 255; // bit code 111
+		alphas[2] = (4*alphas[0]+alphas[1])/5; // bit code 010
+		alphas[3] = (3*alphas[0]+2*alphas[1])/5; // bit code 011
+		alphas[4] = (2*alphas[0]+3*alphas[1])/5; // bit code 100
+		alphas[5] = (alphas[0]+4*alphas[1])/5; // bit code 101
+		alphas[6] = 0; // bit code 110
+		alphas[7] = 255; // bit code 111
 	}
 
 	// decode 3-bit fields into array of 16 bytes with same value
 
 	// first two rows of 4 pixels each
-	stuff = *(cast(const(uint)*)&(alphaBlock.stuff.ptr[0]));
+	stuff = alphaBlock.stuff[0] | (alphaBlock.stuff[1] << 8) | (alphaBlock.stuff[2] << 16);
 
-	bits.ptr[0].ptr[0] = cast(ubyte)(stuff&0x00000007);
+	bits[0][0] = cast(ubyte)(stuff&0x00000007);
 	stuff >>= 3;
-	bits.ptr[0].ptr[1] = cast(ubyte)(stuff&0x00000007);
+	bits[0][1] = cast(ubyte)(stuff&0x00000007);
 	stuff >>= 3;
-	bits.ptr[0].ptr[2] = cast(ubyte)(stuff&0x00000007);
+	bits[0][2] = cast(ubyte)(stuff&0x00000007);
 	stuff >>= 3;
-	bits.ptr[0].ptr[3] = cast(ubyte)(stuff&0x00000007);
+	bits[0][3] = cast(ubyte)(stuff&0x00000007);
 	stuff >>= 3;
-	bits.ptr[1].ptr[0] = cast(ubyte)(stuff&0x00000007);
+	bits[1][0] = cast(ubyte)(stuff&0x00000007);
 	stuff >>= 3;
-	bits.ptr[1].ptr[1] = cast(ubyte)(stuff&0x00000007);
+	bits[1][1] = cast(ubyte)(stuff&0x00000007);
 	stuff >>= 3;
-	bits.ptr[1].ptr[2] = cast(ubyte)(stuff&0x00000007);
+	bits[1][2] = cast(ubyte)(stuff&0x00000007);
 	stuff >>= 3;
-	bits.ptr[1].ptr[3] = cast(ubyte)(stuff&0x00000007);
+	bits[1][3] = cast(ubyte)(stuff&0x00000007);
 
 	// last two rows
-	stuff = *(cast(const(uint)*)&(alphaBlock.stuff.ptr[3])); // last 3 bytes
+	stuff = alphaBlock.stuff[3] | (alphaBlock.stuff[4] << 8) | (alphaBlock.stuff[5] << 16); // last 3 bytes
 
-	bits.ptr[2].ptr[0] = cast(ubyte)(stuff&0x00000007);
+	bits[2][0] = cast(ubyte)(stuff&0x00000007);
 	stuff >>= 3;
-	bits.ptr[2].ptr[1] = cast(ubyte)(stuff&0x00000007);
+	bits[2][1] = cast(ubyte)(stuff&0x00000007);
 	stuff >>= 3;
-	bits.ptr[2].ptr[2] = cast(ubyte)(stuff&0x00000007);
+	bits[2][2] = cast(ubyte)(stuff&0x00000007);
 	stuff >>= 3;
-	bits.ptr[2].ptr[3] = cast(ubyte)(stuff&0x00000007);
+	bits[2][3] = cast(ubyte)(stuff&0x00000007);
 	stuff >>= 3;
-	bits.ptr[3].ptr[0] = cast(ubyte)(stuff&0x00000007);
+	bits[3][0] = cast(ubyte)(stuff&0x00000007);
 	stuff >>= 3;
-	bits.ptr[3].ptr[1] = cast(ubyte)(stuff&0x00000007);
+	bits[3][1] = cast(ubyte)(stuff&0x00000007);
 	stuff >>= 3;
-	bits.ptr[3].ptr[2] = cast(ubyte)(stuff&0x00000007);
+	bits[3][2] = cast(ubyte)(stuff&0x00000007);
 	stuff >>= 3;
-	bits.ptr[3].ptr[3] = cast(ubyte)(stuff&0x00000007);
+	bits[3][3] = cast(ubyte)(stuff&0x00000007);
 
 	// decode the codes into alpha values
 	for (row = 0; row < 4; ++row) {
 		for (pix = 0; pix < 4; ++pix) {
-			aColors.ptr[row].ptr[pix].red = 0;
-			aColors.ptr[row].ptr[pix].green = 0;
-			aColors.ptr[row].ptr[pix].blue = 0;
-			aColors.ptr[row].ptr[pix].alpha = cast(ubyte)alphas.ptr[bits.ptr[row].ptr[pix]];
+			aColors[row][pix].red = 0;
+			aColors[row][pix].green = 0;
+			aColors[row][pix].blue = 0;
+			aColors[row][pix].alpha = cast(ubyte)alphas[bits[row][pix]];
 		}
 	}
 
 	// write out alpha values to the image bits
-	for (row = 0; row < 4; ++row, pixel += width-4) {
+	for (row = 0; row < 4; ++row, pixel = pixel[width-4 .. $]) {
 		for (pix = 0; pix < 4; ++pix) {
 			// zero the alpha bits of image pixel
-			*pixel &= alphaZero;
 			// or the bits into the prev. nulled alpha
-			*pixel |= *(cast(const(uint)*)&(aColors.ptr[row].ptr[pix]));
-			++pixel;
+			pixel[0].alpha = aColors[row][pix].alpha;
+			pixel = pixel[1 .. $];
+		}
+		if (pixel.length < width - 4) {
+			break;
 		}
 	}
 }
 
 
 // decompresses a dxt1 format texture
-private bool DDSDecompressDXT1 (const(ddsBuffer_t)* dds, int width, int height, RGBA32* pixels) @system {
+private bool DDSDecompressDXT1 (ref const(ddsBuffer_t) dds, const(ubyte)[] fileData, int width, int height, RGBA32[] pixels) @safe {
 	RGBA32[4] colors;
 	immutable int xBlocks = width/4;
 	immutable int yBlocks = height/4;
 	// 8 bytes per block
-	auto block = cast(const(ddsColorBlock_t)*)dds.data.ptr;
+	auto block = cast(const(DDSBlock)[])fileData;
 	foreach (immutable y; 0..yBlocks) {
 		foreach (immutable x; 0..xBlocks) {
-			DDSGetColorBlockColors(block, colors.ptr);
-			auto pixel = cast(uint*)(pixels+x*4+(y*4)*width);
-			DDSDecodeColorBlock(pixel, block, width, colors.ptr);
-			++block;
+			DDSGetColorBlockColors(block[0].colorBlock, colors);
+			auto pixel = pixels[x*4+(y*4)*width .. $];
+			DDSDecodeColorBlock(pixel, &block[0].colorBlock, width, colors);
+			block = block[1 .. $];
 		}
 	}
 	// return ok
@@ -653,7 +675,7 @@ private bool DDSDecompressDXT1 (const(ddsBuffer_t)* dds, int width, int height, 
 
 
 // decompresses a dxt3 format texture
-private bool DDSDecompressDXT3 (const(ddsBuffer_t)* dds, int width, int height, RGBA32* pixels) @system {
+private bool DDSDecompressDXT3 (ref const(ddsBuffer_t) dds, const(ubyte)[] fileData, int width, int height, RGBA32[] pixels) @safe {
 	RGBA32[4] colors;
 
 	// setup
@@ -668,19 +690,17 @@ private bool DDSDecompressDXT3 (const(ddsBuffer_t)* dds, int width, int height, 
 	immutable uint alphaZero = colors.ptr[0].colourToInteger;
 
 	// 8 bytes per block, 1 block for alpha, 1 block for color
-	auto block = cast(const(ddsColorBlock_t)*)dds.data.ptr;
+	auto block = cast(const(DDSBlock)[])fileData;
 	foreach (immutable y; 0..yBlocks) {
 		foreach (immutable x; 0..xBlocks) {
-			// get alpha block
-			auto alphaBlock = cast(const(ddsAlphaBlockExplicit_t)*)block++;
 			// get color block
-			DDSGetColorBlockColors(block, colors.ptr);
+			DDSGetColorBlockColors(block[1].colorBlock, colors);
 			// decode color block
-			auto pixel = cast(uint*)(pixels+x*4+(y*4)*width);
-			DDSDecodeColorBlock(pixel, block, width, colors.ptr);
+			auto pixel = pixels[x*4+(y*4)*width .. $];
+			DDSDecodeColorBlock(pixel, &block[1].colorBlock, width, colors);
 			// overwrite alpha bits with alpha block
-			DDSDecodeAlphaExplicit(pixel, alphaBlock, width, alphaZero);
-			++block;
+			DDSDecodeAlphaExplicit(pixel, &block[0].alphaBlockExplicit, width, alphaZero);
+			block = block[2 .. $];
 		}
 	}
 
@@ -690,7 +710,7 @@ private bool DDSDecompressDXT3 (const(ddsBuffer_t)* dds, int width, int height, 
 
 
 // decompresses a dxt5 format texture
-private bool DDSDecompressDXT5 (const(ddsBuffer_t)* dds, int width, int height, RGBA32* pixels) @system {
+private bool DDSDecompressDXT5 (ref const(ddsBuffer_t) dds, const(ubyte)[] fileData, int width, int height, RGBA32[] pixels) @safe {
 	RGBA32[4] colors;
 
 	// setup
@@ -705,20 +725,18 @@ private bool DDSDecompressDXT5 (const(ddsBuffer_t)* dds, int width, int height, 
 	immutable uint alphaZero = colors.ptr[0].colourToInteger;
 
 	// 8 bytes per block, 1 block for alpha, 1 block for color
-	auto block = cast(const(ddsColorBlock_t)*)dds.data.ptr;
+	auto block = cast(const(DDSBlock)[])fileData;
 	foreach (immutable y; 0..yBlocks) {
 		//block = cast(ddsColorBlock_t*)(dds.data.ptr+y*xBlocks*16);
 		foreach (immutable x; 0..xBlocks) {
-			// get alpha block
-			auto alphaBlock = cast(const(ddsAlphaBlock3BitLinear_t)*)block++;
 			// get color block
-			DDSGetColorBlockColors(block, colors.ptr);
+			DDSGetColorBlockColors(block[1].colorBlock, colors);
 			// decode color block
-			auto pixel = cast(uint*)(pixels+x*4+(y*4)*width);
-			DDSDecodeColorBlock(pixel, block, width, colors.ptr);
+			auto pixel = pixels[x*4+(y*4)*width .. $];
+			DDSDecodeColorBlock(pixel, &block[1].colorBlock, width, colors);
 			// overwrite alpha bits with alpha block
-			DDSDecodeAlpha3BitLinear(pixel, alphaBlock, width, alphaZero);
-			++block;
+			DDSDecodeAlpha3BitLinear(pixel, &block[0].alphaBlock3BitLinear, width, alphaZero);
+			block = block[2 .. $];
 		}
 	}
 
@@ -740,51 +758,52 @@ private void unmultiply (RGBA32[] pixels) @safe {
 
 
 // decompresses a dxt2 format texture (FIXME: un-premultiply alpha)
-private bool DDSDecompressDXT2 (const(ddsBuffer_t)* dds, int width, int height, RGBA32* pixels) @system {
+private bool DDSDecompressDXT2 (ref const(ddsBuffer_t) dds, const(ubyte)[] fileData, int width, int height, RGBA32[] pixels) @safe {
 	// decompress dxt3 first
-	if (!DDSDecompressDXT3(dds, width, height, pixels)) return false;
+	if (!DDSDecompressDXT3(dds, fileData, width, height, pixels)) return false;
 	//FIXME: is un-premultiply correct?
-	unmultiply(pixels[0..width*height]);
+	unmultiply(pixels);
 	return true;
 }
 
 
 // decompresses a dxt4 format texture (FIXME: un-premultiply alpha)
-private bool DDSDecompressDXT4 (const(ddsBuffer_t)* dds, int width, int height, RGBA32* pixels) @system {
+private bool DDSDecompressDXT4 (ref const(ddsBuffer_t) dds, const(ubyte)[] fileData, int width, int height, RGBA32[] pixels) @safe {
 	// decompress dxt5 first
-	if (!DDSDecompressDXT5(dds, width, height, pixels)) return false;
+	if (!DDSDecompressDXT5(dds, fileData, width, height, pixels)) return false;
 	//FIXME: is un-premultiply correct?
-	unmultiply(pixels[0..width*height]);
+	unmultiply(pixels);
 	return true;
 }
 
 
 // decompresses an argb 8888 format texture
-private bool DDSDecompressARGB8888 (const(ddsBuffer_t)* dds, int width, int height, RGBA32* pixels) @system {
-	auto zin = cast(const(RGBA32)*)dds.data.ptr;
+private bool DDSDecompressARGB8888 (ref const(ddsBuffer_t) dds, const(ubyte)[] fileData, int width, int height, RGBA32[] pixels) @safe {
+	auto zin = cast(const(BGRA32)[])fileData;
 	//pixels[0..width*height] = zin[0..width*height];
 	foreach (immutable idx; 0..width*height) {
-		pixels.red = zin.blue;
-		pixels.green = zin.green;
-		pixels.blue = zin.red;
-		pixels.alpha = zin.alpha;
-		++pixels;
-		++zin;
+		pixels[0].red = zin[0].red;
+		pixels[0].green = zin[0].green;
+		pixels[0].blue = zin[0].blue;
+		pixels[0].alpha = zin[0].alpha;
+		zin = zin[1 .. $];
+		pixels = pixels[1 .. $];
 	}
 	return true;
 }
 
 
 // decompresses an rgb 888 format texture
-private bool DDSDecompressRGB888 (const(ddsBuffer_t)* dds, int width, int height, RGBA32* pixels) @system {
-	auto zin = cast(const(ubyte)*)dds.data.ptr;
+private bool DDSDecompressRGB888 (ref const(ddsBuffer_t) dds, const(ubyte)[] fileData, int width, int height, RGBA32[] pixels) @safe {
+	auto zin = cast(const(BGR24)[])fileData;
 	//pixels[0..width*height] = zin[0..width*height];
 	foreach (immutable idx; 0..width*height) {
-		pixels.blue = *zin++;
-		pixels.green = *zin++;
-		pixels.red = *zin++;
-		pixels.alpha = 255;
-		++pixels;
+		pixels[0].blue = zin[0].blue;
+		pixels[0].green = zin[0].green;
+		pixels[0].red = zin[0].red;
+		pixels[0].alpha = 255;
+		zin = zin[1 .. $];
+		pixels = pixels[1 .. $];
 	}
 	return true;
 }

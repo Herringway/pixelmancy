@@ -135,7 +135,7 @@ public ImageFileFormat guessImageFormatFromExtension (const(char)[] filename) @s
 }
 
 /// Try to guess image format by first data bytes.
-public ImageFileFormat guessImageFormatFromMemory (const(void)[] membuf) @safe {
+public ImageFileFormat guessImageFormatFromMemory (const(ubyte)[] membuf) @safe {
 	enum TargaSign = "TRUEVISION-XFILE.\x00";
 	auto buf = cast(const(ubyte)[])membuf;
 	if (buf.length == 0) return ImageFileFormat.Unknown;
@@ -262,15 +262,14 @@ public ImageFileFormat guessImageFormatFromMemory (const(void)[] membuf) @safe {
 }
 
 @safe unittest {
-	import std.file : read;
-	assert(guessImageFormatFromMemory(read("testdata/test.png")) == ImageFileFormat.Png);
-	assert(guessImageFormatFromMemory(read("testdata/test.gif")) == ImageFileFormat.Gif);
-	assert(guessImageFormatFromMemory(read("testdata/test.bmp")) == ImageFileFormat.Bmp);
-	assert(guessImageFormatFromMemory(read("testdata/test.jpg")) == ImageFileFormat.Jpeg);
-	assert(guessImageFormatFromMemory(read("testdata/test.dds")) == ImageFileFormat.Dds);
-	assert(guessImageFormatFromMemory(read("testdata/test.tga")) == ImageFileFormat.Tga);
-	assert(guessImageFormatFromMemory(read("testdata/test.svg")) == ImageFileFormat.Svg);
-	assert(guessImageFormatFromMemory(read("testdata/test.pcx")) == ImageFileFormat.Pcx);
+	assert(guessImageFormatFromMemory(trustedRead("testdata/test.png")) == ImageFileFormat.Png);
+	assert(guessImageFormatFromMemory(trustedRead("testdata/test.gif")) == ImageFileFormat.Gif);
+	assert(guessImageFormatFromMemory(trustedRead("testdata/test.bmp")) == ImageFileFormat.Bmp);
+	assert(guessImageFormatFromMemory(trustedRead("testdata/test.jpg")) == ImageFileFormat.Jpeg);
+	assert(guessImageFormatFromMemory(trustedRead("testdata/test.dds")) == ImageFileFormat.Dds);
+	assert(guessImageFormatFromMemory(trustedRead("testdata/test.tga")) == ImageFileFormat.Tga);
+	assert(guessImageFormatFromMemory(trustedRead("testdata/test.svg")) == ImageFileFormat.Svg);
+	assert(guessImageFormatFromMemory(trustedRead("testdata/test.pcx")) == ImageFileFormat.Pcx);
 }
 
 
@@ -302,21 +301,14 @@ public MemoryImage loadImageFromFile(T:const(char)[]) (T filename) {
 			case ImageFileFormat.Tga: return loadTga(filename);
 			case ImageFileFormat.Pcx: return loadPcx(filename);
 			case ImageFileFormat.Svg: static if (is(T == string)) return readSvg(filename); else return readSvg(filename.idup);
-			case ImageFileFormat.Dds:
-				import std.stdio;
-				static if (is(T == string)) {
-					auto fl = File(filename);
-				} else {
-					auto fl = File(filename.idup);
-				}
-				return ddsLoadFromFile(fl);
+			case ImageFileFormat.Dds: return ddsLoadFromFile(filename);
 		}
 	}
 }
 
 
 /// Try to guess image format from data and load that image.
-public MemoryImage loadImageFromMemory (const(void)[] membuf) {
+public MemoryImage loadImageFromMemory (const(ubyte)[] membuf) @system {
 	final switch (guessImageFormatFromMemory(membuf)) {
 		case ImageFileFormat.Unknown: throw new PixelmancyException("cannot determine file format");
 		case ImageFileFormat.Png: return imageFromPng(readPng(cast(const(ubyte)[])membuf));

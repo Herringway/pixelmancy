@@ -294,8 +294,6 @@ align(1):
 	// data (Varying size)
 	ubyte[0] data;
 }
-//pragma(msg, ddsBuffer_t.sizeof);
-//pragma(msg, ddsBuffer_t.pixelFormat.offsetof+4*2);
 
 
 align(1) union DDSBlock {
@@ -328,17 +326,15 @@ static assert(ddsAlphaBlock3BitLinear_t.sizeof == 8);
 
 
 // ////////////////////////////////////////////////////////////////////////// //
-//public int DDSGetInfo( ddsBuffer_t *dds, int *width, int *height, DDSPixelFormat *pf );
-//public int DDSDecompress( ddsBuffer_t *dds, ubyte *pixels );
 
 // extracts relevant info from a dds texture, returns `true` on success
 /*public*/ void DDSGetInfo (ref const(ddsBuffer_t) dds, out int width, out int height, out DDSPixelFormat pf) @safe {
 	// test dds header
-	if (dds.magic != "DDS ") throw new DDSLoadException("Missing magic");
-	if (dds.size != 124) throw new DDSLoadException("Invalid size");
+	enforce!DDSLoadException(dds.magic == "DDS ", "Missing magic");
+	enforce!DDSLoadException(dds.size == 124, "Invalid size");
 	// arbitrary limits
-	if (dds.width < 1 || dds.width > 65535) throw new DDSLoadException("Invalid width");
-	if (dds.height < 1 || dds.height > 65535) throw new DDSLoadException("Invalid height");
+	enforce!DDSLoadException(dds.width >= 1 && dds.width < 65535, "Invalid width");
+	enforce!DDSLoadException(dds.height >= 1 && dds.height < 65535, "Invalid height");
 
 	// extract width and height
 	width = dds.width;
@@ -356,7 +352,7 @@ static assert(ddsAlphaBlock3BitLinear_t.sizeof == 8);
 
 	// get dds info
 	DDSGetInfo(dds, width, height, pf);
-	if (pixels.length < width*height) throw new DDSLoadException("Buffer too small");
+	enforce!DDSLoadException(pixels.length >= width*height, "Buffer too small");
 
 	// decompress
 	final switch (pf) {
@@ -528,7 +524,7 @@ private void DDSDecodeColorBlock (RGBA32[] pixel, const(ddsColorBlock_t)* block,
 
 // decodes a dds explicit alpha block
 //FIXME: endianness
-private void DDSDecodeAlphaExplicit (RGBA32[] pixel, const(ddsAlphaBlockExplicit_t)* alphaBlock, int width, uint alphaZero) @safe {
+private void DDSDecodeAlphaExplicit (RGBA32[] pixel, const(ddsAlphaBlockExplicit_t)* alphaBlock, int width) @safe {
 	int row, pix;
 	ushort word;
 	RGBA32 color;
@@ -544,8 +540,8 @@ private void DDSDecodeAlphaExplicit (RGBA32[] pixel, const(ddsAlphaBlockExplicit
 		// walk pixels
 		for (pix = 0; pix < 4; ++pix) {
 			// zero the alpha bits of image pixel
-			color.alpha = word&0x000F;
-			color.alpha = cast(ubyte)(color.alpha|(color.alpha<<4));
+			color.alpha = word & 0x000F;
+			color.alpha = cast(ubyte)(color.alpha | (color.alpha << 4));
 			pixel[0].alpha = color.alpha;
 			word >>= 4; // move next bits to lowest 4
 			pixel = pixel[1 .. $]; // move to next pixel in the row
@@ -558,7 +554,7 @@ private void DDSDecodeAlphaExplicit (RGBA32[] pixel, const(ddsAlphaBlockExplicit
 
 
 // decodes interpolated alpha block
-private void DDSDecodeAlpha3BitLinear (RGBA32[] pixel, const(ddsAlphaBlock3BitLinear_t)* alphaBlock, int width, uint alphaZero) @safe {
+private void DDSDecodeAlpha3BitLinear (RGBA32[] pixel, const(ddsAlphaBlock3BitLinear_t)* alphaBlock, int width) @safe {
 	int row, pix;
 	uint stuff;
 	ubyte[4][4] bits;
@@ -594,40 +590,40 @@ private void DDSDecodeAlpha3BitLinear (RGBA32[] pixel, const(ddsAlphaBlock3BitLi
 	// first two rows of 4 pixels each
 	stuff = alphaBlock.stuff[0] | (alphaBlock.stuff[1] << 8) | (alphaBlock.stuff[2] << 16);
 
-	bits[0][0] = cast(ubyte)(stuff&0x00000007);
+	bits[0][0] = stuff & 7;
 	stuff >>= 3;
-	bits[0][1] = cast(ubyte)(stuff&0x00000007);
+	bits[0][1] = stuff & 7;
 	stuff >>= 3;
-	bits[0][2] = cast(ubyte)(stuff&0x00000007);
+	bits[0][2] = stuff & 7;
 	stuff >>= 3;
-	bits[0][3] = cast(ubyte)(stuff&0x00000007);
+	bits[0][3] = stuff & 7;
 	stuff >>= 3;
-	bits[1][0] = cast(ubyte)(stuff&0x00000007);
+	bits[1][0] = stuff & 7;
 	stuff >>= 3;
-	bits[1][1] = cast(ubyte)(stuff&0x00000007);
+	bits[1][1] = stuff & 7;
 	stuff >>= 3;
-	bits[1][2] = cast(ubyte)(stuff&0x00000007);
+	bits[1][2] = stuff & 7;
 	stuff >>= 3;
-	bits[1][3] = cast(ubyte)(stuff&0x00000007);
+	bits[1][3] = stuff & 7;
 
 	// last two rows
 	stuff = alphaBlock.stuff[3] | (alphaBlock.stuff[4] << 8) | (alphaBlock.stuff[5] << 16); // last 3 bytes
 
-	bits[2][0] = cast(ubyte)(stuff&0x00000007);
+	bits[2][0] = stuff & 7;
 	stuff >>= 3;
-	bits[2][1] = cast(ubyte)(stuff&0x00000007);
+	bits[2][1] = stuff & 7;
 	stuff >>= 3;
-	bits[2][2] = cast(ubyte)(stuff&0x00000007);
+	bits[2][2] = stuff & 7;
 	stuff >>= 3;
-	bits[2][3] = cast(ubyte)(stuff&0x00000007);
+	bits[2][3] = stuff & 7;
 	stuff >>= 3;
-	bits[3][0] = cast(ubyte)(stuff&0x00000007);
+	bits[3][0] = stuff & 7;
 	stuff >>= 3;
-	bits[3][1] = cast(ubyte)(stuff&0x00000007);
+	bits[3][1] = stuff & 7;
 	stuff >>= 3;
-	bits[3][2] = cast(ubyte)(stuff&0x00000007);
+	bits[3][2] = stuff & 7;
 	stuff >>= 3;
-	bits[3][3] = cast(ubyte)(stuff&0x00000007);
+	bits[3][3] = stuff & 7;
 
 	// decode the codes into alpha values
 	for (row = 0; row < 4; ++row) {
@@ -655,10 +651,10 @@ private void DDSDecodeAlpha3BitLinear (RGBA32[] pixel, const(ddsAlphaBlock3BitLi
 
 
 // decompresses a dxt1 format texture
-private bool DDSDecompressDXT1 (ref const(ddsBuffer_t) dds, const(ubyte)[] fileData, int width, int height, RGBA32[] pixels) @safe {
+private void DDSDecompressDXT1 (ref const(ddsBuffer_t) dds, const(ubyte)[] fileData, int width, int height, RGBA32[] pixels) @safe {
 	RGBA32[4] colors;
-	immutable int xBlocks = width/4;
-	immutable int yBlocks = height/4;
+	immutable int xBlocks = width / 4;
+	immutable int yBlocks = height / 4;
 	// 8 bytes per block
 	auto block = cast(const(DDSBlock)[])fileData;
 	foreach (immutable y; 0..yBlocks) {
@@ -669,25 +665,19 @@ private bool DDSDecompressDXT1 (ref const(ddsBuffer_t) dds, const(ubyte)[] fileD
 			block = block[1 .. $];
 		}
 	}
-	// return ok
-	return true;
 }
 
 
 // decompresses a dxt3 format texture
-private bool DDSDecompressDXT3 (ref const(ddsBuffer_t) dds, const(ubyte)[] fileData, int width, int height, RGBA32[] pixels) @safe {
+private void DDSDecompressDXT3 (ref const(ddsBuffer_t) dds, const(ubyte)[] fileData, int width, int height, RGBA32[] pixels) @safe {
 	RGBA32[4] colors;
 
 	// setup
-	immutable int xBlocks = width/4;
-	immutable int yBlocks = height/4;
+	immutable int xBlocks = width / 4;
+	immutable int yBlocks = height / 4;
 
 	// create zero alpha
-	colors.ptr[0].alpha = 0;
-	colors.ptr[0].red = 0xFF;
-	colors.ptr[0].green = 0xFF;
-	colors.ptr[0].blue = 0xFF;
-	immutable uint alphaZero = colors.ptr[0].colourToInteger;
+	colors[0] = RGBA32(red: 255, green: 255, blue: 255, alpha: 0);
 
 	// 8 bytes per block, 1 block for alpha, 1 block for color
 	auto block = cast(const(DDSBlock)[])fileData;
@@ -699,35 +689,27 @@ private bool DDSDecompressDXT3 (ref const(ddsBuffer_t) dds, const(ubyte)[] fileD
 			auto pixel = pixels[x*4+(y*4)*width .. $];
 			DDSDecodeColorBlock(pixel, &block[1].colorBlock, width, colors);
 			// overwrite alpha bits with alpha block
-			DDSDecodeAlphaExplicit(pixel, &block[0].alphaBlockExplicit, width, alphaZero);
+			DDSDecodeAlphaExplicit(pixel, &block[0].alphaBlockExplicit, width);
 			block = block[2 .. $];
 		}
 	}
-
-	// return ok
-	return true;
 }
 
 
 // decompresses a dxt5 format texture
-private bool DDSDecompressDXT5 (ref const(ddsBuffer_t) dds, const(ubyte)[] fileData, int width, int height, RGBA32[] pixels) @safe {
+private void DDSDecompressDXT5 (ref const(ddsBuffer_t) dds, const(ubyte)[] fileData, int width, int height, RGBA32[] pixels) @safe {
 	RGBA32[4] colors;
 
 	// setup
-	immutable int xBlocks = width/4;
-	immutable int yBlocks = height/4;
+	immutable int xBlocks = width / 4;
+	immutable int yBlocks = height / 4;
 
 	// create zero alpha
-	colors.ptr[0].alpha = 0;
-	colors.ptr[0].red = 0xFF;
-	colors.ptr[0].green = 0xFF;
-	colors.ptr[0].blue = 0xFF;
-	immutable uint alphaZero = colors.ptr[0].colourToInteger;
+	colors[0] = RGBA32(red: 255, green: 255, blue: 255, alpha: 0);
 
 	// 8 bytes per block, 1 block for alpha, 1 block for color
 	auto block = cast(const(DDSBlock)[])fileData;
 	foreach (immutable y; 0..yBlocks) {
-		//block = cast(ddsColorBlock_t*)(dds.data.ptr+y*xBlocks*16);
 		foreach (immutable x; 0..xBlocks) {
 			// get color block
 			DDSGetColorBlockColors(block[1].colorBlock, colors);
@@ -735,17 +717,14 @@ private bool DDSDecompressDXT5 (ref const(ddsBuffer_t) dds, const(ubyte)[] fileD
 			auto pixel = pixels[x*4+(y*4)*width .. $];
 			DDSDecodeColorBlock(pixel, &block[1].colorBlock, width, colors);
 			// overwrite alpha bits with alpha block
-			DDSDecodeAlpha3BitLinear(pixel, &block[0].alphaBlock3BitLinear, width, alphaZero);
+			DDSDecodeAlpha3BitLinear(pixel, &block[0].alphaBlock3BitLinear, width);
 			block = block[2 .. $];
 		}
 	}
-
-	// return ok
-	return true;
 }
 
 
-private void unmultiply (RGBA32[] pixels) @safe {
+private void unmultiply(scope RGBA32[] pixels) @safe {
 	// premultiplied alpha
 	foreach (ref RGBA32 clr; pixels) {
 		if (clr.alpha != 0) {
@@ -758,52 +737,34 @@ private void unmultiply (RGBA32[] pixels) @safe {
 
 
 // decompresses a dxt2 format texture (FIXME: un-premultiply alpha)
-private bool DDSDecompressDXT2 (ref const(ddsBuffer_t) dds, const(ubyte)[] fileData, int width, int height, RGBA32[] pixels) @safe {
+private void DDSDecompressDXT2 (ref const(ddsBuffer_t) dds, const(ubyte)[] fileData, int width, int height, RGBA32[] pixels) @safe {
 	// decompress dxt3 first
-	if (!DDSDecompressDXT3(dds, fileData, width, height, pixels)) return false;
+	DDSDecompressDXT3(dds, fileData, width, height, pixels);
 	//FIXME: is un-premultiply correct?
 	unmultiply(pixels);
-	return true;
 }
 
 
 // decompresses a dxt4 format texture (FIXME: un-premultiply alpha)
-private bool DDSDecompressDXT4 (ref const(ddsBuffer_t) dds, const(ubyte)[] fileData, int width, int height, RGBA32[] pixels) @safe {
+private void DDSDecompressDXT4 (ref const(ddsBuffer_t) dds, const(ubyte)[] fileData, int width, int height, RGBA32[] pixels) @safe {
 	// decompress dxt5 first
-	if (!DDSDecompressDXT5(dds, fileData, width, height, pixels)) return false;
+	DDSDecompressDXT5(dds, fileData, width, height, pixels);
 	//FIXME: is un-premultiply correct?
 	unmultiply(pixels);
-	return true;
 }
 
 
 // decompresses an argb 8888 format texture
-private bool DDSDecompressARGB8888 (ref const(ddsBuffer_t) dds, const(ubyte)[] fileData, int width, int height, RGBA32[] pixels) @safe {
-	auto zin = cast(const(BGRA32)[])fileData;
-	//pixels[0..width*height] = zin[0..width*height];
-	foreach (immutable idx; 0..width*height) {
-		pixels[0].red = zin[0].red;
-		pixels[0].green = zin[0].green;
-		pixels[0].blue = zin[0].blue;
-		pixels[0].alpha = zin[0].alpha;
-		zin = zin[1 .. $];
-		pixels = pixels[1 .. $];
+private void DDSDecompressARGB8888 (ref const(ddsBuffer_t) dds, const(ubyte)[] fileData, int width, int height, RGBA32[] pixels) @safe {
+	foreach (idx, src; (cast(const(BGRA32)[])fileData)[0 .. width * height]) {
+		pixels[idx] = src.convert!RGBA32;
 	}
-	return true;
 }
 
 
 // decompresses an rgb 888 format texture
-private bool DDSDecompressRGB888 (ref const(ddsBuffer_t) dds, const(ubyte)[] fileData, int width, int height, RGBA32[] pixels) @safe {
-	auto zin = cast(const(BGR24)[])fileData;
-	//pixels[0..width*height] = zin[0..width*height];
-	foreach (immutable idx; 0..width*height) {
-		pixels[0].blue = zin[0].blue;
-		pixels[0].green = zin[0].green;
-		pixels[0].red = zin[0].red;
-		pixels[0].alpha = 255;
-		zin = zin[1 .. $];
-		pixels = pixels[1 .. $];
+private void DDSDecompressRGB888 (ref const(ddsBuffer_t) dds, const(ubyte)[] fileData, int width, int height, RGBA32[] pixels) @safe {
+	foreach (idx, src; (cast(const(BGR24)[])fileData)[0 .. width * height]) {
+		pixels[idx] = src.convert!RGBA32;
 	}
-	return true;
 }
